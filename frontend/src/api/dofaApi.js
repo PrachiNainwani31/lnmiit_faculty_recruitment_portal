@@ -1,0 +1,31 @@
+import API from "./api";
+
+/* =========================
+   CYCLE / DASHBOARD
+========================= */
+
+export const getCurrentCycle = () =>
+  API.get("/cycle/current");
+
+export const approveCycle = () =>
+  API.post("/cycle/approve");
+
+export const raiseQuery = (comment) =>
+  API.post("/cycle/query", { comment });
+
+export const getDofaDashboard = () =>
+  API.get("/cycle/dofa-dashboard");
+
+export const getCandidatesByDepartment = (dept) =>
+  API.get(`/hod/candidates/department/${dept}`);
+
+export const downloadDepartmentResumes = (department) =>
+  API.get(`/dofa/resumes/${department}`, {
+    responseType: "blob",
+  });
+
+export const getExpertsByDepartment = (dept) =>
+  API.get(`/hod/experts/department/${dept}`);
+
+export const getAllExperts = () =>
+  API.get("/hod/experts/all");
