@@ -16,7 +16,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    getDofaDashboard().then(res => setData(res.data));
+    getDofaDashboard().then(res => {
+    console.log("DOFA API response:", res.data);
+    setData(res.data)});
   }, []);
 
   if (!data)

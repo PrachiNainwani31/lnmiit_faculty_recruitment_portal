@@ -29,3 +29,15 @@ export const getExpertsByDepartment = (dept) =>
 
 export const getAllExperts = () =>
   API.get("/hod/experts/all");
+
+export const getCandidateDocuments = () =>
+  API.get("/dofa/documents");
+
+export const getDocumentTracking = () =>
+API.get("/dofa/document-tracking")
+
+export const updateVerdict = (data) =>
+API.post("/dofa/document-verdict",data)
+
+export const sendReminder = (data) =>
+API.post("/dofa/document-reminder",data)

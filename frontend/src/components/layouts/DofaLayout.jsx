@@ -37,6 +37,9 @@ export default function DofaLayout() {
           <NavLink to="/dofa/comments" className={navStyle}>
             💬 Comments
           </NavLink>
+          <NavLink to="/dofa/document-tracking" className={navStyle}>
+            📄 Document Tracking
+          </NavLink>
         </nav>
       </aside>
 

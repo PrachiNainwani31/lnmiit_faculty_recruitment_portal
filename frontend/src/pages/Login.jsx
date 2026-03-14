@@ -25,15 +25,20 @@ export default function Login() {
 
       const { token, user } = res.data;
 
-      // ✅ Store auth info
+      //  Store auth info
       localStorage.setItem("token", token);
       localStorage.setItem("role", user.role);
+      localStorage.setItem("user", JSON.stringify(user));
 
       // ✅ Role-based redirect
       if (user.role === "HOD") {
         navigate("/hod");
       } else if (user.role === "DOFA") {
         navigate("/dofa");
+      } else if (user.role === "CANDIDATE") {
+        navigate("/candidate");
+      } else if(user.role === "REFEREE") {
+        navigate(`/referee-portal`);
       } else {
         setError("Unauthorized role");
       }
