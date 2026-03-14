@@ -35,4 +35,32 @@ router.post("/login", async (req, res) => {
   });
 });
 
+/* ── REGISTER ── */
+router.post("/register", async (req, res) => {
+  try {
+    const { name, email, password, role, department } = req.body;
+ 
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ msg: "All fields are required" });
+    }
+ 
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ msg: "Email already registered" });
+ 
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      department: role === "HOD" ? department : undefined,
+      active: true,
+    });
+ 
+    res.status(201).json({ msg: "Account created successfully", userId: user._id });
+  } catch (err) {
+    console.error("Register error:", err);
+    res.status(500).json({ msg: "Registration failed" });
+  }
+});
+
 module.exports = router;

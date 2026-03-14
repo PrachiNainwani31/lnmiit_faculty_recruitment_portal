@@ -2,11 +2,8 @@ const RecruitmentCycle = require("../models/RecruitmentCycle");
 const { createNotification } = require("../utils/notify");
 const CYCLE = require("../config/activeCycle");
 const Expert = require("../models/Expert");
-const archiver = require("archiver");
-const fs = require("fs");
-const path = require("path");
+const Comment = require("../models/Comment");
 const Candidate = require("../models/Candidate");
-const User = require("../models/User");
 
 /* ================================
    GET CURRENT CYCLE (HOD + DOFA)
@@ -53,28 +50,50 @@ exports.submitToDofa = async (req, res) => {
    (Unfreezes for HOD edits)
 ================================ */
 exports.raiseQuery = async (req, res) => {
-  const { comment } = req.body;
+  try {
+    const { comment } = req.body;
 
-  if (!comment) {
-    return res.status(400).json({ message: "Comment required" });
+    if (!comment) {
+      return res.status(400).json({ message: "Comment required" });
+    }
+
+    const cycle = await RecruitmentCycle.findOne({ cycle: CYCLE });
+
+    /* ---------------------------
+       UPDATE CYCLE STATUS
+    ---------------------------- */
+    cycle.status = "QUERY";
+    cycle.isFrozen = false;
+    cycle.dofaComment = comment;
+    await cycle.save();
+
+    /* ---------------------------
+       SAVE COMMENT FOR COMMENTS TAB
+    ---------------------------- */
+    await Comment.create({
+      message: comment,
+      fromRole: "DOFA",
+      toRole: "HOD",
+      cycle: CYCLE
+    });
+
+    /* ---------------------------
+       SEND NOTIFICATION
+    ---------------------------- */
+    await createNotification({
+      cycle: CYCLE,
+      role: "HOD",
+      title: "Query Raised by DOFA",
+      message: comment,
+      type: "COMMENT",
+    });
+
+    res.json(cycle);
+
+  } catch (err) {
+    console.error("Raise Query Error:", err);
+    res.status(500).json({ message: "Failed to raise query" });
   }
-
-  const cycle = await RecruitmentCycle.findOne({ cycle: CYCLE });
-
-  cycle.status = "QUERY";
-  cycle.isFrozen = false;
-  cycle.dofaComment = comment;
-  await cycle.save();
-
-  await createNotification({
-    cycle: CYCLE,
-    role: "HOD",
-    title: "Query Raised by DOFA",
-    message: comment,
-    type: "COMMENT",
-  });
-
-  res.json(cycle);
 };
 
 /* ================================

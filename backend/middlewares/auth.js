@@ -12,8 +12,18 @@ const auth = (roles = []) => {
       const token = header.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      const user = await User.findById(decoded.id);
-      if (!user || !user.active) {
+      let user = await User.findById(decoded.id);
+
+      /* Allow hardcoded candidate accounts */
+      if (!user) {
+        user = {
+          _id: decoded.id,
+          role: decoded.role,
+          active: true
+        };
+      }
+
+      if (!user.active) {
         return res.status(401).json({ msg: "Invalid user" });
       }
 

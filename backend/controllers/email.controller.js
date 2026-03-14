@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Candidate = require("../models/Candidate");
 const Expert = require("../models/Expert");
 const CYCLE = require("../config/activeCycle");
+const CandidateApplication = require("../models/CandidateApplication")
 
 /* ============================
    Send mail helper
@@ -19,17 +20,27 @@ const sendMail = async (to, subject, html) => {
 /* ============================
    HOD uploaded notification
 ============================ */
-exports.notifyDofaUpload = async (req, res) => {
-  const dofa = await User.findOne({ role: "DOFA" });
-  if (!dofa) return res.status(404).json({ message: "DOFA not found" });
+exports.notifyDofaUpload = async ({ department, hodName }) => {
+  try {
+    const dofa = await User.findOne({ role: "DOFA" });
 
-  sendMail(
-    dofa.email,
-    "HOD Uploaded Data",
-    `<p>HOD has uploaded/updated recruitment data. Please review.</p>`
-  );
+    if (!dofa) {
+      console.log("DOFA not found");
+      return;
+    }
 
-  res.json({ success: true });
+    await sendMail(
+      dofa.email,
+      "HOD Uploaded Experts",
+      `
+      <p>HOD <b>${hodName}</b> from <b>${department}</b> has uploaded experts.</p>
+      <p>Please review them on the portal.</p>
+      `
+    );
+
+  } catch (err) {
+    console.error("notifyDofaUpload error:", err);
+  }
 };
 
 /* ============================
@@ -137,7 +148,7 @@ exports.emailCandidate = async (req, res) => {
     if (!candidate)
       return res.status(404).json({ message: "Candidate not found" });
 
-    transporter.sendMail({
+    await transporter.sendMail({
       from: `"LNMIIT Recruitment" <${process.env.EMAIL_USER}>`,
       to: candidate.email,
       subject: "Recruitment Application Update",
@@ -215,4 +226,17 @@ exports.emailAllExperts = async (req, res) => {
     console.error(err);
     res.status(500).json({ message: "Email failed" });
   }
+};
+
+exports.sendCandidateReminder = async(req,res)=>{
+
+const app = await CandidateApplication.findById(req.params.id);
+
+await sendEmail(
+app.candidateEmail,
+"Reminder: Complete Faculty Application",
+"Please complete missing documents."
+);
+
+res.json({message:"Reminder sent"});
 };

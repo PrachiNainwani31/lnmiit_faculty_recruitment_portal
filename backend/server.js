@@ -19,6 +19,8 @@ app.use("/api/notifications", require("./routes/notification.routes"));
 app.use("/api/dofa", require("./routes/dofa.routes"));
 app.use("/api/comments", require("./routes/comment.routes"));
 app.use("/api/email", require("./routes/email.routes"));
+app.use("/api/candidate", require("./routes/candidate.routes"));
+app.use("/api/referee", require("./routes/referee.routes"));
 
 app.listen(5000, () =>
   console.log("Server running on port 5000")

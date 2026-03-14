@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema(
         "ADMIN",
         "HOD",
         "DOFA",
+        "REFEREE",
         "ADOFA",
         "CANDIDATE",
         "ESTABLISHMENT",
