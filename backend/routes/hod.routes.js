@@ -68,7 +68,7 @@ router.delete("/candidates/clear/:cycle",auth(["HOD"]), freezeGuard, clearCandid
 router.delete("/candidates/:id", auth(["HOD"]),freezeGuard, deleteCandidate);
 
 // ⚠️ MUST BE LAST
-router.get("/candidates/:cycle",auth(["HOD","DOFA"]), getCandidatesByCycle);
+router.get("/candidates/:cycle",auth(["HOD","DOFA","DOFA_OFFICE"]), getCandidatesByCycle);
 
 /* =========================
    DOFA – VIEW BY DEPARTMENT
@@ -84,10 +84,10 @@ router.get(
    EXPERTS
 ========================= */
 
-router.post("/experts", auth(["HOD"]),freezeGuard, addExpert);
+// router.post("/experts", auth(["HOD",,"DOFA_OFFICE"]),freezeGuard, addExpert);
 // DOFA – ALL EXPERTS
 router.get("/experts/all",auth(["DOFA"]),getAllExperts);
-router.get("/experts", auth(["HOD","DOFA"]),getExperts);
+router.get("/experts", auth(["HOD","DOFA","DOFA_OFFICE"]),getExperts);
 router.delete("/experts/clear",auth(["HOD"]),freezeGuard,clearExperts);
 
 /* =========================

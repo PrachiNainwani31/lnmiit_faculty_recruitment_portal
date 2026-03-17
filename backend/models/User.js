@@ -1,60 +1,54 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+const bcrypt   = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
     name: {
-      type: String,
+      type:     String,
       required: true,
-      trim: true,
+      trim:     true,
     },
-
     email: {
-      type: String,
-      required: true,
-      unique: true,
+      type:      String,
+      required:  true,
+      unique:    true,
       lowercase: true,
-      trim: true,
+      trim:      true,
     },
-
     password: {
-      type: String,
+      type:     String,
       required: true,
     },
-
     role: {
       type: String,
       enum: [
         "ADMIN",
         "HOD",
         "DOFA",
-        "REFEREE",
         "ADOFA",
+        "DOFA_OFFICE",    // ← New: DOFA Office staff
+        "ESTABLISHMENT",  // ← Ramswaroop Sharma (travel)
         "CANDIDATE",
-        "ESTABLISHMENT",
+        "REFEREE",
       ],
       required: true,
     },
-
     department: {
       type: String, // only for HOD
     },
-
     active: {
-      type: Boolean,
+      type:    Boolean,
       default: true,
     },
   },
   { timestamps: true }
 );
 
-/* Hash password */
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);
 });
 
-/* Compare password */
 userSchema.methods.comparePassword = function (plain) {
   return bcrypt.compare(plain, this.password);
 };
