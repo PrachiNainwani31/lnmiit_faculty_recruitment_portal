@@ -44,7 +44,7 @@ export default function FileUpload({ label, file, onUpload }) {
             </p>
 
             <p className="text-xs text-gray-400">
-              PDF / DOC / DOCX • Max 4MB
+              PDF / DOC / DOCX
             </p>
 
           </div>

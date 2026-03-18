@@ -7,6 +7,7 @@ import FileUpload from "../../components/FileUpload";
 import API from "../../api/api";
 import { useNavigate } from "react-router-dom";
 import RefereeStatus from "../../components/RefereeStatus";
+import logo from "../../assets/lnmiit_logo.png";
 
 const EMPTY_REFEREE   = { name:"", designation:"", department:"", institute:"", email:"" };
 const EMPTY_EXPERIENCE = { organization:"", designation:"", department:"", fromDate:"", toDate:"", natureOfWork:"" };
@@ -35,7 +36,11 @@ export default function CandidateDashboard() {
   const [publications, setPublications] = useState(["","","","",""]);
   // FIX 2: experiences with proper initial state
   const [experiences, setExperiences]   = useState([]);
-  const [referees, setReferees]         = useState([{ ...EMPTY_REFEREE }]);
+  const [referees, setReferees] = useState([
+  { ...EMPTY_REFEREE },
+  { ...EMPTY_REFEREE },
+  { ...EMPTY_REFEREE },
+]);
 
   /* ── helper: build full save payload ── */
   const buildPayload = useCallback((overrides = {}) => ({
@@ -190,9 +195,23 @@ export default function CandidateDashboard() {
 
       {/* SIDEBAR */}
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white shadow-md z-10">
-        <div className="p-6 border-b font-bold text-lg flex items-center gap-2">
-          <div className="bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded text-sm">IP</div>
-          Institute Portal
+        <div className="p-6 border-b font-bold text-lg flex gap-2">
+
+
+
+          <div className="flex flex-col items-center text-center w-full justify-between">
+            <img 
+              src={logo} 
+              alt="College Logo" 
+              className="w-[120px] h-[120px] object-contain"
+            />
+            <span className="text-black font-semibold">
+              Institute Portal
+            </span>
+          </div>
+       
+       
+       
         </div>
         <nav className="p-4 space-y-3 text-gray-700 text-sm">
           {[
@@ -228,23 +247,58 @@ export default function CandidateDashboard() {
           Welcome! Please fill in all required details and upload the necessary documents.
         </div>
 
+          {/* ── ACCOMMODATION ── */}
+        <div ref={accRef} className="bg-white p-6 rounded shadow space-y-3">
+          <h2 className="font-semibold text-lg">Accommodation</h2>
+          <div className="flex gap-6">
+            {[{label:"Yes",val:true},{label:"No",val:false}].map(({label,val})=>(
+              <label key={label} className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="acc"
+                  checked={application.accommodation === val}
+                  onChange={()=>{
+                    const updated={...application,accommodation:val};
+                    setApplication(updated);
+                    saveNow({...updated});
+                  }}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+
         {/* ── PERSONAL INFO ── */}
         <div ref={personalRef} className="bg-white p-6 rounded shadow space-y-4">
           <h2 className="font-semibold text-lg">Personal Information</h2>
           <div className="grid grid-cols-2 gap-4">
             {[
-              { key:"name",       placeholder:"Full Name"              },
-              { key:"email",      placeholder:"Email"                  },
-              { key:"contact",    placeholder:"Contact Number"         },
-              { key:"department", placeholder:"Department Applied For" },
-            ].map(({ key, placeholder }) => (
-              <input key={key}
-                value={application[key]}
-                placeholder={placeholder}
-                className="border p-2 rounded"
-                onChange={e => setApplication({ ...application, [key]: e.target.value })}
-                onBlur={() => saveNow()}
-              />
+              { key:"name",       label:"Full Name" },
+              { key:"email",      label:"Email" },
+              { key:"contact",    label:"Contact Number" },
+              { key:"department", label:"Department Applied For" },
+            ].map(({ key, label }) => (
+
+              <div key={key} className="flex flex-col">
+                
+                {/* ✅ Label */}
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  {label}
+                </label>
+
+                {/* ✅ Input */}
+                <input
+                  value={application[key]}
+                  placeholder={`Enter ${label}`}
+                  className="border p-2 rounded"
+                  onChange={e =>
+                    setApplication({ ...application, [key]: e.target.value })
+                  }
+                  onBlur={() => saveNow()}
+                />
+
+              </div>
+
             ))}
           </div>
 
@@ -287,7 +341,7 @@ export default function CandidateDashboard() {
             {[
               { label:"10th Marksheet",              key:"marks10"        },
               { label:"12th Marksheet",              key:"marks12"        },
-              { label:"Graduation Certificate",      key:"graduation"     },
+              { label:"Graduation Certificate (single file upload)",      key:"graduation"     },
               { label:"Post Graduation Certificate", key:"postGraduation" },
               { label:"PhD Marksheet",               key:"phdMarksheet"   },
               { label:"PhD Provisional",             key:"phdProvisional" },
@@ -301,13 +355,22 @@ export default function CandidateDashboard() {
         <div className="bg-white p-6 rounded shadow space-y-4">
           <h2 className="font-semibold text-lg">Five Best Publications</h2>
           {[0,1,2,3,4].map(i => (
-            <input
-              key={i}
-              placeholder={`Publication ${i+1}`}
-              className="border p-2 rounded w-full"
-              defaultValue={publications[i] || ""}
-              onBlur={e => handlePublicationBlur(i, e.target.value)}
-            />
+            <div key={i} className="flex flex-col">
+              
+              {/* ✅ Label */}
+              <label className="text-sm font-medium text-gray-700 mb-1">
+                Publication {i + 1}
+              </label>
+
+              {/* ✅ Input */}
+              <input
+                placeholder={`Enter Publication ${i + 1}`}
+                className="border p-2 rounded w-full"
+                defaultValue={publications[i] || ""}
+                onBlur={e => handlePublicationBlur(i, e.target.value)}
+              />
+
+            </div>
           ))}
         </div>
 
@@ -325,18 +388,30 @@ export default function CandidateDashboard() {
 
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { field:"organization", placeholder:"Organization"   },
-                  { field:"designation",  placeholder:"Designation"    },
-                  { field:"department",   placeholder:"Department"     },
-                  { field:"natureOfWork", placeholder:"Nature of Work", span:2 },
-                ].map(({ field, placeholder, span }) => (
-                  <input key={field}
-                    value={exp[field] || ""}
-                    placeholder={placeholder}
-                    className={`border p-2 rounded ${span===2 ? "col-span-2" : ""}`}
-                    onChange={e => handleExpChange(i, field, e.target.value)}
-                    onBlur={() => handleExpBlur(experiences)}
-                  />
+                  { field:"organization", label:"Organization"   },
+                  { field:"designation",  label:"Designation"    },
+                  { field:"department",   label:"Department"     },
+                  { field:"natureOfWork", label:"Nature of Work", span:2 },
+                ].map(({ field, label, span }) => (
+
+                  <div key={field} className={`flex flex-col ${span===2 ? "col-span-2" : ""}`}>
+
+                    {/* ✅ Label */}
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      {label}
+                    </label>
+
+                    {/* ✅ Input */}
+                    <input
+                      value={exp[field] || ""}
+                      placeholder={`Enter ${label}`}
+                      className="border p-2 rounded"
+                      onChange={e => handleExpChange(i, field, e.target.value)}
+                      onBlur={() => handleExpBlur(experiences)}
+                    />
+
+                  </div>
+
                 ))}
 
                 <div className="flex flex-col gap-1">
@@ -374,70 +449,76 @@ export default function CandidateDashboard() {
 
         {/* ── REFEREES ── */}
         <div ref={refRef} className="bg-white p-6 rounded shadow space-y-6">
-          <h2 className="font-semibold text-lg">Referee Details</h2>
+          <h2 className="font-semibold text-lg">Referee Details (minimum 3 referees compulsory)</h2>
 
           {referees.map((ref, i) => (
             <div key={i} className="border rounded-lg p-4 bg-gray-50 space-y-4">
+
               <div className="flex justify-between items-center">
-                <p className="text-sm font-semibold text-gray-500">Referee {i+1}</p>
-                {referees.length > 1 && (
+                <p className="text-sm font-semibold text-gray-500">
+                  Referee {i + 1}
+                </p>
+
+                {/* ❌ First 3 cannot be removed */}
+                {i >= 3 && (
                   <button
                     onClick={() => {
-                      const updated = referees.filter((_,idx)=>idx!==i);
+                      const updated = referees.filter((_, idx) => idx !== i);
                       setReferees(updated);
                       saveNow({ referees: updated });
                     }}
-                    className="text-red-500 text-xs hover:underline">Remove</button>
+                    className="text-red-500 text-xs hover:underline"
+                  >
+                    Remove
+                  </button>
                 )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { field:"name",        placeholder:"Full Name",   span:1 },
-                  { field:"designation", placeholder:"Designation", span:1 },
-                  { field:"department",  placeholder:"Department",  span:1 },
-                  { field:"institute",   placeholder:"Institute",   span:1 },
-                  { field:"email",       placeholder:"Email",       span:2 },
-                ].map(({ field, placeholder, span }) => (
-                  <input key={field}
-                    value={ref[field] || ""}
-                    placeholder={placeholder}
-                    className={`border p-2 rounded ${span===2?"col-span-2":""}`}
-                    onChange={e => handleRefereeChange(i, field, e.target.value)}
-                    onBlur={() => saveNow()}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-
-          <button
-            onClick={() => setReferees([...referees, { ...EMPTY_REFEREE }])}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-            + Add Referee
-          </button>
         </div>
+
+      <div className="grid grid-cols-2 gap-4">
+
+        {[
+          { field: "name", label: "Full Name", span: 1 },
+          { field: "designation", label: "Designation", span: 1 },
+          { field: "department", label: "Department", span: 1 },
+          { field: "institute", label: "Institute", span: 1 },
+          { field: "email", label: "Email", span: 2 },
+        ].map(({ field, label, span }) => (
+
+          <div key={field} className={span === 2 ? "col-span-2" : ""}>
+
+            {/* ✅ Label */}
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {label} {i < 3 && <span className="text-red-500">*</span>}
+            </label>
+
+            {/* ✅ Input */}
+            <input
+              value={ref[field] || ""}
+              placeholder={`Enter ${label}`}
+              className="w-full border p-2 rounded"
+              onChange={e => handleRefereeChange(i, field, e.target.value)}
+              onBlur={() => saveNow()}
+            />
+
+          </div>
+
+        ))}
+
+      </div>
+    </div>
+  ))}
+
+  <button
+    onClick={() => setReferees([...referees, { ...EMPTY_REFEREE }])}
+    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+  >
+    + Add Referee
+  </button>
+</div>
+        
         <RefereeStatus />
 
-        {/* ── ACCOMMODATION ── */}
-        <div ref={accRef} className="bg-white p-6 rounded shadow space-y-3">
-          <h2 className="font-semibold text-lg">Accommodation</h2>
-          <div className="flex gap-6">
-            {[{label:"Yes",val:true},{label:"No",val:false}].map(({label,val})=>(
-              <label key={label} className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="acc"
-                  checked={application.accommodation === val}
-                  onChange={()=>{
-                    const updated={...application,accommodation:val};
-                    setApplication(updated);
-                    saveNow({...updated});
-                  }}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </div>
-
+  
         {/* ── SUBMIT ── */}
         <div className="flex justify-end gap-4 pb-8">
           <button onClick={saveDraft} className="border px-6 py-2 rounded hover:bg-gray-50">
