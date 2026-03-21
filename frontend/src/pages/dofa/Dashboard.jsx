@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [showComment, setShowComment] = useState(false);
   const [selectedDept, setSelectedDept] = useState(null);
+  const [selectedHodId, setSelectedHodId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function Dashboard() {
   };
 
   const handleSendComment = async (text) => {
-    await raiseQuery(text);
+    await raiseQuery(text,selectedHodId);
     setShowComment(false);
     alert("Comment sent to HOD");
   };
@@ -156,7 +157,7 @@ export default function Dashboard() {
               {d.status === "SUBMITTED" && (
                 <>
                   <button
-                    onClick={approveCycle}
+                    onClick={()=>approveCycle(d.hodId)}
                     className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition"
                   >
                     Approve
@@ -165,6 +166,7 @@ export default function Dashboard() {
                   <button
                     onClick={() => {
                       setSelectedDept(d.department);
+                      setSelectedHodId(d.hodId);
                       setShowComment(true);
                     }}
                     className="px-4 py-2 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition"

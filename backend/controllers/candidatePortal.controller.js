@@ -1,9 +1,6 @@
 const CandidateApplication = require("../models/CandidateApplication");
 const { sendEmail } = require("../utils/emailSender");
 
-/* ─────────────────────────────────────────
-   GET MY APPLICATION
-───────────────────────────────────────── */
 exports.getMyApplication = async (req, res) => {
   let app = await CandidateApplication.findOne({ candidate: req.user._id });
   if (!app) {
@@ -17,6 +14,8 @@ exports.getMyApplication = async (req, res) => {
 
 /* ─────────────────────────────────────────
    SAVE DRAFT
+   FIX: merge referees by index so Mongoose
+   keeps existing _ids instead of creating new ones
 ───────────────────────────────────────── */
 exports.saveDraft = async (req, res) => {
   let app = await CandidateApplication.findOne({ candidate: req.user._id });
@@ -34,8 +33,32 @@ exports.saveDraft = async (req, res) => {
   if (req.body.accommodation !== undefined) app.accommodation = req.body.accommodation;
   if (req.body.documents     !== undefined) app.documents     = req.body.documents;
   if (req.body.publications  !== undefined) app.publications  = req.body.publications;
-  if (req.body.referees      !== undefined) app.referees      = req.body.referees;
   if (req.body.experiences   !== undefined) app.experiences   = req.body.experiences;
+
+  // FIX: merge referees preserving existing _ids
+  // instead of replacing the whole array (which creates new _ids)
+  if (req.body.referees !== undefined) {
+    const incoming = req.body.referees || [];
+    const existing = app.referees || [];
+
+    const merged = incoming.map((r, i) => {
+      const existingRef = existing[i];
+      if (existingRef && existingRef._id) {
+        // update fields but keep the same subdoc _id
+        existingRef.name        = r.name        ?? existingRef.name;
+        existingRef.designation = r.designation ?? existingRef.designation;
+        existingRef.department  = r.department  ?? existingRef.department;
+        existingRef.institute   = r.institute   ?? existingRef.institute;
+        existingRef.email       = r.email       ?? existingRef.email;
+        return existingRef;
+      }
+      // new referee — Mongoose will assign a fresh _id
+      return r;
+    });
+
+    app.referees = merged;
+    app.markModified("referees");
+  }
 
   await app.save();
   res.json(app);
@@ -43,8 +66,7 @@ exports.saveDraft = async (req, res) => {
 
 /* ─────────────────────────────────────────
    SUBMIT APPLICATION
-   FIX: re-fetch after save so subdoc _ids
-   are guaranteed to be assigned by Mongoose
+   Re-fetch after save so subdoc _ids exist
 ───────────────────────────────────────── */
 exports.submitApplication = async (req, res) => {
   const app = await CandidateApplication.findOne({ candidate: req.user._id });
@@ -72,12 +94,7 @@ exports.submitApplication = async (req, res) => {
         </div>
         <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
           <p>Dear <strong>${r.name}</strong>,</p>
-          <p>
-            <strong>${savedApp.name}</strong> has listed you as a referee for the faculty
-            recruitment process at <strong>The LNM Institute of Information Technology</strong>.
-          </p>
-          <p>Please submit your reference letter using the link below.
-             You may submit with or without registering on the portal.</p>
+          <p><strong>${savedApp.name}</strong> has listed you as a referee for faculty recruitment at LNMIIT.</p>
           <p style="text-align:center;margin:25px 0">
             <a href="${portalLink}"
               style="background:#8b0000;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">
@@ -95,27 +112,18 @@ exports.submitApplication = async (req, res) => {
   res.json({ message: "Application submitted" });
 };
 
-/* ─────────────────────────────────────────
-   REMIND REFEREE
-───────────────────────────────────────── */
 exports.remindReferee = async (req, res) => {
   const app = await CandidateApplication.findOne({ "referees._id": req.params.id });
   if (!app) return res.status(404).json({ message: "Not found" });
-
   const referee = app.referees.id(req.params.id);
-
   await sendEmail(
     referee.email,
     "Reminder for Reference Letter",
     "Gentle reminder to upload your reference letter."
   );
-
   res.json({ message: "Reminder sent" });
 };
 
-/* ─────────────────────────────────────────
-   UPLOAD DOCUMENT
-───────────────────────────────────────── */
 exports.uploadDocument = async (req, res) => {
   const userId   = req.user._id;
   const type     = req.body.type;

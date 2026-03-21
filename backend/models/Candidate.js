@@ -68,9 +68,6 @@ const candidateSchema = new mongoose.Schema(
  * 🔒 Prevent duplicate SR No per cycle
  * (Very important for CSV uploads)
  */
-candidateSchema.index(
-  { cycle: 1, srNo: 1 },
-  { unique: true }
-);
+candidateSchema.index({ cycle: 1, srNo: 1, hod: 1 }, { unique: true });
 
 module.exports = mongoose.model("Candidate", candidateSchema);

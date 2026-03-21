@@ -1,116 +1,93 @@
 const mongoose = require("mongoose");
 
 const refereeSchema = new mongoose.Schema({
-  salutation: String,
-  name: String,
+  salutation:  String,
+  name:        String,
   designation: String,
-  department: String,
-  institute: String,
-  email: String,
-  status: {
-    type: String,
-    default: "PENDING"
-  },
-  letter: String
+  department:  String,
+  institute:   String,
+  email:       String,
+  status:      { type: String, default: "PENDING" },
+  letter:      String,
+  signedName:  String,
+  submittedAt: Date,
 });
 
 const experienceSchema = new mongoose.Schema({
-  type: String,
+  type:         String,   // "Research" | "Teaching" | "Industrial"
   organization: String,
-  designation: String,
-  department: String,
-  fromDate: Date,
-  toDate: Date,
-  certificate: String,
-  natureOfWork: String
+  designation:  String,
+  department:   String,
+  fromDate:     Date,
+  toDate:       Date,
+  certificate:  String,
+  natureOfWork: String,
 });
 
 const candidateApplicationSchema = new mongoose.Schema({
 
   candidate: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Candidate"
+    ref:  "User",
   },
 
-  name: String,
-  email: String,
-  phone: String,
+  name:        String,
+  email:       String,
+  phone:       String,
+  department:  String,
+  acceptance:  Boolean,
+  accommodation: Boolean,
 
-  acceptance: Boolean,
-
+  /* ── Documents ── */
   documents: {
-    cv: String,
+    cv:                String,
     teachingStatement: String,
     researchStatement: String,
-    marks10: String,
-    marks12: String,
-    graduation: String,
-    postGraduation: String,
-    phdMarksheet: String,
-    phdProvisional: String,
-    otherDocs: [
-      {
-        name: String,
-        file: String
-      }
-    ]
+
+    // Academic
+    marks10:           String,   // 10th marksheet (single PDF)
+    marks12:           String,   // 12th marksheet (single PDF)
+    graduation:        String,   // Graduation certificate (single PDF)
+    postGraduation:    String,   // PG certificate (single PDF)
+
+    // PhD
+    phdCourseWork:     String,   // PhD course work certificate
+    phdProvisional:    String,   // Provisional PhD degree
+    phdDegree:         String,   // PhD degree certificate
+    dateOfDefense:     String,   // Date of PhD defense (stored as string date)
+
+    // Multi-file documents (arrays of paths)
+    researchExpCerts:  [String], // Up to 5 research exp certificates
+    teachingExpCerts:  [String], // Up to 5 teaching exp certificates
+    industryExpCerts:  [String], // Up to 5 industry exp certificates
+    bestPapers:        [String], // Up to 5 best papers (PDF, 100MB each)
+    postDocDocs:       [String], // Up to 5 post-doc documents
+    salarySlips:       [String], // Current/previous month salary slips
+
+    otherDocs: [{
+      name: String,
+      file: String,
+    }],
+  },
+
+  /* ── Experience types selected ── */
+  experienceTypes: {
+    research:   { type: Boolean, default: false },
+    teaching:   { type: Boolean, default: false },
+    industrial: { type: Boolean, default: false },
   },
 
   publications: [String],
-
-  experiences: [experienceSchema],
-
-  referees: [refereeSchema],
-
-  accommodation: Boolean,
+  experiences:  [experienceSchema],
+  referees:     [refereeSchema],
 
   status: {
-    type: String,
-    default: "DRAFT"
+    type:    String,
+    default: "DRAFT",
   },
 
-  verdicts: {
-  cv: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  },
-  teachingStatement: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  },
-  researchStatement: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  },
-  marks10: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  },
-  marks12: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  },
-  graduation: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  },
-  postGraduation: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  },
-  phdMarksheet: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  },
-  phdProvisional: {
-    status: { type: String, default: "Pending" },
-    remark: String
-  }
-}
+  verdicts: mongoose.Schema.Types.Mixed,
 
 }, { timestamps: true });
 
-module.exports = mongoose.model(
-  "CandidateApplication",
-  candidateApplicationSchema
-);
+module.exports = mongoose.model("CandidateApplication", candidateApplicationSchema);

@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import API from "../../api/api";
 import { useNavigate } from "react-router-dom";
+import CYCLE from "../../config/activeCycle";
 
 export default function DofaOfficeDashboard() {
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data,setData]= useState(null);
+  const [loading,setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     Promise.all([
       API.get("/expert-travel"),
-      API.get("/hod/candidates/2025-26"),
-      API.get("/hod/experts"),
+      API.get(`/hod/candidates/${CYCLE}`),
+      API.get("/hod/experts/all"),
     ])
       .then(([travelRes, candidateRes, expertRes]) => {
         const travels = travelRes.data;

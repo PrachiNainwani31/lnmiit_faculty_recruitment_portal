@@ -9,11 +9,12 @@ const Candidate = require("../models/Candidate");
    GET CURRENT CYCLE (HOD + DOFA)
 ================================ */
 exports.getCurrentCycle = async (req, res) => {
-  let cycle = await RecruitmentCycle.findOne({ cycle: CYCLE });
+  let cycle = await RecruitmentCycle.findOne({ cycle: CYCLE,hod:req.user._id });
 
   if (!cycle) {
     cycle = await RecruitmentCycle.create({
       cycle: CYCLE,
+      hod:req.user._id,
       status: "DRAFT",
       isFrozen: false,
     });
@@ -27,7 +28,7 @@ exports.getCurrentCycle = async (req, res) => {
    (NO CHANGE IN BEHAVIOR)
 ================================ */
 exports.submitToDofa = async (req, res) => {
-  const cycle = await RecruitmentCycle.findOne({ cycle: CYCLE });
+  const cycle = await RecruitmentCycle.findOne({ cycle: CYCLE,hod:req.user._id });
 
   cycle.status = "SUBMITTED";
   cycle.isFrozen = true;
@@ -51,13 +52,13 @@ exports.submitToDofa = async (req, res) => {
 ================================ */
 exports.raiseQuery = async (req, res) => {
   try {
-    const { comment } = req.body;
+    const { comment,hodId } = req.body;
 
     if (!comment) {
       return res.status(400).json({ message: "Comment required" });
     }
 
-    const cycle = await RecruitmentCycle.findOne({ cycle: CYCLE });
+    const cycle = await RecruitmentCycle.findOne({ cycle: CYCLE,hod:hodId });
 
     /* ---------------------------
        UPDATE CYCLE STATUS
@@ -100,7 +101,8 @@ exports.raiseQuery = async (req, res) => {
    DOFA → APPROVE
 ================================ */
 exports.approveCycle = async (req, res) => {
-  const cycle = await RecruitmentCycle.findOne({ cycle: CYCLE });
+  const {hodId}=req.body;
+  const cycle = await RecruitmentCycle.findOne({ cycle: CYCLE,hod:hodId });
 
   cycle.status = "APPROVED";
   cycle.isFrozen = true; // 🔒 final lock
@@ -114,7 +116,7 @@ exports.approveCycle = async (req, res) => {
 ================================ */
 exports.unfreezeCycle = async (req, res) => {
   await RecruitmentCycle.updateOne(
-    { cycle: CYCLE },
+    { cycle: CYCLE,hod:req?.user._id },
     {
       isFrozen: false,
       status: "DRAFT",
@@ -129,19 +131,16 @@ exports.unfreezeCycle = async (req, res) => {
 };
 
 exports.getDofaDashboard = async (req, res) => {
-  let cycle = await RecruitmentCycle.findOne({ cycle: CYCLE });
+  // FIX: find ALL cycles for this cycle year, not just one
 
-  if (!cycle) {
-    cycle = await RecruitmentCycle.create({
-      cycle: CYCLE,
-      status: "DRAFT",
-      isFrozen: false,
-    });
-  }
+  const cycles = await RecruitmentCycle.find({ cycle: CYCLE });
 
-  /* -------------------------------
-     CANDIDATE COUNTS BY HOD
-  --------------------------------*/
+  // A department shows Approve/Query buttons when its cycle is SUBMITTED
+  // Build a map of hodId → cycle status
+  const cycleMap = {};
+  cycles.forEach(c => {
+    if (c.hod) cycleMap[c.hod.toString()] = c;
+  });
   const departments = await Candidate.aggregate([
     { $match: { cycle: CYCLE } },
     {
@@ -156,15 +155,13 @@ exports.getDofaDashboard = async (req, res) => {
     {
       $group: {
         _id: "$hod.department",
+        hodId:    { $first: "$hod._id" },
         hodEmail: { $first: "$hod.email" },
         candidates: { $sum: 1 },
       },
     },
   ]);
 
-  /* -------------------------------
-     EXPERT COUNTS BY HOD DEPARTMENT
-  --------------------------------*/
   const expertCounts = await Expert.aggregate([
     { $match: { cycle: CYCLE } },
     {
@@ -185,32 +182,47 @@ exports.getDofaDashboard = async (req, res) => {
   ]);
 
   const expertMap = {};
-  expertCounts.forEach(e => {
-    expertMap[e._id] = e.count;
-  });
+  expertCounts.forEach(e => { expertMap[e._id] = e.count; });
 
   const totalCandidates = await Candidate.countDocuments({ cycle: CYCLE });
-  const totalExperts = await Expert.countDocuments({ cycle: CYCLE });
+  const totalExperts    = await Expert.countDocuments({ cycle: CYCLE });
+
+  const pendingCount  = departments.filter(d => {
+    const c = cycleMap[d.hodId?.toString()];
+    return c?.status === "SUBMITTED";
+  }).length;
+
+  const approvedCount = departments.filter(d => {
+    const c = cycleMap[d.hodId?.toString()];
+    return c?.status === "APPROVED";
+  }).length;
 
   res.json({
     cycle: {
-      status: cycle.status,
-      submittedAt: cycle.updatedAt,
+      // Use the most recent status for display
+      status: cycles.some(c => c.status === "SUBMITTED") ? "SUBMITTED" : "DRAFT",
+      submittedAt: cycles[0]?.updatedAt,
     },
     summary: {
-      pending: cycle.status === "SUBMITTED" ? departments.length : 0,
-      approved: cycle.status === "APPROVED" ? departments.length : 0,
+      pending:         pendingCount,
+      approved:        approvedCount,
       totalCandidates,
       totalExperts,
     },
-    departments: departments.map(d => ({
-      department: d._id,
-      hodEmail: d.hodEmail,
-      candidates: d.candidates,
-      experts: expertMap[d._id] || 0, // ✅ NOW CORRECT
-      status: cycle.status,
-      submittedDate: cycle.updatedAt,
-      position: "Assistant Professor",
-    })),
+    departments: departments.map(d => {
+      // Get THIS department's HOD cycle status
+      const hodCycle = cycleMap[d.hodId?.toString()];
+      return {
+        department:    d._id,
+        hodEmail:      d.hodEmail,
+        candidates:    d.candidates,
+        experts:       expertMap[d._id] || 0,
+        status:        hodCycle?.status      || "DRAFT",
+        isFrozen:      hodCycle?.isFrozen    || false,
+        submittedDate: hodCycle?.updatedAt   || null,
+        position:      "Assistant Professor",
+        hodId:         d.hodId,
+      };
+    }),
   });
 };

@@ -86,7 +86,7 @@ router.get(
 
 // router.post("/experts", auth(["HOD",,"DOFA_OFFICE"]),freezeGuard, addExpert);
 // DOFA – ALL EXPERTS
-router.get("/experts/all",auth(["DOFA"]),getAllExperts);
+router.get("/experts/all",auth(["DOFA","DOFA_OFFICE"]),getAllExperts);
 router.get("/experts", auth(["HOD","DOFA","DOFA_OFFICE"]),getExperts);
 router.delete("/experts/clear",auth(["HOD"]),freezeGuard,clearExperts);
 

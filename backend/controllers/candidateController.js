@@ -29,7 +29,7 @@ exports.uploadCandidates = async (req, res) => {
         r.specialization
     );
 
-    const stats = await CandidateStats.findOne({ cycle: CYCLE });
+    const stats = await CandidateStats.findOne({ cycle: CYCLE,hod:hodId });
     if (!stats)
       return res.status(400).json({
         message: "Please enter ILSC count before uploading CSV",
@@ -85,9 +85,22 @@ exports.uploadCandidates = async (req, res) => {
 /* =====================================================
    GET CANDIDATES
 ===================================================== */
+// In candidateController.js — getCandidatesByCycle
 exports.getCandidatesByCycle = async (req, res) => {
-  const candidates = await Candidate.find({ cycle: CYCLE }).sort({ srNo: 1 });
-  res.json(candidates);
+  const filter = { cycle: CYCLE };
+  if (req.user.role === "HOD") filter.hod = req.user._id;
+
+  const candidates = await Candidate.find(filter)
+    .populate("hod", "department")  // ← populate HOD's department
+    .sort({ srNo: 1 });
+
+  // Map to include department
+  const result = candidates.map(c => ({
+    ...c.toObject(),
+    department: c.hod?.department || "Unknown"
+  }));
+
+  res.json(result);
 };
 
 /* =====================================================
@@ -102,8 +115,8 @@ exports.deleteCandidate = async (req, res) => {
    CLEAR ALL CANDIDATES + STATS
 ===================================================== */
 exports.clearCandidateStats = async (req, res) => {
-  await CandidateStats.deleteOne({ cycle: CYCLE });
-  await Candidate.deleteMany({ cycle: CYCLE });
+  await CandidateStats.deleteOne({ cycle: CYCLE,hod:req.user._id });
+  await Candidate.deleteMany({ cycle: CYCLE,hod:req.user._id });
   res.json({ success: true });
 };
 
@@ -114,8 +127,8 @@ exports.saveCandidateStats = async (req, res) => {
   const { totalApplications, dlscShortlisted, ilscShortlisted } = req.body;
 
   const stats = await CandidateStats.findOneAndUpdate(
-    { cycle: CYCLE },
-    { cycle: CYCLE, totalApplications, dlscShortlisted, ilscShortlisted },
+    { cycle: CYCLE,hod:req.user._id },
+    { cycle: CYCLE,hod:req.user._id, totalApplications, dlscShortlisted, ilscShortlisted },
     { upsert: true, new: true }
   );
 
@@ -123,7 +136,7 @@ exports.saveCandidateStats = async (req, res) => {
 };
 
 exports.getCandidateStats = async (req, res) => {
-  const stats = await CandidateStats.findOne({ cycle: CYCLE });
+  const stats = await CandidateStats.findOne({ cycle: CYCLE,hod:req.user._id });
   res.json(stats);
 };
 
@@ -131,7 +144,7 @@ exports.getCandidateStats = async (req, res) => {
    STATUS API (VERY IMPORTANT)
 ===================================================== */
 exports.getCandidateStatus = async (req, res) => {
-  const stats = await CandidateStats.findOne({ cycle: CYCLE });
+  const stats = await CandidateStats.findOne({ cycle: CYCLE,hod:req.user._id });
   const uploadedCount = await Candidate.countDocuments({ cycle: CYCLE,hod:req.user._id,});
 
   res.json({

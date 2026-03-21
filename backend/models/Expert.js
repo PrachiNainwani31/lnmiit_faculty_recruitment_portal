@@ -54,6 +54,6 @@ const expertSchema = new mongoose.Schema(
 );
 
 /* Prevent duplicate expert per cycle */
-expertSchema.index({ email: 1, cycle: 1 }, { unique: true });
+expertSchema.index({ email: 1, cycle: 1,uplodedBy:1 }, { unique: true });
 
 module.exports = mongoose.model("Expert", expertSchema);

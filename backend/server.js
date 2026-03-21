@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const mongoose = require("mongoose");
 
 
 const connectDB = require("./config/db");
@@ -26,5 +27,33 @@ app.use("/api/expert-travel", require("./routes/Experttravel.routes"));
 app.listen(5000, () =>
   console.log("Server running on port 5000")
 );
+mongoose.connection.once("open", async () => {
+  try {
+    await mongoose.connection.collection("recruitmentcycles").dropIndex("cycle_1");
+    console.log("Dropped old cycle_1 index");
+  } catch (e) {
+    // Index doesn't exist — ignore
+  }
+
+  try {
+    await mongoose.connection.collection("candidatestats").dropIndex("cycle_1");
+    console.log("Dropped old candidatestats cycle_1 index");
+  } catch (e) {}
+
+  try {
+    await mongoose.connection.collection("experts").dropIndex("email_1");
+    console.log("Dropped old experts email_1 index");
+  } catch (e) {}
+  try {
+  await mongoose.connection.collection("experts").dropIndex("email_1_cycle_1_uploadedBy_1");
+} catch(e) {}
+try {
+  await mongoose.connection.collection("experts").dropIndex("email_1_cycle_1_uplodedBy_1");
+} catch(e) {}
+  try {
+    await mongoose.connection.collection("candidates").dropIndex("cycle_1_srNo_1");
+    console.log("Dropped old candidates index");
+  } catch (e) {}
+});
 // console.log("JWT_SECRET loaded:", !!process.env.JWT_SECRET);
 

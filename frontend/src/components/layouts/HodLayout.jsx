@@ -25,7 +25,9 @@ export default function HodLayout() {
       <aside className="w-64 bg-white border-r shadow-sm">
         <div className="p-4 border-b">
           <h1 className="text-lg font-bold">Institute Portal</h1>
-          <p className="text-sm text-gray-500">HOD Management</p>
+          <p className="text-sm text-gray-500">
+            {JSON.parse(localStorage.getItem("user"))?.department || "HOD"} Department
+          </p>
         </div>
 
         <nav className="mt-4">

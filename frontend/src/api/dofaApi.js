@@ -7,11 +7,11 @@ import API from "./api";
 export const getCurrentCycle = () =>
   API.get("/cycle/current");
 
-export const approveCycle = () =>
-  API.post("/cycle/approve");
+export const approveCycle = (hodId) =>
+  API.post("/cycle/approve", { hodId });
 
-export const raiseQuery = (comment) =>
-  API.post("/cycle/query", { comment });
+export const raiseQuery = (comment, hodId) =>
+  API.post("/cycle/query", { comment, hodId });
 
 export const getDofaDashboard = () =>
   API.get("/cycle/dofa-dashboard");

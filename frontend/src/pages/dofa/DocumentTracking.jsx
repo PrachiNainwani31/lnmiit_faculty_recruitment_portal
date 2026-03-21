@@ -7,12 +7,22 @@ const DOCS = [
   { key: "researchStatement",  label: "Research Statement" },
   { key: "marks10",            label: "10th Marksheet" },
   { key: "marks12",            label: "12th Marksheet" },
-  { key: "graduation",         label: "Graduation" },
-  { key: "postGraduation",     label: "Post Graduation" },
-  { key: "phdMarksheet",       label: "PhD Marksheet" },
-  { key: "phdProvisional",     label: "PhD Provisional" },
+  { key: "graduation",         label: "Graduation Certificate" },
+  { key: "postGraduation",     label: "Post Graduation Certificate" },
+  { key: "phdCourseWork",      label: "PhD Course Work Certificate" },
+  { key: "phdProvisional",     label: "PhD Provisional Certificate" },
+  { key: "phdDegree",          label: "PhD Degree Certificate" },
 ];
 
+// Multi-file docs shown separately
+const MULTI_DOCS = [
+  { key: "bestPapers",       label: "Five Best Papers"              },
+  { key: "postDocDocs",      label: "Post-Doc Documents"            },
+  { key: "salarySlips",      label: "Salary Slips"                  },
+  { key: "researchExpCerts", label: "Research Experience Certs"     },
+  { key: "teachingExpCerts", label: "Teaching Experience Certs"     },
+  { key: "industryExpCerts", label: "Industry Experience Certs"     },
+];
 // Referee fields shown in the tracking table
 const REFEREE_FIELDS = ["name", "designation", "department", "institute", "email"];
 
@@ -264,6 +274,49 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
               })}
             </tbody>
           </table>
+          {/* ── Multi-file documents ── */}
+          {MULTI_DOCS.map(doc => {
+            const files = candidate.documents?.[doc.key];
+            if (!files?.length) return null;
+            return (
+              <div key={doc.key} className="mt-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  {doc.label} ({files.length} files)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {files.map((f, i) => (
+                    <a key={i}
+                      href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/${f}`}
+                      target="_blank" rel="noreferrer"
+                      className="text-xs text-blue-600 hover:underline border border-blue-200 bg-blue-50 px-2 py-1 rounded">
+                      📄 File {i + 1}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* ── Post-PhD Experience ── */}
+          {candidate.experiences?.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Post-PhD Experience ({candidate.experiences.length})
+              </p>
+              <div className="space-y-2">
+                {candidate.experiences.map((exp, i) => (
+                  <div key={i} className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm grid grid-cols-3 gap-2">
+                    <span><span className="text-gray-400">Type: </span>{exp.type || "—"}</span>
+                    <span><span className="text-gray-400">Org: </span>{exp.organization || "—"}</span>
+                    <span><span className="text-gray-400">Designation: </span>{exp.designation || "—"}</span>
+                    <span><span className="text-gray-400">From: </span>{exp.fromDate ? new Date(exp.fromDate).toLocaleDateString("en-GB") : "—"}</span>
+                    <span><span className="text-gray-400">To: </span>{exp.toDate ? new Date(exp.toDate).toLocaleDateString("en-GB") : "—"}</span>
+                    <span><span className="text-gray-400">Nature: </span>{exp.natureOfWork || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Referees section ── */}
           {candidate.referees && candidate.referees.length > 0 && (

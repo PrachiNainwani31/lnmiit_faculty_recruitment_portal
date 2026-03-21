@@ -13,9 +13,18 @@ async function seed() {
     {
       name:       "HOD",
       email:      "23ucs668@lnmiit.ac.in",
-      password:   "prachi123",
+      password:   "123",
       role:       "HOD",
       department: "CSE",
+      active:     true,
+    },
+
+    {
+      name:       "HOD",
+      email:      "vares73126@lxbeta.com",
+      password:   "123",
+      role:       "HOD",
+      department: "CCE",
       active:     true,
     },
 
@@ -23,7 +32,7 @@ async function seed() {
     {
       name:     "DOFA",
       email:    "prachinainwnai31@gmail.com",
-      password: "prachi1234",
+      password: "123",
       role:     "DOFA",
       active:   true,
     },
@@ -32,7 +41,7 @@ async function seed() {
     {
       name:     "DOFA Office",
       email:    "23ucs667@lnmiit.ac.in",
-      password: "dofaoffice123",
+      password: "123",
       role:     "DOFA_OFFICE",
       active:   true,
     },
@@ -41,7 +50,7 @@ async function seed() {
     {
       name:     "Ramswaroop Sharma",
       email:    "bigav56562@paylaar.com",
-      password: "ram123456",
+      password: "123",
       role:     "ESTABLISHMENT",
       active:   true,
     },
@@ -50,14 +59,14 @@ async function seed() {
     {
       name:     "Candidate 1",
       email:    "candidate1@gmail.com",
-      password: "candidate1",
+      password: "123",
       role:     "CANDIDATE",
       active:   true,
     },
     {
       name:     "prachi nainwani",
       email:    "pnainwani8@gmail.com",
-      password: "candidate2",
+      password: "123",
       role:     "CANDIDATE",
       active:   true,
     },

@@ -41,7 +41,7 @@ exports.addExpert = async (req, res) => {
    GET EXPERTS
    ========================================================= */
 exports.getExperts = async (req, res) => {
-  const experts = await Expert.find({ cycle: CYCLE });
+  const experts = await Expert.find({ cycle: CYCLE,uploadedBy:req.user._id }).sort({ createdAt: 1 });
   res.json(experts);
 };
 /* =========================================================
@@ -49,7 +49,7 @@ exports.getExperts = async (req, res) => {
 ========================================================= */
 exports.clearExperts = async (req, res) => {
   try {
-    const rc = await RecruitmentCycle.findOne({ cycle: CYCLE });
+    const rc = await RecruitmentCycle.findOne({ cycle: CYCLE,uploadedBy:req.user._id });
 
     if (rc?.isFrozen) {
       return res.status(403).json({
@@ -71,8 +71,8 @@ exports.clearExperts = async (req, res) => {
    HOD COUNTS (Dashboard)
    ========================================================= */
 exports.getHodCounts = async (req, res) => {
-  const candidateCount = await Candidate.countDocuments({ cycle: CYCLE });
-  const expertCount = await Expert.countDocuments({ cycle: CYCLE });
+  const candidateCount = await Candidate.countDocuments({ cycle: CYCLE,hod:req.user._id });
+  const expertCount = await Expert.countDocuments({ cycle: CYCLE,uploadedBy:req.user._id });
 
   res.json({
     candidates: candidateCount,
