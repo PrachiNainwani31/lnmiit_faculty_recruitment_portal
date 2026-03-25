@@ -16,8 +16,8 @@ const {
 
 const DOFA_OFFICE   = ["DOFA_OFFICE"];
 const DOFA_ROLES    = ["DOFA", "ADOFA"];
-const ESTABLISHMENT = ["ESTABLISHMENT"];
-const ALL_TRAVEL    = ["DOFA_OFFICE", "DOFA", "ADOFA", "ESTABLISHMENT"];
+const TRAVEL = ["TRAVEL"];
+const ALL_TRAVEL    = ["DOFA_OFFICE", "DOFA", "ADOFA", "TRAVEL"];
 
 // Get all experts with travel status
 router.get("/", auth(ALL_TRAVEL), getAllExpertTravel);
@@ -26,21 +26,21 @@ router.get("/", auth(ALL_TRAVEL), getAllExpertTravel);
 router.post("/confirm/:expertId", auth(DOFA_OFFICE), saveConfirmation);
 
 // Ramswaroop submits quote
-router.post("/quote/:expertId", auth(ESTABLISHMENT), submitQuote);
+router.post("/quote/:expertId", auth(TRAVEL), submitQuote);
 
 // DOFA/ADoFA approves or rejects quote
 router.post("/quote/:expertId/approve", auth(DOFA_ROLES), approveQuote);
 
 // Ramswaroop uploads ticket
-router.post("/ticket/:expertId", auth(ESTABLISHMENT), upload.single("ticket"), uploadTicket);
+router.post("/ticket/:expertId", auth(TRAVEL), upload.single("ticket"), uploadTicket);
 
 // Ramswaroop uploads invoice
-router.post("/invoice/:expertId", auth(ESTABLISHMENT), upload.single("invoice"), uploadInvoice);
+router.post("/invoice/:expertId", auth(TRAVEL), upload.single("invoice"), uploadInvoice);
 
 // DOFA Office enters pickup/drop
 router.post("/pickup/:expertId", auth(DOFA_OFFICE), savePickupDrop);
 
 // Ramswaroop enters driver info
-router.post("/driver/:expertId", auth(ESTABLISHMENT), saveDriverInfo);
+router.post("/driver/:expertId", auth(TRAVEL), saveDriverInfo);
 
 module.exports = router;

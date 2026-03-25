@@ -60,7 +60,11 @@ export default function Login() {
         CANDIDATE:    "/candidate",
         REFEREE:      "/referee-portal",
         DOFA_OFFICE:  "/dofa-office",
-        ESTABLISHMENT:"/travel",
+        TRAVEL:"/travel",
+        DIRECTOR:     "/director",
+        ESTATE:       "/estate",
+        LUCS:         "/lucs",
+        ESTABLISHMENT: "/establishment",
         ADMIN:        "/dofa",
       };
 

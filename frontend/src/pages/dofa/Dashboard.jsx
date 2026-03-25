@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import {
-  approveCycle,
   raiseQuery,
   getDofaDashboard,
   downloadDepartmentResumes,
+  approveCycle
 } from "../../api/dofaApi";
 import { useNavigate } from "react-router-dom";
 import SummaryCard from "../../components/ui/SummaryCard";
 import CommentModal from "../../components/dofa/CommentModal";
+import SelectionStatusPanel from "../../components/Selectionstatuspanel";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -16,11 +17,10 @@ export default function Dashboard() {
   const [selectedHodId, setSelectedHodId] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    getDofaDashboard().then(res => {
-    console.log("DOFA API response:", res.data);
-    setData(res.data)});
-  }, []);
+  const load = () =>
+  getDofaDashboard().then(res => setData(res.data)).catch(console.error);
+
+  useEffect(() => { load(); }, []);
 
   if (!data)
     return (
@@ -50,6 +50,13 @@ export default function Dashboard() {
     setShowComment(false);
     alert("Comment sent to HOD");
   };
+
+  const stageLabel = (status) => ({
+    "DRAFT":     { label:"Draft",     color:"bg-gray-100 text-gray-600 border-gray-200" },
+    "SUBMITTED": { label:"Submitted", color:"bg-yellow-100 text-yellow-700 border-yellow-200" },
+    "QUERY":     { label:"Query sent",color:"bg-red-100 text-red-700 border-red-200"    },
+    "APPROVED":  { label:"Approved",  color:"bg-green-100 text-green-700 border-green-200" },
+  }[status] || { label: status, color:"bg-gray-100 text-gray-500 border-gray-200" });
 
   return (
     <div className="space-y-8">
@@ -90,17 +97,39 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <span
-                className={`px-3 py-1 text-xs rounded-full font-medium ${
-                  d.status === "SUBMITTED"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : d.status === "APPROVED"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-100 text-gray-600"
-                }`}
-              >
-                {d.status}
-              </span>
+              <div className="flex items-center gap-0 mb-5 overflow-x-auto">
+                {[
+                  { key:"DRAFT",     label:"Draft"     },
+                  { key:"SUBMITTED", label:"Submitted" },
+                  { key:"QUERY",     label:"Query"     },
+                  { key:"APPROVED",  label:"Approved"  },
+                ].map((stage, i, arr) => {
+                  const statuses = ["DRAFT","SUBMITTED","QUERY","APPROVED"];
+                  const currentIdx = statuses.indexOf(d.status);
+                  const stageIdx   = statuses.indexOf(stage.key);
+                  const isDone     = stageIdx < currentIdx;
+                  const isCurrent  = stageIdx === currentIdx;
+                  return (
+                    <div key={stage.key} className="flex items-center">
+                      <div className="flex flex-col items-center">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border ${
+                          isDone    ? "bg-green-100 text-green-700 border-green-300" :
+                          isCurrent ? "bg-blue-100 text-blue-700 border-blue-300" :
+                                      "bg-gray-100 text-gray-400 border-gray-200"
+                        }`}>
+                          {isDone ? "✓" : i + 1}
+                        </div>
+                        <p className={`text-xs mt-1 whitespace-nowrap ${isCurrent ? "text-blue-600 font-medium" : isDone ? "text-green-600" : "text-gray-400"}`}>
+                          {stage.label}
+                        </p>
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className={`h-0.5 w-12 mx-1 mb-4 ${isDone ? "bg-green-300" : "bg-gray-200"}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Info Grid */}
@@ -157,13 +186,6 @@ export default function Dashboard() {
               {d.status === "SUBMITTED" && (
                 <>
                   <button
-                    onClick={()=>approveCycle(d.hodId)}
-                    className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition"
-                  >
-                    Approve
-                  </button>
-
-                  <button
                     onClick={() => {
                       setSelectedDept(d.department);
                       setSelectedHodId(d.hodId);
@@ -175,11 +197,34 @@ export default function Dashboard() {
                   </button>
                 </>
               )}
+              {d.status === "SUBMITTED" && (
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm(`Approve ${d.department} submission?`)) return;
+                      try {
+                        await approveCycle(d.hodId);
+                        load();
+                      } catch { alert("Failed to approve"); }
+                    }}
+                    className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition">
+                    Approve Submission
+                  </button>
+                )}
+                {d.status === "QUERY" && (
+                  <span className="px-4 py-2 text-sm bg-red-50 text-red-600 border border-red-200 rounded-md">
+                    Awaiting HOD response to query
+                  </span>
+                )}
+                {d.status === "APPROVED" && (
+                  <span className="px-4 py-2 text-sm bg-green-50 text-green-600 border border-green-200 rounded-md font-medium">
+                    Submission approved
+                  </span>
+                )}
             </div>
           </div>
         ))}
       </div>
-
+        <SelectionStatusPanel role="DOFA" />
       {/* COMMENT MODAL */}
       <CommentModal
         open={showComment}

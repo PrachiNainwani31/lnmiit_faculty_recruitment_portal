@@ -23,6 +23,10 @@ app.use("/api/email", require("./routes/email.routes"));
 app.use("/api/candidate", require("./routes/candidate.routes"));
 app.use("/api/referee", require("./routes/referee.routes"));
 app.use("/api/expert-travel", require("./routes/Experttravel.routes"));
+app.use("/api/director",            require("./routes/director.routes"));
+app.use("/api/selected-candidates", require("./routes/selectedCandidates.routes"));
+app.use("/api/establishment",       require("./routes/establishment.routes"));
+app.use("/api/onboarding",          require("./routes/estate_lucs.routes"));
 
 app.listen(5000, () =>
   console.log("Server running on port 5000")
@@ -54,6 +58,10 @@ try {
     await mongoose.connection.collection("candidates").dropIndex("cycle_1_srNo_1");
     console.log("Dropped old candidates index");
   } catch (e) {}
+  try {
+  await mongoose.connection.collection("experttravels").dropIndex("expert_1_cycle_1");
+  console.log("Dropped old experttravels index");
+} catch(e) {}
 });
 // console.log("JWT_SECRET loaded:", !!process.env.JWT_SECRET);
 

@@ -44,18 +44,37 @@ exports.uploadCandidates = async (req, res) => {
     // ✅ delete ONLY this HOD’s candidates
     await Candidate.deleteMany({ cycle: CYCLE, hod: hodId });
 
-    const formatted = validRows.map((r, i) => ({
-      cycle: CYCLE,
-      srNo: r.srNo || i + 1,
-      fullName: r.fullName,
-      email: r.email,
-      phone: r.phone,
-      qualification: r.qualification,
-      specialization: r.specialization,
-      reviewerObservation: r.reviewerObservation || "",
-      ilscComments: r.ilscComments || "",
-      hod: hodId,
-    }));
+    const formatted = [];
+
+    for (let r of validRows) {
+      let user = await User.findOne({ email: r.email });
+
+      if (!user) {
+        user = await User.create({
+          name: r.fullName,
+          email: r.email,
+          password: "123", // or random
+          role: "CANDIDATE",
+          active: true
+        });
+      }
+
+      formatted.push({
+        cycle: CYCLE,
+        srNo: r.srNo,
+        fullName: r.fullName,
+        email: r.email,
+        phone: r.phone,
+        qualification: r.qualification,
+        specialization: r.specialization,
+        reviewerObservation: r.reviewerObservation || "",
+        ilscComments: r.ilscComments || "",
+        hod: hodId,
+
+        // 🔥 MOST IMPORTANT LINE
+        user: user._id
+      });
+    }
 
     await Candidate.insertMany(formatted);
     const hod = await User.findById(hodId);

@@ -52,7 +52,7 @@ router.post(
 
 router.get(
   "/dofa-dashboard",
-  auth(["DOFA"]),
+  auth(["DOFA","ADOFA","DOFA_OFFICE"]),
   getDofaDashboard
 );
 

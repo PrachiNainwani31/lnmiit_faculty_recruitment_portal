@@ -3,6 +3,7 @@ import { getHodCounts } from "../../api/hodApi";
 import FinalSubmissionCard from "../../components/hod/FinalSubmissionCard";
 import { submitToDofa } from "../../api/hodApi";
 import { useOutletContext } from "react-router-dom";
+import SelectionStatusPanel from "../../components/SelectionStatusPanel";
 
 export default function Dashboard() {
   const [counts, setCounts] = useState({
@@ -62,6 +63,7 @@ export default function Dashboard() {
           experts manually.
         </p>
       </div>
+      <SelectionStatusPanel role="HOD" />
     </div>
   );
 }

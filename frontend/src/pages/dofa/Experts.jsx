@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getAllExperts } from "../../api/dofaApi";
 import API from "../../api/api";
+import { downloadAsCSV } from "../../components/DownloadCSVButton";
 
 const STORAGE_KEY = "dofa_expert_email_template";
 
@@ -273,12 +274,27 @@ export default function DofaExperts() {
             <h3 className="text-lg font-semibold">
               {groupedExperts[hodId].department} HOD
             </h3>
-            <button
-              onClick={() => setModal({ allExperts: groupedExperts[hodId].experts })}
-              className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
-            >
-              Send Email to All
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => downloadAsCSV(
+                  groupedExperts[hodId].experts.map(e => ({
+                    fullName: e.fullName, email: e.email,
+                    designation: e.designation, department: e.department,
+                    institute: e.institute, specialization: e.specialization,
+                  })),
+                  `experts_${groupedExperts[hodId].department}.csv`
+                )}
+                className="flex items-center gap-2 text-sm border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg font-medium"
+              >
+                Download CSV
+              </button>
+              <button
+                onClick={() => setModal({ allExperts: groupedExperts[hodId].experts })}
+                className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+              >
+                Send Email to All
+              </button>
+            </div>
           </div>
 
           <table className="min-w-full border text-sm">

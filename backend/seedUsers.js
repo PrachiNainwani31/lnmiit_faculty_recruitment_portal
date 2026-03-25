@@ -51,7 +51,7 @@ async function seed() {
       name:     "Ramswaroop Sharma",
       email:    "bigav56562@paylaar.com",
       password: "123",
-      role:     "ESTABLISHMENT",
+      role:     "TRAVEL",
       active:   true,
     },
 
@@ -68,6 +68,34 @@ async function seed() {
       email:    "pnainwani8@gmail.com",
       password: "123",
       role:     "CANDIDATE",
+      active:   true,
+    },
+    {
+      name:     "Director",
+      email:    "director@gmail.com",
+      password: "123",
+      role:     "DIRECTOR",
+      active:   true,
+    },
+    {
+      name:     "Estate",
+      email:    "estate@gmail.com",
+      password: "123",
+      role:     "ESTATE",
+      active:   true,
+    },
+    {
+      name:     "LUCS",
+      email:    "lucs@gmail.com",
+      password: "123",
+      role:     "LUCS",
+      active:   true,
+    },
+    {
+      name:     "establishment",
+      email:    "establishment@gmail.com",
+      password: "123",
+      role:     "ESTABLISHMENT",
       active:   true,
     },
   ]);

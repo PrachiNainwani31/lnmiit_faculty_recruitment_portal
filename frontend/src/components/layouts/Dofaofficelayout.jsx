@@ -25,6 +25,8 @@ export default function DofaOfficeLayout() {
           <NavLink to="/dofa-office/experts"        className={navStyle}>🧑 External Experts</NavLink>
           <NavLink to="/dofa-office/pickup"         className={navStyle}>🚗 Pickup / Drop-off</NavLink>
           <NavLink to="/dofa-office/comments"       className={navStyle}>💬 Comments</NavLink>
+          <NavLink to="/dofa-office/select-candidates" className={navStyle}>Select Candidates</NavLink>
+<NavLink to="/dofa-office/room-allotment"    className={navStyle}>Room Allotment</NavLink>
         </nav>
 
         <button

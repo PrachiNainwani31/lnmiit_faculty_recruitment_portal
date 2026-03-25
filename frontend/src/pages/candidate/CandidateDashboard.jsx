@@ -6,6 +6,7 @@ import API from "../../api/api";
 import { useNavigate } from "react-router-dom";
 import RefereeStatus from "../../components/RefereeStatus";
 import logo from "../../assets/lnmiit_logo.png";
+import OnboardingStatus from "../../components/OnBoardingStatus";
 
 const EMPTY_REFEREE    = { name:"", designation:"", department:"", institute:"", email:"" };
 const EMPTY_EXPERIENCE = { type:"", organization:"", designation:"", department:"", fromDate:"", toDate:"", natureOfWork:"" };
@@ -558,7 +559,7 @@ export default function CandidateDashboard() {
             ))}
           </div>
         </div>
-
+            <OnboardingStatus />
         {/* ── SUBMIT ── */}
         <div className="flex justify-end gap-4 pb-8">
           <button onClick={saveDraft} className="border px-6 py-2 rounded text-sm hover:bg-gray-50">

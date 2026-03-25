@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import API from "../../api/api";
 import { useNavigate } from "react-router-dom";
 import CYCLE from "../../config/activeCycle";
+import SelectionStatusPanel from "../../components/Selectionstatuspanel";
 
 export default function DofaOfficeDashboard() {
   const [data,setData]= useState(null);
@@ -57,21 +58,21 @@ export default function DofaOfficeDashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <button
-          onClick={() => navigate("/dofa-office/experts")}
-          className="bg-white border border-gray-200 rounded-xl p-5 text-left hover:shadow-md transition"
-        >
-          <p className="text-sm font-semibold text-gray-700">👨‍🏫 Confirm Expert Attendance</p>
-          <p className="text-xs text-gray-400 mt-1">Mark experts as Online / Offline and enter travel details</p>
-        </button>
-        <button
-          onClick={() => navigate("/dofa-office/pickup")}
-          className="bg-white border border-gray-200 rounded-xl p-5 text-left hover:shadow-md transition"
-        >
-          <p className="text-sm font-semibold text-gray-700">🚗 Manage Pickup / Drop-off</p>
-          <p className="text-xs text-gray-400 mt-1">Enter station/airport pickup details for offline experts</p>
-        </button>
+        {[
+          { label:"External Experts",  sub:"Mark attendance, enter travel",  path:"/dofa-office/experts"           },
+          { label:"Pickup / Drop-off", sub:"Station/airport pickup details",  path:"/dofa-office/pickup"            },
+          { label:"Select Candidates", sub:"Publish final selection list",    path:"/dofa-office/select-candidates" },
+          { label:"Room Allotment",    sub:"Allot rooms to selected candidates", path:"/dofa-office/room-allotment" },
+        ].map(({ label, sub, path }) => (
+          <button key={path} onClick={() => navigate(path)}
+            className="bg-white border border-gray-200 rounded-xl p-5 text-left hover:shadow-md transition">
+            <p className="text-sm font-semibold text-gray-700">{label}</p>
+            <p className="text-xs text-gray-400 mt-1">{sub}</p>
+          </button>
+        ))}
       </div>
+ 
+      <SelectionStatusPanel role="DOFA_OFFICE" />
     </div>
   );
 }

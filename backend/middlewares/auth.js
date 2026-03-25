@@ -8,10 +8,11 @@ const auth = (roles = []) => {
       if (!header) {
         return res.status(401).json({ msg: "No token provided" });
       }
-
+      //console.log("AUTH HEADER:", req.headers.authorization);
       const token = header.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+      
+      //console.log("DECODED USER:", decoded);
       let user = await User.findById(decoded.id);
 
       /* Allow hardcoded candidate accounts */
@@ -30,12 +31,12 @@ const auth = (roles = []) => {
       if (roles.length && !roles.includes(user.role)) {
         return res.status(403).json({ msg: "Access denied" });
       }
-
       req.user = user;
       next();
     } catch (err) {
-      return res.status(401).json({ msg: "Authentication failed" });
-    }
+        console.error("AUTH ERROR FULL:", err);
+        return res.status(401).json({ msg: err.message });
+      }
   };
 };
 

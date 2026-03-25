@@ -10,10 +10,18 @@ const RAMSWAROOP_EMAIL = "bigav56562@paylaar.com";
    helper: get or create ExpertTravel doc
 ───────────────────────────────────────── */
 async function getOrCreate(expertId) {
-  let doc = await ExpertTravel.findOne({ expert: expertId });
+  let doc = await ExpertTravel.findOne({
+    expert: expertId,
+    cycle: CYCLE   // ADD THIS
+  });
+
   if (!doc) {
-    doc = await ExpertTravel.create({ expert: expertId, cycle: CYCLE });
+    doc = await ExpertTravel.create({
+      expert: expertId,
+      cycle: CYCLE
+    });
   }
+
   return doc;
 }
 
@@ -23,8 +31,8 @@ async function getOrCreate(expertId) {
 ───────────────────────────────────────── */
 exports.getAllExpertTravel = async (req, res) => {
   try {
-    const experts = await Expert.find({ cycle: CYCLE })
-      .populate("uploadedBy", "name department");
+    const experts = await Expert.find()
+      .populate("uploadedBy", "name department role");
 
     const travels = await ExpertTravel.find({ cycle: CYCLE });
     const travelMap = {};
@@ -47,6 +55,7 @@ exports.getAllExpertTravel = async (req, res) => {
 ───────────────────────────────────────── */
 exports.saveConfirmation = async (req, res) => {
   try {
+    console.log("CYCLE VALUE:", CYCLE);
     const { expertId } = req.params;
     const {
       confirmed, contactNumber, presenceStatus,
@@ -60,7 +69,25 @@ exports.saveConfirmation = async (req, res) => {
     doc.presenceStatus = presenceStatus;
     doc.onlineLink     = onlineLink;
     doc.modeOfTravel   = modeOfTravel;
-    if (traveller) doc.traveller = traveller;
+    if (traveller) {
+    const cleanTraveller = {
+      ...traveller,
+
+      // 🔥 FIX DATE FIELDS
+      onwardFrom: traveller.onwardFrom || null,
+      returnFrom: traveller.returnFrom || null,
+
+      // optional but safe
+      onwardTime: traveller.onwardTime || null,
+      returnTime: traveller.returnTime || null,
+
+      // ensure arrays exist
+      connections: traveller.connections || [],
+      returnConnections: traveller.returnConnections || [],
+    };
+
+    doc.traveller = cleanTraveller;
+  }
 
     await doc.save();
 
@@ -85,9 +112,62 @@ exports.saveConfirmation = async (req, res) => {
               <tr><td style="color:#666;padding:4px 0">Mode</td><td>${modeOfTravel}</td></tr>
               <tr><td style="color:#666;padding:4px 0">Contact</td><td>${contactNumber}</td></tr>
               ${traveller ? `
-              <tr><td style="color:#666;padding:4px 0">Onward</td><td>${traveller.onwardFrom ? new Date(traveller.onwardFrom).toDateString() : "—"} → ${traveller.onwardTo ? new Date(traveller.onwardTo).toDateString() : "—"}</td></tr>
-              <tr><td style="color:#666;padding:4px 0">Return</td><td>${traveller.returnFrom ? new Date(traveller.returnFrom).toDateString() : "—"} → ${traveller.returnTo ? new Date(traveller.returnTo).toDateString() : "—"}</td></tr>
-              ` : ""}
+                <tr>
+                  <td style="color:#666;padding:4px 0">Journey Type</td>
+                  <td>${traveller.journeyType}</td>
+                </tr>
+
+                ${
+                  traveller.journeyType === "Connecting"
+                    ? `
+                <tr>
+                  <td style="color:#666;padding:4px 0">Onward</td>
+                  <td>
+                    ${
+                      traveller.connections?.length
+                        ? traveller.connections.map(
+                            leg => `${leg.from} → ${leg.to} (${leg.date} ${leg.time})`
+                          ).join("<br>")
+                        : "—"
+                    }
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="color:#666;padding:4px 0">Return</td>
+                  <td>
+                    ${
+                      traveller.returnConnections?.length
+                        ? traveller.returnConnections.map(
+                            leg => `${leg.from} → ${leg.to} (${leg.date} ${leg.time})`
+                          ).join("<br>")
+                        : "—"
+                    }
+                  </td>
+                </tr>
+                `
+                    : `
+                <tr>
+                  <td style="color:#666;padding:4px 0">Onward</td>
+                  <td>
+                    ${traveller.onwardFrom ? new Date(traveller.onwardFrom).toDateString() : "—"}
+                    →
+                    ${traveller.onwardTo ? new Date(traveller.onwardTo).toDateString() : "—"}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="color:#666;padding:4px 0">Return</td>
+                  <td>
+                    ${traveller.returnFrom ? new Date(traveller.returnFrom).toDateString() : "—"}
+                    →
+                    ${traveller.returnTo ? new Date(traveller.returnTo).toDateString() : "—"}
+                  </td>
+                </tr>
+                `
+                }
+                `
+                : ""}
             </table>
             <p>Please log in to the Travel Portal and submit a quote at the earliest.</p>
             <p>Best regards,<br><strong>DOFA Office</strong><br>LNMIIT</p>

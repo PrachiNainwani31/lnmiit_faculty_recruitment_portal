@@ -37,7 +37,6 @@ const expertTravelSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref:  "Expert",
     required: true,
-    unique: true,
   },
 
   confirmed:      { type: Boolean, default: false },
@@ -73,7 +72,12 @@ const expertTravelSchema = new mongoose.Schema({
     driverName:      String,
     driverContact:   String,
   },
+  cycle:{
+    type:String,
+    reuired:true,
+  }
 
 }, { timestamps: true });
+expertTravelSchema.index({ expert: 1, cycle: 1 }, { unique: true });
 
 module.exports = mongoose.model("ExpertTravel", expertTravelSchema);

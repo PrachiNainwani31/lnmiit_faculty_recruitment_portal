@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getCandidatesByDepartment } from "../../api/dofaApi";
 import API from "../../api/api";
+import { downloadAsCSV } from "../../components/DownloadCSVButton";
 
 /* ── Default template stored in localStorage key ── */
 const STORAGE_KEY = "dofa_email_template";
@@ -292,12 +293,29 @@ export default function DofaCandidates() {
         </h2>
 
         {candidates.length > 0 && (
-          <button
-            onClick={() => setModal({ mode:"all" })}
-            className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
-          >
-            Send Email to All
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => downloadAsCSV(
+                candidates.map(c => ({
+                  srNo: c.srNo, fullName: c.fullName, email: c.email,
+                  phone: c.phone, qualification: c.qualification,
+                  specialization: c.specialization,
+                  reviewerObservation: c.reviewerObservation,
+                  ilscComments: c.ilscComments,
+                })),
+                `candidates_${dept || "all"}.csv`
+              )}
+              className="flex items-center gap-2 text-sm border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg font-medium"
+            >
+              Download CSV
+            </button>
+            <button
+              onClick={() => setModal({ mode:"all" })}
+              className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+            >
+              Send Email to All
+            </button>
+          </div>
         )}
       </div>
 

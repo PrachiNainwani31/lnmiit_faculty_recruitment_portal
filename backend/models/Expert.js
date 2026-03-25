@@ -44,6 +44,10 @@ const expertSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+  
+    phone: {
+      type: String
+    },
 
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,

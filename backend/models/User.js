@@ -11,9 +11,9 @@ const userSchema = new mongoose.Schema(
     email: {
       type:      String,
       required:  true,
-      unique:    true,
       lowercase: true,
       trim:      true,
+      unique:    true,
     },
     password: {
       type:     String,
@@ -27,9 +27,13 @@ const userSchema = new mongoose.Schema(
         "DOFA",
         "ADOFA",
         "DOFA_OFFICE",    // ← New: DOFA Office staff
-        "ESTABLISHMENT",  // ← Ramswaroop Sharma (travel)
+        "TRAVEL",  // ← Ramswaroop Sharma (travel)
         "CANDIDATE",
         "REFEREE",
+        "DIRECTOR",
+        "ESTABLISHMENT", // ← New: Establishment staff
+        "LUCS", 
+        "ESTATE",         // ← New: LUCS staff
       ],
       required: true,
     },
@@ -46,11 +50,14 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
+
   this.password = await bcrypt.hash(this.password, 10);
 });
 
-userSchema.methods.comparePassword = function (plain) {
-  return bcrypt.compare(plain, this.password);
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
 };
+
+userSchema.index({ email: 1, role: 1 }, { unique: true });
 
 module.exports = mongoose.model("User", userSchema);

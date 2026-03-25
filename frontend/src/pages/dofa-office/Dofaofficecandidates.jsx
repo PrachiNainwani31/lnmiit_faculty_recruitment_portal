@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import API from "../../api/api";
 import CYCLE from "../../config/activeCycle";
+import { downloadAsCSV } from "../../components/DownloadCSVButton";
 
 export default function DofaOfficeCandidates() {
   const [grouped,  setGrouped]  = useState({});
@@ -74,6 +75,25 @@ export default function DofaOfficeCandidates() {
               <span className="text-indigo-200 text-xs">{candidates.length} candidates</span>
             </div>
 
+            {candidates.length > 0 && (
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => downloadAsCSV(
+                            candidates.map(c => ({
+                              srNo: c.srNo, fullName: c.fullName, email: c.email,
+                              phone: c.phone, qualification: c.qualification,
+                              specialization: c.specialization,
+                              reviewerObservation: c.reviewerObservation,
+                              ilscComments: c.ilscComments,
+                            })),
+                            `candidates_${dept || "all"}.csv`
+                          )}
+                          className="flex items-center gap-2 text-sm border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg font-medium"
+                        >
+                          Download CSV
+                        </button>
+                      </div>
+            )}
             {/* Candidate rows */}
             {candidates.map((c, i) => (
               <CandidateRow key={c._id} candidate={c} index={i} />
