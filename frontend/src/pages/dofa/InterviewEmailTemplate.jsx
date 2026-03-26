@@ -47,11 +47,11 @@ export default function InterviewEmailTemplate() {
     try {
       setSending(true);
       await API.post("/email/send-interview-invite", {
-        candidateId: selected._id,
+        candidateId: selected.id,
         subject,
         body,
       });
-      setSent(s => ({ ...s, [selected._id]: true }));
+      setSent(s => ({ ...s, [selected.id]: true }));
       alert(`Email sent to ${selected.email}`);
     } catch {
       alert("Failed to send email. Please try again.");
@@ -81,14 +81,14 @@ export default function InterviewEmailTemplate() {
               <p className="p-4 text-sm text-gray-400 text-center">No candidates found</p>
             )}
             {candidates.map(c => (
-              <div key={c._id}
+              <div key={c.id}
                 onClick={() => handleSelectCandidate(c)}
                 className={`px-4 py-3 cursor-pointer border-b hover:bg-gray-50 transition ${
-                  selected?._id === c._id ? "bg-blue-50 border-l-2 border-l-blue-500" : ""
+                  selected?.id === c.id ? "bg-blue-50 border-l-2 border-l-blue-500" : ""
                 }`}>
                 <p className="text-sm font-medium text-gray-800">{c.fullName}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{c.email}</p>
-                {sent[c._id] && (
+                {sent[c.id] && (
                   <span className="text-xs text-green-600 font-medium">✔ Sent</span>
                 )}
               </div>

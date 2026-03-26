@@ -25,7 +25,7 @@ function CandidateRecord({ record, onRefresh }) {
     if (!file) return;
     const fd = new FormData();
     fd.append("pdf",         file);
-    fd.append("candidateId", c._id);
+    fd.append("candidateId", c.id);
     try {
       setSaving(true);
       await API.post(`/establishment/${type === "offer" ? "offer-letter" : "joining-letter"}`, fd, {
@@ -41,7 +41,7 @@ function CandidateRecord({ record, onRefresh }) {
     if (!joiningDate) return alert("Please select a joining date");
     try {
       setSaving(true);
-      await API.post("/establishment/joining-date", { candidateId: c._id, joiningDate });
+      await API.post("/establishment/joining-date", { candidateId: c.id, joiningDate });
       alert("Joining date saved.");
       onRefresh();
     } catch { alert("Failed"); }
@@ -219,7 +219,7 @@ export default function EstablishmentPage() {
               {records.filter(r => r.offerLetterPath).length}/{records.length} offers sent
             </span>
           </div>
-          {records.map(r => <CandidateRecord key={r._id} record={r} onRefresh={load} />)}
+          {records.map(r => <CandidateRecord key={r.id} record={r} onRefresh={load} />)}
         </div>
       ))}
     </div>

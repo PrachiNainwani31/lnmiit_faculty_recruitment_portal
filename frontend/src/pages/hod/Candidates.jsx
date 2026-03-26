@@ -9,7 +9,7 @@ import {
 import CandidateResumeUpload from "../../components/hod/CandidateResumeUpload";
 
 export default function Candidates({ isFrozen }) {
-  const cycle = "2026-27";
+  const cycle = "2025-26";
 
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);

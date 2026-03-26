@@ -1,141 +1,391 @@
-const CandidateApplication = require("../models/CandidateApplication");
+const { CandidateApplication, CandidateReferee, CandidateExperience } = require("../models");
 const { sendEmail } = require("../utils/emailSender");
 
+/* =====================================================
+   HELPER — get or create application
+===================================================== */
+const getOrCreateApp = async (userId, email) => {
+  let app = await CandidateApplication.findOne({
+    where: { candidateUserId: userId },
+  });
+
+  if (!app) {
+    app = await CandidateApplication.create({
+      candidateUserId: userId,
+      email,
+    });
+  }
+
+  return app;
+};
+
+/* =====================================================
+   GET MY APPLICATION
+   Returns app + child referees + experiences
+===================================================== */
 exports.getMyApplication = async (req, res) => {
-  let app = await CandidateApplication.findOne({ candidate: req.user._id });
-  if (!app) {
-    app = await CandidateApplication.create({
-      candidate: req.user._id,
-      email: req.user.email,
+  try {
+    let app = await CandidateApplication.findOne({
+      where: { candidateUserId: req.user.id },
+      include: [
+        { model: CandidateReferee,    as: "referees",    required: false },
+        { model: CandidateExperience, as: "experiences", required: false },
+      ],
     });
+
+    if (!app) {
+      app = await CandidateApplication.create({
+        candidateUserId: req.user.id,
+        email: req.user.email,
+      });
+
+      // Re-fetch with includes so response shape is consistent
+      app = await CandidateApplication.findByPk(app.id, {
+        include: [
+          { model: CandidateReferee,    as: "referees",    required: false },
+          { model: CandidateExperience, as: "experiences", required: false },
+        ],
+      });
+    }
+
+    res.json(app);
+
+  } catch (err) {
+    console.error("getMyApplication error:", err.message);
+    res.status(500).json({ message: "Server error" });
   }
-  res.json(app);
 };
 
-/* ─────────────────────────────────────────
+/* =====================================================
    SAVE DRAFT
-   FIX: merge referees by index so Mongoose
-   keeps existing _ids instead of creating new ones
-───────────────────────────────────────── */
+   Handles flat fields + child table sync for
+   referees and experiences
+===================================================== */
 exports.saveDraft = async (req, res) => {
-  let app = await CandidateApplication.findOne({ candidate: req.user._id });
-  if (!app) {
-    app = await CandidateApplication.create({
-      candidate: req.user._id,
-      email: req.user.email,
-    });
-  }
+  try {
+    const app = await getOrCreateApp(req.user.id, req.user.email);
 
-  if (req.body.name          !== undefined) app.name          = req.body.name;
-  if (req.body.email         !== undefined) app.email         = req.body.email;
-  if (req.body.contact       !== undefined) app.phone         = req.body.contact;
-  if (req.body.acceptance    !== undefined) app.acceptance    = req.body.acceptance;
-  if (req.body.accommodation !== undefined) app.accommodation = req.body.accommodation;
-  if (req.body.documents     !== undefined) app.documents     = req.body.documents;
-  if (req.body.publications  !== undefined) app.publications  = req.body.publications;
-  if (req.body.experiences   !== undefined) app.experiences   = req.body.experiences;
+    // ── Flat fields ────────────────────────────────────────────────
+    const updateData = {};
 
-  // FIX: merge referees preserving existing _ids
-  // instead of replacing the whole array (which creates new _ids)
-  if (req.body.referees !== undefined) {
-    const incoming = req.body.referees || [];
-    const existing = app.referees || [];
+    if (req.body.name        !== undefined) updateData.name          = req.body.name;
+    if (req.body.email       !== undefined) updateData.email         = req.body.email;
+    if (req.body.contact     !== undefined) updateData.phone         = req.body.contact;
+    if (req.body.acceptance  !== undefined) updateData.acceptance    = req.body.acceptance;
+    if (req.body.accommodation !== undefined) updateData.accommodation = req.body.accommodation;
+    if (req.body.department  !== undefined) updateData.department    = req.body.department;
 
-    const merged = incoming.map((r, i) => {
-      const existingRef = existing[i];
-      if (existingRef && existingRef._id) {
-        // update fields but keep the same subdoc _id
-        existingRef.name        = r.name        ?? existingRef.name;
-        existingRef.designation = r.designation ?? existingRef.designation;
-        existingRef.department  = r.department  ?? existingRef.department;
-        existingRef.institute   = r.institute   ?? existingRef.institute;
-        existingRef.email       = r.email       ?? existingRef.email;
-        return existingRef;
+    // Publications stays as JSON column (array of strings — no child table needed)
+    if (req.body.publications !== undefined) updateData.publications = req.body.publications;
+
+    // Experience type flags
+    if (req.body.expResearch   !== undefined) updateData.expResearch   = req.body.expResearch;
+    if (req.body.expTeaching   !== undefined) updateData.expTeaching   = req.body.expTeaching;
+    if (req.body.expIndustrial !== undefined) updateData.expIndustrial = req.body.expIndustrial;
+
+    if (Object.keys(updateData).length) {
+      await CandidateApplication.update(updateData, { where: { id: app.id } });
+    }
+
+    // ── Referees — sync child table ────────────────────────────────
+    // req.body.referees = array of { id?, salutation, name, designation, department, institute, email }
+    if (Array.isArray(req.body.referees)) {
+      for (const r of req.body.referees) {
+        if (r.id) {
+          // Update existing row
+          await CandidateReferee.update(
+            {
+              salutation:  r.salutation,
+              name:        r.name,
+              designation: r.designation,
+              department:  r.department,
+              institute:   r.institute,
+              email:       r.email,
+            },
+            { where: { id: r.id, applicationId: app.id } }
+          );
+        } else {
+          // Insert new row
+          await CandidateReferee.create({
+            applicationId: app.id,
+            salutation:    r.salutation,
+            name:          r.name,
+            designation:   r.designation,
+            department:    r.department,
+            institute:     r.institute,
+            email:         r.email,
+            status:        "PENDING",
+          });
+        }
       }
-      // new referee — Mongoose will assign a fresh _id
-      return r;
+    }
+
+    // ── Experiences — sync child table ─────────────────────────────
+    // req.body.experiences = array of { id?, type, organization, designation, department, fromDate, toDate, natureOfWork }
+    if (Array.isArray(req.body.experiences)) {
+      for (const e of req.body.experiences) {
+        if (e.id) {
+          await CandidateExperience.update(
+            {
+              type:         e.type,
+              organization: e.organization,
+              designation:  e.designation,
+              department:   e.department,
+              fromDate:     e.fromDate ? new Date(e.fromDate) : null,
+              toDate:       e.toDate   ? new Date(e.toDate)   : null,
+              natureOfWork: e.natureOfWork,
+            },
+            { where: { id: e.id, applicationId: app.id } }
+          );
+        } else {
+          await CandidateExperience.create({
+            applicationId: app.id,
+            type:          e.type,
+            organization:  e.organization,
+            designation:   e.designation,
+            department:    e.department,
+            fromDate:      e.fromDate ? new Date(e.fromDate) : null,
+            toDate:        e.toDate   ? new Date(e.toDate)   : null,
+            natureOfWork:  e.natureOfWork,
+          });
+        }
+      }
+    }
+
+    // Return full updated app with children
+    const updatedApp = await CandidateApplication.findByPk(app.id, {
+      include: [
+        { model: CandidateReferee,    as: "referees",    required: false },
+        { model: CandidateExperience, as: "experiences", required: false },
+      ],
     });
 
-    app.referees = merged;
-    app.markModified("referees");
-  }
+    res.json(updatedApp);
 
-  await app.save();
-  res.json(app);
+  } catch (err) {
+    console.error("saveDraft error:", err.message);
+    res.status(500).json({ message: "Failed to save draft" });
+  }
 };
 
-/* ─────────────────────────────────────────
+/* =====================================================
+   DELETE REFEREE
+   Candidate removes a referee before submission
+===================================================== */
+exports.deleteReferee = async (req, res) => {
+  try {
+    const app = await CandidateApplication.findOne({
+      where: { candidateUserId: req.user.id },
+    });
+
+    if (!app)
+      return res.status(404).json({ message: "Application not found" });
+
+    await CandidateReferee.destroy({
+      where: { id: req.params.refereeId, applicationId: app.id },
+    });
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error("deleteReferee error:", err.message);
+    res.status(500).json({ message: "Failed to delete referee" });
+  }
+};
+
+/* =====================================================
+   DELETE EXPERIENCE
+===================================================== */
+exports.deleteExperience = async (req, res) => {
+  try {
+    const app = await CandidateApplication.findOne({
+      where: { candidateUserId: req.user.id },
+    });
+
+    if (!app)
+      return res.status(404).json({ message: "Application not found" });
+
+    await CandidateExperience.destroy({
+      where: { id: req.params.experienceId, applicationId: app.id },
+    });
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error("deleteExperience error:", err.message);
+    res.status(500).json({ message: "Failed to delete experience" });
+  }
+};
+
+/* =====================================================
    SUBMIT APPLICATION
-   Re-fetch after save so subdoc _ids exist
-───────────────────────────────────────── */
+   Marks as SUBMITTED + sends email to all referees
+===================================================== */
 exports.submitApplication = async (req, res) => {
-  const app = await CandidateApplication.findOne({ candidate: req.user._id });
-  if (!app) return res.status(404).json({ message: "Application not found" });
+  try {
+    const app = await CandidateApplication.findOne({
+      where: { candidateUserId: req.user.id },
+    });
 
-  app.status = "SUBMITTED";
-  await app.save();
+    if (!app)
+      return res.status(404).json({ message: "Application not found" });
 
-  // Re-fetch so Mongoose subdoc _ids are populated
-  const savedApp = await CandidateApplication.findById(app._id);
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    if (app.status === "SUBMITTED")
+      return res.status(400).json({ message: "Application already submitted" });
 
-  for (const r of savedApp.referees) {
-    if (!r.email || !r._id) continue;
+    await CandidateApplication.update(
+      { status: "SUBMITTED" },
+      { where: { id: app.id } }
+    );
 
-    const portalLink = `${frontendUrl}/referee/${r._id}`;
+    // Fetch referees from child table
+    const referees = await CandidateReferee.findAll({
+      where: { applicationId: app.id },
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+    for (const referee of referees) {
+      if (!referee.email) continue;
+
+      const portalLink = `${frontendUrl}/referee/${referee.id}`;
+
+      await sendEmail(
+        referee.email,
+        `Reference Letter Request — ${app.name}`,
+        `<p>Dear ${referee.name},</p>
+         <p><strong>${app.name}</strong> has applied for a faculty position at LNMIIT
+         and has listed you as a referee.</p>
+         <p>Please submit your reference letter here:
+         <a href="${portalLink}">Submit Reference Letter</a></p>
+         <p>Regards,<br>DOFA Office, LNMIIT</p>`
+      ).catch(err =>
+        console.error(`Referee email failed for ${referee.email}:`, err.message)
+      );
+    }
+
+    res.json({ message: "Application submitted successfully" });
+
+  } catch (err) {
+    console.error("submitApplication error:", err.message);
+    res.status(500).json({ message: "Submission failed" });
+  }
+};
+
+/* =====================================================
+   REMIND REFEREE (from candidate portal)
+===================================================== */
+exports.remindReferee = async (req, res) => {
+  try {
+    const { id: refereeId } = req.params;
+
+    const referee = await CandidateReferee.findByPk(refereeId);
+
+    if (!referee)
+      return res.status(404).json({ message: "Referee not found" });
+
+    // Security: ensure this referee belongs to the logged-in candidate
+    const app = await CandidateApplication.findOne({
+      where: { candidateUserId: req.user.id },
+    });
+
+    if (!app || referee.applicationId !== app.id)
+      return res.status(403).json({ message: "Access denied" });
+
+    if (referee.status === "SUBMITTED")
+      return res.status(400).json({ message: "Already submitted" });
+
+    const portalLink = `${process.env.FRONTEND_URL}/referee/${refereeId}`;
 
     await sendEmail(
-      r.email,
-      `Reference Letter Request — ${savedApp.name} (LNMIIT Recruitment)`,
-      `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
-        <div style="background:#8b0000;color:#fff;padding:15px;text-align:center;border-radius:6px 6px 0 0">
-          <h2 style="margin:0">LNMIIT Recruitment Portal</h2>
-        </div>
-        <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
-          <p>Dear <strong>${r.name}</strong>,</p>
-          <p><strong>${savedApp.name}</strong> has listed you as a referee for faculty recruitment at LNMIIT.</p>
-          <p style="text-align:center;margin:25px 0">
-            <a href="${portalLink}"
-              style="background:#8b0000;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">
-              Submit Reference Letter
-            </a>
-          </p>
-          <p style="font-size:12px;color:#666">Or copy this link: ${portalLink}</p>
-          <p>Best regards,<br><strong>Webmaster LNMIIT</strong><br>webmaster@lnmiit.ac.in</p>
-        </div>
-      </div>
-      `
-    ).catch(err => console.error("Referee email failed:", err.message));
+      referee.email,
+      `Reminder — Reference Letter for ${app.name}`,
+      `<p>Dear ${referee.name},</p>
+       <p>This is a gentle reminder to submit the reference letter for
+       <strong>${app.name}</strong>.</p>
+       <p><a href="${portalLink}">Submit Reference Letter</a></p>
+       <p>Regards,<br>LNMIIT Recruitment Portal</p>`
+    );
+
+    res.json({ message: "Reminder sent" });
+
+  } catch (err) {
+    console.error("remindReferee error:", err.message);
+    res.status(500).json({ message: "Failed to send reminder" });
   }
-
-  res.json({ message: "Application submitted" });
 };
 
-exports.remindReferee = async (req, res) => {
-  const app = await CandidateApplication.findOne({ "referees._id": req.params.id });
-  if (!app) return res.status(404).json({ message: "Not found" });
-  const referee = app.referees.id(req.params.id);
-  await sendEmail(
-    referee.email,
-    "Reminder for Reference Letter",
-    "Gentle reminder to upload your reference letter."
-  );
-  res.json({ message: "Reminder sent" });
-};
-
+/* =====================================================
+   UPLOAD DOCUMENT
+   Single file upload — updates named column on app
+===================================================== */
 exports.uploadDocument = async (req, res) => {
-  const userId   = req.user._id;
-  const type     = req.body.type;
-  const filePath = req.file.path;
+  try {
+    if (!req.file)
+      return res.status(400).json({ message: "File required" });
 
-  let app = await CandidateApplication.findOne({ candidate: userId });
-  if (!app) app = new CandidateApplication({ candidate: userId });
+    const type     = req.body.type;     // e.g. "docCv", "docGraduation"
+    const filePath = req.file.path;
 
-  if (!app.documents) app.documents = {};
-  app.documents[type] = filePath;
-  app.markModified("documents");
-  await app.save();
+    const app = await getOrCreateApp(req.user.id, req.user.email);
 
-  res.json({ success: true, path: filePath });
+    // Validate column name to prevent arbitrary column injection
+    const ALLOWED_DOC_COLUMNS = [
+      "docCv", "docTeachingStatement", "docResearchStatement",
+      "docMarks10", "docMarks12", "docGraduation", "docPostGraduation",
+      "docPhdCourseWork", "docPhdProvisional", "docPhdDegree",
+    ];
+
+    if (!ALLOWED_DOC_COLUMNS.includes(type))
+      return res.status(400).json({ message: `Unknown document type: ${type}` });
+
+    await CandidateApplication.update(
+      { [type]: filePath },
+      { where: { id: app.id } }
+    );
+
+    res.json({ success: true, path: filePath });
+
+  } catch (err) {
+    console.error("uploadDocument error:", err.message);
+    res.status(500).json({ message: "Upload failed" });
+  }
+};
+
+/* =====================================================
+   UPLOAD MULTI-FILE DOCUMENT
+   Appends to a JSON array column (e.g. docBestPapers)
+===================================================== */
+exports.uploadMultiDocument = async (req, res) => {
+  try {
+    if (!req.file)
+      return res.status(400).json({ message: "File required" });
+
+    const type     = req.body.type;
+    const filePath = req.file.path;
+
+    const ALLOWED_MULTI_COLUMNS = [
+      "docResearchExpCerts", "docTeachingExpCerts", "docIndustryExpCerts",
+      "docBestPapers", "docPostDocDocs", "docSalarySlips", "docOtherDocs",
+    ];
+
+    if (!ALLOWED_MULTI_COLUMNS.includes(type))
+      return res.status(400).json({ message: `Unknown document type: ${type}` });
+
+    const app = await getOrCreateApp(req.user.id, req.user.email);
+
+    const existing = app[type] || [];
+    existing.push({ path: filePath, name: req.body.name || req.file.originalname });
+
+    await CandidateApplication.update(
+      { [type]: existing },
+      { where: { id: app.id } }
+    );
+
+    res.json({ success: true, path: filePath });
+
+  } catch (err) {
+    console.error("uploadMultiDocument error:", err.message);
+    res.status(500).json({ message: "Upload failed" });
+  }
 };

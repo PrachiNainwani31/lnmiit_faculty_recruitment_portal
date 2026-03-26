@@ -16,7 +16,7 @@ export default function PickupDropManager() {
         setItems(offline);
         const initialForms = {};
         offline.forEach(i => {
-          initialForms[i.expert._id] = {
+          initialForms[i.expert.id] = {
             pickupLocation: i.travel?.pickupDrop?.pickupLocation || "",
             pickupTime:     i.travel?.pickupDrop?.pickupTime     || "",
             dropLocation:   i.travel?.pickupDrop?.dropLocation   || "",
@@ -63,10 +63,10 @@ export default function PickupDropManager() {
       )}
 
       {items.map(({ expert, travel }) => {
-        const f = forms[expert._id] || {};
+        const f = forms[expert.id] || {};
         const pd = travel?.pickupDrop;
         return (
-          <div key={expert._id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div key={expert.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="flex items-center gap-3 px-5 py-4 bg-gray-50 border-b border-gray-100">
               <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-xs shrink-0">
                 {expert.fullName?.split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase()}
@@ -87,29 +87,29 @@ export default function PickupDropManager() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pickup Location</label>
                   <input className={inputCls} placeholder="e.g. Jaipur Railway Station"
-                    value={f.pickupLocation || ""} onChange={e => setF(expert._id, "pickupLocation", e.target.value)} />
+                    value={f.pickupLocation || ""} onChange={e => setF(expert.id, "pickupLocation", e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pickup Time</label>
                   <input className={inputCls} placeholder="e.g. 10:00 AM, 11 Apr 2026"
-                    value={f.pickupTime || ""} onChange={e => setF(expert._id, "pickupTime", e.target.value)} />
+                    value={f.pickupTime || ""} onChange={e => setF(expert.id, "pickupTime", e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Drop Location</label>
                   <input className={inputCls} placeholder="e.g. LNMIIT Campus"
-                    value={f.dropLocation || ""} onChange={e => setF(expert._id, "dropLocation", e.target.value)} />
+                    value={f.dropLocation || ""} onChange={e => setF(expert.id, "dropLocation", e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Drop Time</label>
                   <input className={inputCls} placeholder="e.g. 11:30 AM"
-                    value={f.dropTime || ""} onChange={e => setF(expert._id, "dropTime", e.target.value)} />
+                    value={f.dropTime || ""} onChange={e => setF(expert.id, "dropTime", e.target.value)} />
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <button onClick={() => handleSave(expert._id)} disabled={saving === expert._id}
+                <button onClick={() => handleSave(expert.id)} disabled={saving === expert.id}
                   className="bg-[#6b0f1a] hover:bg-rose-800 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
-                  {saving === expert._id ? "Saving..." : "Save & Notify Ramswaroop"}
+                  {saving === expert.id ? "Saving..." : "Save & Notify Ramswaroop"}
                 </button>
               </div>
             </div>

@@ -71,7 +71,7 @@ export default function CandidateListTable({ cycle, isFrozen ,onChange}) {
 
           <tbody>
             {candidates.map((c, index) => (
-            <tr key={c._id}>
+            <tr key={c.id}>
               <td className="border px-2 py-1">{index+1}</td>
                 <td className="border px-2 py-1">{c.fullName}</td>
                 <td className="border px-2 py-1">{c.email}</td>
@@ -88,7 +88,7 @@ export default function CandidateListTable({ cycle, isFrozen ,onChange}) {
                 {!isFrozen && (
                   <td className="border px-2 py-1 text-center">
                     <button
-                      onClick={() => handleDelete(c._id)}
+                      onClick={() => handleDelete(c.id)}
                       className="text-red-600 hover:underline"
                     >
                       Delete

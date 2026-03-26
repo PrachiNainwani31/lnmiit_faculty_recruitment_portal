@@ -53,7 +53,7 @@ export default function TravelTickets() {
       <h2 className="text-xl font-bold text-gray-800">Tickets</h2>
 
       {items.map(({ expert, travel }) => (
-        <div key={expert._id} className="bg-white rounded-xl shadow p-5 border border-gray-100">
+        <div key={expert.id} className="bg-white rounded-xl shadow p-5 border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="font-semibold text-gray-800">{expert.fullName}</p>
@@ -89,15 +89,15 @@ export default function TravelTickets() {
               <input
                 type="file"
                 accept=".pdf,image/*"
-                ref={el => fileRefs.current[expert._id] = el}
+                ref={el => fileRefs.current[expert.id] = el}
                 className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 flex-1"
               />
               <button
-                onClick={() => handleUpload(expert._id)}
-                disabled={uploading === expert._id}
+                onClick={() => handleUpload(expert.id)}
+                disabled={uploading === expert.id}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-60"
               >
-                {uploading === expert._id ? "Uploading..." : "Upload Ticket"}
+                {uploading === expert.id ? "Uploading..." : "Upload Ticket"}
               </button>
             </div>
           )}

@@ -107,7 +107,7 @@ export default function CandidatesTab({ refreshCounts, isFrozen }) {
           </thead>
           <tbody>
             {candidates.map((c) => (
-              <tr key={c._id} className="border-t">
+              <tr key={c.id} className="border-t">
                 <td className="px-3 py-2">{c.srNo}</td>
                 <td className="px-3 py-2">{c.fullName}</td>
                 <td className="px-3 py-2">{c.email}</td>
@@ -121,7 +121,7 @@ export default function CandidatesTab({ refreshCounts, isFrozen }) {
                     disabled={isFrozen}
                     onClick={async () => {
                       if (window.confirm("Delete this candidate from 2026–27?")) {
-                        await deleteCandidate(c._id);
+                        await deleteCandidate(c.id);
                         fetchCandidates();
                       }
                     }}

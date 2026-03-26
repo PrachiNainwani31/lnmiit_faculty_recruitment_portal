@@ -1,16 +1,14 @@
-const Candidate = require("../models/Candidate");
-const CandidateStats = require("../models/CandidateStats");
+const { Candidate, CandidateStats, User } = require("../models");
 const parseCSV = require("../utils/csvParser");
 const { createNotification } = require("../utils/notify");
 const { Parser } = require("json2csv");
 const CYCLE = require("../config/activeCycle");
 const fs = require("fs");
 const path = require("path");
-const User = require("../models/User");
 const { notifyDofaUpload } = require("./email.controller");
 
 /* =====================================================
-   UPLOAD CANDIDATES CSV (STEP 2)
+   UPLOAD CANDIDATES CSV
 ===================================================== */
 exports.uploadCandidates = async (req, res) => {
   try {
@@ -18,7 +16,9 @@ exports.uploadCandidates = async (req, res) => {
       return res.status(400).json({ message: "CSV file missing" });
 
     const rows = await parseCSV(req.file.path);
-    const hodId = req.user._id;
+    console.log("ROW COUNT:", rows.length);        // ← here
+console.log("FIRST ROW:", JSON.stringify(rows[0]));
+    const hodId = req.user.id;
 
     const validRows = rows.filter(
       r =>
@@ -29,7 +29,10 @@ exports.uploadCandidates = async (req, res) => {
         r.specialization
     );
 
-    const stats = await CandidateStats.findOne({ cycle: CYCLE,hod:hodId });
+    const stats = await CandidateStats.findOne({
+      where: { cycle: CYCLE, hodId }
+    });
+
     if (!stats)
       return res.status(400).json({
         message: "Please enter ILSC count before uploading CSV",
@@ -41,19 +44,23 @@ exports.uploadCandidates = async (req, res) => {
       });
     }
 
-    // ✅ delete ONLY this HOD’s candidates
-    await Candidate.deleteMany({ cycle: CYCLE, hod: hodId });
+    // DELETE old
+    await Candidate.destroy({
+      where: { cycle: CYCLE, hodId }
+    });
 
     const formatted = [];
 
     for (let r of validRows) {
-      let user = await User.findOne({ email: r.email });
+      let user = await User.findOne({
+        where: { email: r.email }
+      });
 
       if (!user) {
         user = await User.create({
           name: r.fullName,
           email: r.email,
-          password: "123", // or random
+          password: "123",
           role: "CANDIDATE",
           active: true
         });
@@ -69,22 +76,19 @@ exports.uploadCandidates = async (req, res) => {
         specialization: r.specialization,
         reviewerObservation: r.reviewerObservation || "",
         ilscComments: r.ilscComments || "",
-        hod: hodId,
-
-        // 🔥 MOST IMPORTANT LINE
-        user: user._id
+        hodId: hodId,
+        userId: user.id
       });
     }
 
-    await Candidate.insertMany(formatted);
-    const hod = await User.findById(hodId);
+    await Candidate.bulkCreate(formatted);
 
-      notifyDofaUpload({
-        department: hod.department,
-        hodName: hod.name,
-      }).catch(err =>
-        console.error("Email failed:", err)
-      );
+    const hod = await User.findByPk(hodId);
+
+    notifyDofaUpload({
+      department: hod.department,
+      hodName: hod.name,
+    }).catch(console.error);
 
     await createNotification({
       cycle: CYCLE,
@@ -95,27 +99,39 @@ exports.uploadCandidates = async (req, res) => {
     });
 
     res.json({ success: true, count: formatted.length });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "CSV upload failed" });
-  }
+  console.error("UPLOAD ERROR NAME:", err.name);
+  console.error("UPLOAD ERROR MSG:", err.message);
+  console.error("UPLOAD ERROR STACK:", err.stack);
+  res.status(500).json({ message: err.message }); // ← send actual error to frontend too
+}
 };
 
 /* =====================================================
    GET CANDIDATES
 ===================================================== */
-// In candidateController.js — getCandidatesByCycle
 exports.getCandidatesByCycle = async (req, res) => {
-  const filter = { cycle: CYCLE };
-  if (req.user.role === "HOD") filter.hod = req.user._id;
+  const where = { cycle: CYCLE };
 
-  const candidates = await Candidate.find(filter)
-    .populate("hod", "department")  // ← populate HOD's department
-    .sort({ srNo: 1 });
+  if (req.user.role === "HOD") {
+    where.hodId = req.user.id;
+  }
 
-  // Map to include department
+  const candidates = await Candidate.findAll({
+    where,
+    include: [
+      {
+        model: User,
+        as: "hod",
+        attributes: ["department"]
+      }
+    ],
+    order: [["srNo", "ASC"]]
+  });
+
   const result = candidates.map(c => ({
-    ...c.toObject(),
+    ...c.toJSON(),
     department: c.hod?.department || "Unknown"
   }));
 
@@ -123,48 +139,69 @@ exports.getCandidatesByCycle = async (req, res) => {
 };
 
 /* =====================================================
-   DELETE SINGLE CANDIDATE
+   DELETE SINGLE
 ===================================================== */
 exports.deleteCandidate = async (req, res) => {
-  await Candidate.deleteOne({ _id: req.params.id });
+  await Candidate.destroy({
+    where: { id: req.params.id }
+  });
   res.json({ success: true });
 };
 
 /* =====================================================
-   CLEAR ALL CANDIDATES + STATS
+   CLEAR
 ===================================================== */
 exports.clearCandidateStats = async (req, res) => {
-  await CandidateStats.deleteOne({ cycle: CYCLE,hod:req.user._id });
-  await Candidate.deleteMany({ cycle: CYCLE,hod:req.user._id });
+  await CandidateStats.destroy({
+    where: { cycle: CYCLE, hodId: req.user.id }
+  });
+
+  await Candidate.destroy({
+    where: { cycle: CYCLE, hodId: req.user.id }
+  });
+
   res.json({ success: true });
 };
 
 /* =====================================================
-   SAVE STATS (STEP 1)
+   SAVE STATS
 ===================================================== */
 exports.saveCandidateStats = async (req, res) => {
   const { totalApplications, dlscShortlisted, ilscShortlisted } = req.body;
 
-  const stats = await CandidateStats.findOneAndUpdate(
-    { cycle: CYCLE,hod:req.user._id },
-    { cycle: CYCLE,hod:req.user._id, totalApplications, dlscShortlisted, ilscShortlisted },
-    { upsert: true, new: true }
-  );
+  await CandidateStats.upsert({
+    cycle: CYCLE,
+    hodId: req.user.id,
+    totalApplications,
+    dlscShortlisted,
+    ilscShortlisted
+  });
+
+  const stats = await CandidateStats.findOne({
+    where: { cycle: CYCLE, hodId: req.user.id }
+  });
 
   res.json(stats);
 };
 
 exports.getCandidateStats = async (req, res) => {
-  const stats = await CandidateStats.findOne({ cycle: CYCLE,hod:req.user._id });
+  const stats = await CandidateStats.findOne({
+    where: { cycle: CYCLE, hodId: req.user.id }
+  });
   res.json(stats);
 };
 
 /* =====================================================
-   STATUS API (VERY IMPORTANT)
+   STATUS
 ===================================================== */
 exports.getCandidateStatus = async (req, res) => {
-  const stats = await CandidateStats.findOne({ cycle: CYCLE,hod:req.user._id });
-  const uploadedCount = await Candidate.countDocuments({ cycle: CYCLE,hod:req.user._id,});
+  const stats = await CandidateStats.findOne({
+    where: { cycle: CYCLE, hodId: req.user.id }
+  });
+
+  const uploadedCount = await Candidate.count({
+    where: { cycle: CYCLE, hodId: req.user.id }
+  });
 
   res.json({
     statsEntered: !!stats,
@@ -174,23 +211,20 @@ exports.getCandidateStatus = async (req, res) => {
 };
 
 /* =====================================================
-   DOWNLOAD CSV TEMPLATE
+   DOWNLOAD TEMPLATE
 ===================================================== */
 exports.downloadTemplate = async (req, res) => {
-  const stats = await CandidateStats.findOne({ cycle: CYCLE });
-  if (!stats) {
+  const stats = await CandidateStats.findOne({
+    where: { cycle: CYCLE }
+  });
+
+  if (!stats)
     return res.status(400).json({ message: "Stats not found" });
-  }
 
   const fields = [
-    "srNo",
-    "fullName",
-    "email",
-    "phone",
-    "qualification",
-    "specialization",
-    "reviewerObservation",
-    "ilscComments",
+    "srNo", "fullName", "email", "phone",
+    "qualification", "specialization",
+    "reviewerObservation", "ilscComments",
   ];
 
   const rows = Array.from({ length: stats.ilscShortlisted }).map((_, i) => ({
@@ -212,40 +246,34 @@ exports.downloadTemplate = async (req, res) => {
   res.send(csv);
 };
 
+/* =====================================================
+   OTHER APIs (no DB change needed)
+===================================================== */
 exports.uploadResumes = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        message: "ZIP file required",
-      });
-    }
+  if (!req.file)
+    return res.status(400).json({ message: "ZIP file required" });
 
-    res.json({
-      message: "Resume ZIP uploaded successfully",
-    });
-
-  } catch (err) {
-    console.error("Upload ZIP Error:", err);
-    res.status(500).json({
-      message: "Upload failed",
-    });
-  }
+  res.json({ message: "Resume ZIP uploaded successfully" });
 };
 
 exports.getCandidatesByDepartment = async (req, res) => {
-   if (req.user.role !== "DOFA") {
+  if (req.user.role !== "DOFA")
     return res.status(403).json({ message: "Access denied" });
-  }
+
   const { department } = req.params;
 
-  const hod = await User.findOne({ role: "HOD", department });
+  const hod = await User.findOne({
+    where: { role: "HOD", department }
+  });
+
   if (!hod)
     return res.status(404).json({ message: "HOD not found" });
 
-  const candidates = await Candidate.find({
-    hod: hod._id,
-    cycle: CYCLE,
-  }).sort({ srNo: 1 });
+  const candidates = await Candidate.findAll({
+    where: { hodId: hod.id, cycle: CYCLE },
+    order: [["srNo", "ASC"]]
+  });
+
   res.json(candidates);
 };
 
@@ -260,9 +288,7 @@ exports.getUploadedResumes = async (req, res) => {
     "resumes.zip"
   );
 
-  if (!fs.existsSync(filePath)) {
-    return res.json([]);
-  }
+  if (!fs.existsSync(filePath)) return res.json([]);
 
   res.json([
     {

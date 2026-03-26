@@ -1,12 +1,21 @@
-const Comment = require("../models/Comment");
+const { Comment, RecruitmentCycle } = require("../models");
 const CYCLE = require("../config/activeCycle");
-const RecruitmentCycle = require("../models/RecruitmentCycle");
 
+/* =====================================================
+   GET COMMENTS
+===================================================== */
 exports.getComments = async (req, res) => {
-  const comments = await Comment.find({ cycle: CYCLE }).sort({ createdAt: 1 });
+  const comments = await Comment.findAll({
+    where: { cycle: CYCLE },
+    order: [["createdAt", "ASC"]],
+  });
+
   res.json(comments);
 };
 
+/* =====================================================
+   ADD COMMENT
+===================================================== */
 exports.addComment = async (req, res) => {
   const { message } = req.body;
 
@@ -22,11 +31,11 @@ exports.addComment = async (req, res) => {
     message,
   });
 
-  // 🔓 If DOFA comments → unfreeze
+  // 🔓 If DOFA comments → unfreeze cycle
   if (role === "DOFA") {
-    await RecruitmentCycle.updateOne(
-      { cycle: CYCLE },
-      { isFrozen: false, status: "QUERY" }
+    await RecruitmentCycle.update(
+      { isFrozen: false, status: "QUERY" },
+      { where: { cycle: CYCLE } }
     );
   }
 

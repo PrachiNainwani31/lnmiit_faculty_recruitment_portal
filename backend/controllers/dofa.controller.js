@@ -1,10 +1,6 @@
-const Candidate = require("../models/Candidate");
-const User = require("../models/User");
-const CYCLE = require("../config/activeCycle");
-const RecruitmentCycle = require("../models/RecruitmentCycle");
 const path = require("path");
 const fs = require("fs");
-
+const CYCLE = require("../config/activeCycle");
 
 exports.downloadDepartmentResumes = async (req, res) => {
   const department = req.params.department.toUpperCase();

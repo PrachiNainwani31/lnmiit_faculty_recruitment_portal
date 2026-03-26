@@ -1,153 +1,169 @@
-const CandidateApplication = require("../models/CandidateApplication");
+const { CandidateApplication, CandidateReferee } = require("../models");
 const { sendEmail } = require("../utils/emailSender");
 
-/* ─────────────────────────────────────────
-   GET REFEREE INFO (public — via email link)
-───────────────────────────────────────── */
+/* =====================================================
+   GET REFEREE INFO
+   Public route — referee opens their portal link
+   /referee/:refereeId  (no auth required)
+===================================================== */
 exports.getRefereeInfo = async (req, res) => {
   try {
     const { refereeId } = req.params;
-    if (!refereeId || refereeId === "undefined") {
-      return res.status(400).json({ message: "Invalid referee link" });
-    }
 
-    const app = await CandidateApplication.findOne({ "referees._id": refereeId });
-    if (!app) return res.status(404).json({ message: "Invalid or expired link" });
+    // ✅ Direct DB lookup — no more scanning all applications
+    const referee = await CandidateReferee.findByPk(refereeId);
 
-    const referee = app.referees.id(refereeId);
+    if (!referee)
+      return res.status(404).json({ message: "Invalid or expired link" });
+
+    const app = await CandidateApplication.findByPk(referee.applicationId);
+
+    if (!app)
+      return res.status(404).json({ message: "Application not found" });
+
     res.json({
-      refereeId,
-      candidateName:    app.name,
-      refereeName:      referee.name,
-      refereeEmail:     referee.email,
-      status:           referee.status,
+      refereeId: referee.id,
+      candidateName: app.name,
+      refereeName: referee.name,
+      refereeEmail: referee.email,
+      status: referee.status,
       alreadySubmitted: referee.status === "SUBMITTED",
     });
+
   } catch (err) {
-    console.error("getRefereeInfo error:", err);
+    console.error("getRefereeInfo error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-/* ─────────────────────────────────────────
+/* =====================================================
    UPLOAD REFERENCE LETTER
-───────────────────────────────────────── */
+   Public route — referee submits their letter
+===================================================== */
 exports.uploadReferenceLetter = async (req, res) => {
   try {
     const { refereeId } = req.params;
     const { signedName } = req.body;
 
-    if (!req.file)           return res.status(400).json({ message: "PDF file is required" });
-    if (!signedName?.trim()) return res.status(400).json({ message: "Signature is required" });
+    if (!req.file)
+      return res.status(400).json({ message: "PDF file required" });
 
-    const app = await CandidateApplication.findOne({ "referees._id": refereeId });
-    if (!app) return res.status(404).json({ message: "Invalid or expired link" });
+    const referee = await CandidateReferee.findByPk(refereeId);
 
-    const referee       = app.referees.id(refereeId);
-    referee.letter      = req.file.path;
-    referee.signedName  = signedName.trim();
-    referee.status      = "SUBMITTED";
-    referee.submittedAt = new Date();
+    if (!referee)
+      return res.status(404).json({ message: "Invalid link" });
 
-    app.markModified("referees"); // CRITICAL: Mongoose won't detect subdoc changes without this
-    await app.save();
+    if (referee.status === "SUBMITTED")
+      return res.status(400).json({ message: "Reference already submitted" });
+
+    // ✅ Update the child row directly
+    await CandidateReferee.update(
+      {
+        letter:      req.file.path,
+        signedName,
+        status:      "SUBMITTED",
+        submittedAt: new Date(),
+      },
+      { where: { id: refereeId } }
+    );
 
     // Notify candidate
-    if (app.email) {
+    const app = await CandidateApplication.findByPk(referee.applicationId);
+
+    if (app?.email) {
       await sendEmail(
         app.email,
-        `Reference Letter Submitted by ${referee.name}`,
-        `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
-          <div style="background:#8b0000;color:#fff;padding:15px;text-align:center;border-radius:6px 6px 0 0">
-            <h2 style="margin:0">LNMIIT Recruitment Portal</h2>
-          </div>
-          <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
-            <p>Dear <strong>${app.name}</strong>,</p>
-            <p>Your referee <strong>${referee.name}</strong> has submitted their reference letter.</p>
-            <p>You can check the status on your candidate portal.</p>
-            <p>Best regards,<br><strong>Webmaster LNMIIT</strong><br>webmaster@lnmiit.ac.in</p>
-          </div>
-        </div>
-        `
-      ).catch(err => console.error("Candidate notify failed:", err.message));
+        "Reference Letter Submitted",
+        `<p>Dear ${app.name || "Candidate"},</p>
+         <p><strong>${referee.name}</strong> has submitted your reference letter.</p>
+         <p>Regards,<br>LNMIIT Recruitment Portal</p>`
+      ).catch(err => console.error("Referee notify email failed:", err.message));
     }
 
-    res.json({ success: true, message: "Reference letter uploaded successfully" });
+    res.json({ success: true });
+
   } catch (err) {
-    console.error("uploadReferenceLetter error:", err);
+    console.error("uploadReferenceLetter error:", err.message);
     res.status(500).json({ message: "Upload failed" });
   }
 };
 
-/* ─────────────────────────────────────────
-   GET REFEREE STATUS (for candidate portal)
-   FIX: now returns letterPath too
-───────────────────────────────────────── */
+/* =====================================================
+   GET REFEREE STATUS
+   Candidate checks status of their own referees
+===================================================== */
 exports.getRefereeStatus = async (req, res) => {
   try {
-    const app = await CandidateApplication.findOne({ candidate: req.user._id });
-    if (!app) return res.status(404).json({ message: "Application not found" });
+    const app = await CandidateApplication.findOne({
+      where: { candidateUserId: req.user.id },
+    });
 
-    const statuses = app.referees.map(r => ({
-      id:          r._id,
+    if (!app)
+      return res.status(404).json({ message: "Application not found" });
+
+    // ✅ Query child table
+    const referees = await CandidateReferee.findAll({
+      where: { applicationId: app.id },
+      order: [["id", "ASC"]],
+    });
+
+    const statuses = referees.map(r => ({
+      id:          r.id,
+      salutation:  r.salutation,
       name:        r.name,
-      email:       r.email,
       designation: r.designation,
+      department:  r.department,
       institute:   r.institute,
+      email:       r.email,
       status:      r.status || "PENDING",
       submittedAt: r.submittedAt || null,
-      letterPath:  r.letter || null,   // ← so candidate can view the letter
+      letterPath:  r.letter || null,
     }));
 
     res.json(statuses);
+
   } catch (err) {
+    console.error("getRefereeStatus error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-/* ─────────────────────────────────────────
-   SEND REMINDER TO REFEREE (from candidate)
-───────────────────────────────────────── */
+/* =====================================================
+   SEND REFEREE REMINDER
+   Candidate sends reminder to a specific referee
+===================================================== */
 exports.sendRefereeReminder = async (req, res) => {
   try {
     const { refereeId } = req.params;
 
-    const app = await CandidateApplication.findOne({ "referees._id": refereeId });
-    if (!app) return res.status(404).json({ message: "Application not found" });
+    const referee = await CandidateReferee.findByPk(refereeId);
 
-    const referee = app.referees.id(refereeId);
-    if (referee.status === "SUBMITTED") {
-      return res.json({ message: "Referee has already submitted" });
-    }
+    if (!referee)
+      return res.status(404).json({ message: "Referee not found" });
 
-    const portalLink = `${process.env.FRONTEND_URL || "http://localhost:5173"}/referee/${refereeId}`;
+    if (referee.status === "SUBMITTED")
+      return res.status(400).json({ message: "Reference already submitted" });
+
+    const portalLink = `${process.env.FRONTEND_URL}/referee/${refereeId}`;
+
+    // Get candidate name for the email
+    const app = await CandidateApplication.findByPk(referee.applicationId);
 
     await sendEmail(
       referee.email,
-      "Gentle Reminder: Reference Letter Required",
-      `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
-        <div style="background:#8b0000;color:#fff;padding:15px;text-align:center;border-radius:6px 6px 0 0">
-          <h2 style="margin:0">LNMIIT Recruitment Portal</h2>
-        </div>
-        <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
-          <p>Dear <strong>${referee.name}</strong>,</p>
-          <p>This is a gentle reminder that your reference letter for <strong>${app.name}</strong> is still pending.</p>
-          <p style="text-align:center;margin:25px 0">
-            <a href="${portalLink}" style="background:#8b0000;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
-              Submit Reference Letter
-            </a>
-          </p>
-          <p>Best regards,<br><strong>DOFA Office</strong><br>LNMIIT</p>
-        </div>
-      </div>
-      `
+      `Reminder — Reference Letter for ${app?.name || "a candidate"}`,
+      `<p>Dear ${referee.name},</p>
+       <p>This is a gentle reminder that your reference letter for
+       <strong>${app?.name || "the candidate"}</strong> is still pending.</p>
+       <p>Please submit it at your earliest convenience:
+       <a href="${portalLink}">Submit Reference Letter</a></p>
+       <p>Regards,<br>LNMIIT Recruitment Portal</p>`
     );
 
     res.json({ success: true });
+
   } catch (err) {
-    console.error("sendRefereeReminder error:", err);
+    console.error("sendRefereeReminder error:", err.message);
     res.status(500).json({ message: "Failed to send reminder" });
   }
 };

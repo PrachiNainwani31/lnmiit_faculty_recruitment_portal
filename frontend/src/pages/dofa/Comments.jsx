@@ -29,7 +29,7 @@ export default function DofaComments() {
       <div className="bg-white p-6 rounded shadow space-y-4 max-h-96 overflow-y-auto">
         {comments.map((c) => (
           <div
-            key={c._id}
+            key={c.id}
             className={`p-3 rounded ${
               c.fromRole === "DOFA"
                 ? "bg-red-50 text-red-800"

@@ -30,7 +30,7 @@ export function EstatePage() {
       )}
 
       {records.map(r => (
-        <EstateCard key={r._id} record={r} onRefresh={load} />
+        <EstateCard key={r.id} record={r} onRefresh={load} />
       ))}
     </div>
   );
@@ -93,7 +93,7 @@ function EstateCard({ record, onRefresh }) {
           setSaving(true);
           try {
             await API.post("/onboarding/estate/confirm", {
-              candidateId:   c._id,
+              candidateId:   c.id,
               handoverDate:  date,
               handoverNotes: notes,
             });
@@ -138,7 +138,7 @@ export function LucsPage() {
         </div>
       )}
 
-      {records.map(r => <LucsCard key={r._id} record={r} onRefresh={load} />)}
+      {records.map(r => <LucsCard key={r.id} record={r} onRefresh={load} />)}
     </div>
   );
 }
@@ -160,7 +160,7 @@ function LucsCard({ record, onRefresh }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await API.post("/onboarding/lucs/update", { candidateId: c._id, ...form });
+      await API.post("/onboarding/lucs/update", { candidateId: c.id, ...form });
       alert(allDone ? "All items confirmed. Establishment notified." : "Progress saved.");
       onRefresh();
     } catch { alert("Failed"); }

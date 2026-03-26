@@ -36,7 +36,7 @@ export default function TravelQuotes() {
         }[q.status] || "bg-gray-100 text-gray-600 border-gray-200";
 
         return (
-          <div key={expert._id} className="bg-white rounded-xl shadow p-5 border border-gray-100">
+          <div key={expert.id} className="bg-white rounded-xl shadow p-5 border border-gray-100">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="font-semibold text-gray-800">{expert.fullName}</p>

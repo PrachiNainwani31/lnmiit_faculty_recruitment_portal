@@ -4,7 +4,7 @@ export const saveCandidateStats = (data) =>
   API.post("/hod/candidates/stats", data);
 
 export const getCandidateStats = (cycle) =>
-  API.get(`/hod/candidates/stats/${cycle}`);
+  API.get(`/hod/candidates/stats`);
 
 export const downloadCandidateTemplate = (cycle) =>
   API.get(`/hod/candidates/template/${cycle}`, {
@@ -26,4 +26,4 @@ export const deleteCandidateById = (id) =>
   API.delete(`/hod/candidates/${id}`);
 
 export const getCandidateStatus = (cycle) =>
-  API.get(`/hod/candidates/status/${cycle}`);
+  API.get(`/hod/candidates/status`);

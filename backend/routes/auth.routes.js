@@ -8,7 +8,7 @@ const router = express.Router();
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({where:{ email }});
   if (!user) {
     return res.status(400).json({ msg: "Invalid credentials" });
   }
@@ -19,7 +19,7 @@ router.post("/login", async (req, res) => {
   }
 
   const token = jwt.sign(
-    { id: user._id, role: user.role },
+    { id: user.id, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: "8h" }
   );
@@ -27,7 +27,7 @@ router.post("/login", async (req, res) => {
   res.json({
     token,
     user: {
-      id: user._id,
+      id: user.id,
       name: user.name,
       role: user.role,
       department: user.department,
@@ -56,7 +56,7 @@ router.post("/register", async (req, res) => {
       active: true,
     });
  
-    res.status(201).json({ msg: "Account created successfully", userId: user._id });
+    res.status(201).json({ msg: "Account created successfully", userId: user.id });
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({ msg: "Registration failed" });

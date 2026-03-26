@@ -1,63 +1,35 @@
 // models/Expert.js
-const mongoose = require("mongoose");
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-const expertSchema = new mongoose.Schema(
+const Expert = sequelize.define(
+  "Expert",
   {
-    cycle: {
-      type: String,
-      required: true,
-      index: true,
-    },
-
-    fullName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
+    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    cycle:          { type: DataTypes.STRING(20),  allowNull: false },
+    fullName:       { type: DataTypes.STRING(200), allowNull: false },
     email: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
+      type:      DataTypes.STRING(255),
+      allowNull: false,
+      set(val) { this.setDataValue("email", val.toLowerCase().trim()); },
     },
-
-    designation: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    department: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    institute: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    specialization: {
-      type: String,
-      trim: true,
-    },
-  
-    phone: {
-      type: String
-    },
-
-    uploadedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+    designation:    { type: DataTypes.STRING(200), allowNull: false },
+    department:     { type: DataTypes.STRING(150), allowNull: false },
+    institute:      { type: DataTypes.STRING(300), allowNull: false },
+    specialization: { type: DataTypes.STRING(200) },
+    phone:          { type: DataTypes.STRING(30) },
+    uploadedById:   { type: DataTypes.INTEGER.UNSIGNED },  // FK → User
   },
-  { timestamps: true }
+  {
+    tableName: "experts",
+    indexes: [
+      {
+        unique: true,
+        fields: ["email", "cycle", "uploadedById"],
+        name:   "uq_expert_email_cycle_uploader",
+      },
+    ],
+  }
 );
 
-/* Prevent duplicate expert per cycle */
-expertSchema.index({ email: 1, cycle: 1,uplodedBy:1 }, { unique: true });
-
-module.exports = mongoose.model("Expert", expertSchema);
+module.exports = Expert;

@@ -3,7 +3,9 @@ const CYCLE = require("../config/activeCycle");
 
 module.exports = async function freezeGuard(req, res, next) {
   try {
-    const rc = await RecruitmentCycle.findOne({ cycle: CYCLE,hod:req.user._id });
+    const rc = await RecruitmentCycle.findOne({
+      where: { cycle: CYCLE, hodId: req.user.id }  // ← fixed
+    });
 
     if (rc?.isFrozen) {
       return res.status(403).json({

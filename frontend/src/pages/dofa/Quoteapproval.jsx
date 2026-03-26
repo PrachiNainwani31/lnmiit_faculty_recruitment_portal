@@ -49,7 +49,7 @@ export default function QuoteApproval() {
           : "bg-amber-100 text-amber-700 border-amber-200";
 
         return (
-          <div key={expert._id} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+          <div key={expert.id} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-gray-800">{expert.fullName}</p>
@@ -71,19 +71,19 @@ export default function QuoteApproval() {
                   <input
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-rose-300"
                     placeholder="Optional reason..."
-                    value={remarks[expert._id] || ""}
-                    onChange={e => setRemarks(r => ({...r, [expert._id]: e.target.value}))}
+                    value={remarks[expert.id] || ""}
+                    onChange={e => setRemarks(r => ({...r, [expert.id]: e.target.value}))}
                   />
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => handleDecision(expert._id, "APPROVED")}
+                    onClick={() => handleDecision(expert.id, "APPROVED")}
                     disabled={!!saving}
                     className="bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-60 transition">
                     ✔ Approve Quote
                   </button>
                   <button
-                    onClick={() => handleDecision(expert._id, "REJECTED")}
+                    onClick={() => handleDecision(expert.id, "REJECTED")}
                     disabled={!!saving}
                     className="bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-red-800 disabled:opacity-60 transition">
                     ✗ Reject Quote

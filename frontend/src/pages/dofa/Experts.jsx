@@ -74,7 +74,7 @@ function EmailModal({ expert, allExperts, onClose }) {
       setSending(true);
       for (const e of targets) {
         await API.post("/email/send-expert-invite", {
-          expertId: e._id,
+          expertId: e.id,
           subject:  applyVariables(template.subject, e),
           body:     applyVariables(template.body,    e),
         });
@@ -250,7 +250,7 @@ export default function DofaExperts() {
       const grouped = {};
       res.data.forEach(e => {
         if (!e.uploadedBy) return;
-        const hodId = e.uploadedBy._id;
+        const hodId = e.uploadedBy.id;
         if (!grouped[hodId]) {
           grouped[hodId] = {
             hodName:    e.uploadedBy.name,
@@ -310,7 +310,7 @@ export default function DofaExperts() {
             </thead>
             <tbody>
               {groupedExperts[hodId].experts.map((e, i) => (
-                <tr key={e._id}>
+                <tr key={e.id}>
                   <td className="border p-2">{i + 1}</td>
                   <td className="border p-2">{e.fullName}</td>
                   <td className="border p-2">{e.email}</td>

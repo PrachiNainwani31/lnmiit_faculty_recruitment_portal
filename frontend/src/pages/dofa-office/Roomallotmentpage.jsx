@@ -38,7 +38,7 @@ export default function RoomAllotmentPage() {
             <p className="text-white font-medium text-sm">{department}</p>
             <span className="text-blue-200 text-xs">{records.length} candidate(s)</span>
           </div>
-          {records.map(r => <RoomCard key={r._id} record={r} onRefresh={load} />)}
+          {records.map(r => <RoomCard key={r.id} record={r} onRefresh={load} />)}
         </div>
       ))}
     </div>
@@ -62,7 +62,7 @@ function RoomCard({ record, onRefresh }) {
     try {
       setSaving(true);
       await API.post("/establishment/allot-room", {
-        candidateId:  c._id,
+        candidateId:  c.id,
         ...form,
       });
       alert("Room allotted. Candidate, Estate, and LUCS have been notified.");

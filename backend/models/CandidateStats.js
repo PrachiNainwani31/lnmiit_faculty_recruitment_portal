@@ -1,15 +1,28 @@
-const mongoose = require("mongoose");
+// models/CandidateStats.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-const candidateStatsSchema = new mongoose.Schema(
+const CandidateStats = sequelize.define(
+  "CandidateStats",
   {
-    cycle: { type: String, required: true },
-
-    totalApplications: { type: Number, required: true },
-    dlscShortlisted: { type: Number, required: true },
-    ilscShortlisted: { type: Number, required: true },
-    hod: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    cycle:              { type: DataTypes.STRING(20),          allowNull: false },
+    totalApplications:  { type: DataTypes.INTEGER.UNSIGNED,   allowNull: false },
+    dlscShortlisted:    { type: DataTypes.INTEGER.UNSIGNED,   allowNull: false },
+    ilscShortlisted:    { type: DataTypes.INTEGER.UNSIGNED,   allowNull: false },
+    hodId:              { type: DataTypes.INTEGER.UNSIGNED },   // FK → User
   },
-  { timestamps: true }
+  {
+    tableName: "candidate_stats",
+    indexes: [{ unique: true, fields: ["cycle", "hodId"], name: "uq_stats_cycle_hod" }],
+  }
 );
-candidateStatsSchema.index({ cycle: 1, hod: 1 }, { unique: true });
-module.exports = mongoose.model("CandidateStats", candidateStatsSchema);
+
+module.exports = CandidateStats;
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// models/Comment.js
+// ─────────────────────────────────────────────────────────────────────────────
+// const Comment = sequelize.define( ...
+// Exported separately below — kept in same file for brevity but you can split.

@@ -1,63 +1,62 @@
-const mongoose = require("mongoose");
-const bcrypt   = require("bcryptjs");
+// models/User.js
+const { DataTypes } = require("sequelize");
+const bcrypt = require("bcryptjs");
+const sequelize = require("../config/database");
 
-const userSchema = new mongoose.Schema(
+const User = sequelize.define(
+  "User",
   {
+    id: {
+      type:          DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey:    true,
+    },
     name: {
-      type:     String,
-      required: true,
-      trim:     true,
+      type:      DataTypes.STRING(150),
+      allowNull: false,
     },
     email: {
-      type:      String,
-      required:  true,
-      lowercase: true,
-      trim:      true,
+      type:      DataTypes.STRING(255),
+      allowNull: false,
       unique:    true,
+      set(val) { this.setDataValue("email", val.toLowerCase().trim()); },
     },
     password: {
-      type:     String,
-      required: true,
+      type:      DataTypes.STRING(255),
+      allowNull: false,
     },
     role: {
-      type: String,
-      enum: [
-        "ADMIN",
-        "HOD",
-        "DOFA",
-        "ADOFA",
-        "DOFA_OFFICE",    // ← New: DOFA Office staff
-        "TRAVEL",  // ← Ramswaroop Sharma (travel)
-        "CANDIDATE",
-        "REFEREE",
-        "DIRECTOR",
-        "ESTABLISHMENT", // ← New: Establishment staff
-        "LUCS", 
-        "ESTATE",         // ← New: LUCS staff
-      ],
-      required: true,
+      type:      DataTypes.ENUM(
+        "ADMIN", "HOD", "DOFA", "ADOFA", "DOFA_OFFICE",
+        "TRAVEL", "CANDIDATE", "REFEREE", "DIRECTOR",
+        "ESTABLISHMENT", "LUCS", "ESTATE"
+      ),
+      allowNull: false,
     },
     department: {
-      type: String, // only for HOD
+      type:      DataTypes.STRING(150),
+      allowNull: true,   // only for HOD
     },
     active: {
-      type:    Boolean,
-      default: true,
+      type:         DataTypes.BOOLEAN,
+      defaultValue: true,
     },
   },
-  { timestamps: true }
+  {
+    tableName: "users",
+    hooks: {
+      beforeSave: async (user) => {
+        if (user.changed("password")) {
+          user.password = await bcrypt.hash(user.password, 10);
+        }
+      },
+    },
+  }
 );
 
-userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
-
-  this.password = await bcrypt.hash(this.password, 10);
-});
-
-userSchema.methods.comparePassword = async function (candidatePassword) {
+// Instance method — compare password
+User.prototype.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-userSchema.index({ email: 1, role: 1 }, { unique: true });
-
-module.exports = mongoose.model("User", userSchema);
+module.exports = User;

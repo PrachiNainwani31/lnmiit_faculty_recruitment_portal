@@ -116,7 +116,7 @@ export default function DirectorPage() {
           <p className="text-sm text-gray-400 text-center py-4">No orders uploaded yet.</p>
         )}
         {orders.map((o, i) => (
-          <div key={o._id}
+          <div key={o.id}
             className="flex items-center justify-between py-3 border-b last:border-0 border-gray-100">
             <div>
               <p className="text-sm font-medium text-gray-800">{o.orderNumber}</p>

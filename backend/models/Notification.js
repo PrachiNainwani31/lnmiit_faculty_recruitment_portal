@@ -1,32 +1,22 @@
-const mongoose = require("mongoose");
+// models/Notification.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-const notificationSchema = new mongoose.Schema({
-  cycle: {
-    type: String,
-    required: true, // "2026-27"
+const Notification = sequelize.define(
+  "Notification",
+  {
+    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    cycle:   { type: DataTypes.STRING(20),   allowNull: false },
+    role:    { type: DataTypes.ENUM("HOD", "DOFA", "ADMIN"), allowNull: false },
+    title:   { type: DataTypes.STRING(300),  allowNull: false },
+    message: { type: DataTypes.TEXT,         allowNull: false },
+    type: {
+      type: DataTypes.ENUM("STATUS", "COMMENT", "UPLOAD", "SYSTEM"),
+      defaultValue: "SYSTEM",
+    },
+    read: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  role: {
-    type: String,
-    enum: ["HOD", "DOFA", "ADMIN"],
-    required: true,
-  },
-  title: {
-    type: String,
-    required: true,
-  },
-  message: {
-    type: String,
-    required: true,
-  },
-  type: {
-    type: String,
-    enum: ["STATUS", "COMMENT", "UPLOAD", "SYSTEM"],
-    default: "SYSTEM",
-  },
-  read: {
-    type: Boolean,
-    default: false,
-  },
-}, { timestamps: true });
+  { tableName: "notifications" }
+);
 
-module.exports = mongoose.model("Notification", notificationSchema);
+module.exports = Notification;

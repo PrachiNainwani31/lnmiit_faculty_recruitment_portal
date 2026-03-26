@@ -1,34 +1,32 @@
-const mongoose = require("mongoose");
+// models/RecruitmentCycle.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-const recruitmentCycleSchema = new mongoose.Schema({
-  cycle: {
-    type: String,
-    required: true,
-  },
-
-  status: {
-    type: String,
-    enum: ["DRAFT", "SUBMITTED", "QUERY", "APPROVED"],
-    default: "DRAFT",
-  },
-
-  isFrozen: {
-    type: Boolean,
-    default: false,
-  },
-  hod:{
-    type:mongoose.Schema.Types.ObjectId,
-    ref:"User"
-  },
-
-  dofaComment: String,
-  resumesZip: {
-      type: String, // e.g. /uploads/resumes/2025-26-CSE.zip
+const RecruitmentCycle = sequelize.define(
+  "RecruitmentCycle",
+  {
+    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    cycle:       { type: DataTypes.STRING(20), allowNull: false },
+    status: {
+      type: DataTypes.ENUM("DRAFT", "SUBMITTED", "QUERY", "APPROVED"),
+      defaultValue: "DRAFT",
     },
-    resumeCount: Number,
-  
-});
+    isFrozen:    { type: DataTypes.BOOLEAN, defaultValue: false },
+    hodId:       { type: DataTypes.INTEGER.UNSIGNED }, // FK → User
+    dofaComment: { type: DataTypes.TEXT },
+    resumesZip:  { type: DataTypes.STRING(500) },
+    resumeCount: { type: DataTypes.INTEGER.UNSIGNED },
+  },
+  {
+    tableName: "recruitment_cycles",
+    indexes: [
+      {
+        unique: true,
+        fields: ["cycle", "hodId"],
+        name:   "uq_recruitment_cycle_hod",
+      },
+    ],
+  }
+);
 
-recruitmentCycleSchema.index({ cycle: 1, hod: 1 }, { unique: true });
-
-module.exports = mongoose.model("RecruitmentCycle", recruitmentCycleSchema);
+module.exports = RecruitmentCycle;

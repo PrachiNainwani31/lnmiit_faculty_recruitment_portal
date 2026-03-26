@@ -96,7 +96,7 @@ export default function DofaOfficeCandidates() {
             )}
             {/* Candidate rows */}
             {candidates.map((c, i) => (
-              <CandidateRow key={c._id} candidate={c} index={i} />
+              <CandidateRow key={c.id} candidate={c} index={i} />
             ))}
           </div>
         );

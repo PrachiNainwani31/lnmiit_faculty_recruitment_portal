@@ -128,7 +128,7 @@ function ExpertCard({ item, onSaved }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await API.post(`/expert-travel/confirm/${expert._id}`, form);
+      await API.post(`/expert-travel/confirm/${expert.id}`, form);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       await onSaved();
@@ -429,7 +429,7 @@ export default function ExpertConfirmation() {
             </span>
           </div>
           {items.map(item => (
-            <ExpertCard key={item.expert._id} item={item} onSaved={load} />
+            <ExpertCard key={item.expert.id} item={item} onSaved={load} />
           ))}
         </div>
       ))}

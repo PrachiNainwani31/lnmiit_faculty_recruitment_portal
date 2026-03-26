@@ -1,76 +1,73 @@
-const mongoose = require("mongoose");
+// models/Candidate.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-const candidateSchema = new mongoose.Schema(
+const Candidate = sequelize.define(
+  "Candidate",
   {
+    id: {
+      type:          DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey:    true,
+    },
     cycle: {
-      type: String,
-      required: true,
-      index: true, // fast queries by cycle
+      type:      DataTypes.STRING(20),
+      allowNull: false,
     },
-
     srNo: {
-      type: Number,
-      required: true,
+      type:      DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
     },
-
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
+    // userId → FK to User (ref: "User" — the candidate user)
+    userId: {
+      type:      DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
     },
-
     fullName: {
-      type: String,
-      required: true,
-      trim: true,
+      type:      DataTypes.STRING(200),
+      allowNull: false,
     },
-
     email: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
+      type:      DataTypes.STRING(255),
+      allowNull: false,
+      set(val) { this.setDataValue("email", val.toLowerCase().trim()); },
     },
-
     phone: {
-      type: String,
-      required: true,
-      trim: true,
+      type:      DataTypes.STRING(30),
+      allowNull: false,
     },
-
     qualification: {
-      type: String,
-      required: true,
-      trim: true,
+      type:      DataTypes.STRING(200),
+      allowNull: false,
     },
-
     specialization: {
-      type: String,
-      required: true,
-      trim: true,
+      type:      DataTypes.STRING(200),
+      allowNull: false,
     },
-
     reviewerObservation: {
-      type: String,
-      trim: true,
+      type:      DataTypes.TEXT,
+      allowNull: true,
     },
-
     ilscComments: {
-      type: String,
-      trim: true,
+      type:      DataTypes.TEXT,
+      allowNull: true,
     },
-    hod: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    // hodId → FK to User (ref: "User" — the HOD)
+    hodId: {
+      type:      DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
     },
   },
   {
-    timestamps: true, // createdAt, updatedAt
+    tableName: "candidates",
+    indexes: [
+      {
+        unique: true,
+        fields: ["cycle", "srNo", "hodId", "email"],
+        name:   "uq_candidate_cycle_srno_hod_email",
+      },
+    ],
   }
 );
 
-candidateSchema.index({ cycle: 1, srNo: 1, hod: 1,email:1 }, { unique: true });
-
-module.exports = mongoose.model("Candidate", candidateSchema);
+module.exports = Candidate;

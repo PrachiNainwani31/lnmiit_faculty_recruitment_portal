@@ -1,93 +1,143 @@
-const mongoose = require("mongoose");
+// models/CandidateApplication.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-const refereeSchema = new mongoose.Schema({
-  salutation:  String,
-  name:        String,
-  designation: String,
-  department:  String,
-  institute:   String,
-  email:       String,
-  status:      { type: String, default: "PENDING" },
-  letter:      String,
-  signedName:  String,
-  submittedAt: Date,
+// ─── Main Application ─────────────────────────────────────────────────────────
+const CandidateApplication = sequelize.define(
+  "CandidateApplication",
+  {
+    id: {
+      type:          DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey:    true,
+    },
+    // FK → User  (candidate user)
+    candidateUserId: {
+      type:      DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+    },
+    name:        { type: DataTypes.STRING(200) },
+    email:       { type: DataTypes.STRING(255) },
+    phone:       { type: DataTypes.STRING(30) },
+    department:  { type: DataTypes.STRING(150) },
+    acceptance:  { type: DataTypes.BOOLEAN },
+    accommodation: { type: DataTypes.BOOLEAN },
+
+    // ── Documents (single-file paths stored as VARCHAR) ────────────────────
+    docCv:                { type: DataTypes.STRING(500) },
+    docTeachingStatement: { type: DataTypes.STRING(500) },
+    docResearchStatement: { type: DataTypes.STRING(500) },
+    docMarks10:           { type: DataTypes.STRING(500) },
+    docMarks12:           { type: DataTypes.STRING(500) },
+    docGraduation:        { type: DataTypes.STRING(500) },
+    docPostGraduation:    { type: DataTypes.STRING(500) },
+    docPhdCourseWork:     { type: DataTypes.STRING(500) },
+    docPhdProvisional:    { type: DataTypes.STRING(500) },
+    docPhdDegree:         { type: DataTypes.STRING(500) },
+    docDateOfDefense:     { type: DataTypes.STRING(50)  },
+
+    // ── Documents (multi-file — stored as JSON arrays) ─────────────────────
+    docResearchExpCerts:  { type: DataTypes.JSON, defaultValue: [] },
+    docTeachingExpCerts:  { type: DataTypes.JSON, defaultValue: [] },
+    docIndustryExpCerts:  { type: DataTypes.JSON, defaultValue: [] },
+    docBestPapers:        { type: DataTypes.JSON, defaultValue: [] },
+    docPostDocDocs:       { type: DataTypes.JSON, defaultValue: [] },
+    docSalarySlips:       { type: DataTypes.JSON, defaultValue: [] },
+    // [{ name, file }] array
+    docOtherDocs:         { type: DataTypes.JSON, defaultValue: [] },
+
+    // ── Experience type flags ───────────────────────────────────────────────
+    expResearch:   { type: DataTypes.BOOLEAN, defaultValue: false },
+    expTeaching:   { type: DataTypes.BOOLEAN, defaultValue: false },
+    expIndustrial: { type: DataTypes.BOOLEAN, defaultValue: false },
+
+    // ── Publications (array of strings → JSON) ──────────────────────────────
+    publications: { type: DataTypes.JSON, defaultValue: [] },
+
+    status:   { type: DataTypes.STRING(30), defaultValue: "DRAFT" },
+    verdicts: { type: DataTypes.JSON },    // Mixed → JSON
+  },
+  {
+    tableName: "candidate_applications",
+  }
+);
+
+
+// ─── Referee (child table) ────────────────────────────────────────────────────
+const CandidateReferee = sequelize.define(
+  "CandidateReferee",
+  {
+    id: {
+      type:          DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey:    true,
+    },
+    applicationId: {
+      type:      DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
+    salutation:   { type: DataTypes.STRING(20) },
+    name:         { type: DataTypes.STRING(200) },
+    designation:  { type: DataTypes.STRING(200) },
+    department:   { type: DataTypes.STRING(150) },
+    institute:    { type: DataTypes.STRING(300) },
+    email:        { type: DataTypes.STRING(255) },
+    status:       { type: DataTypes.STRING(30), defaultValue: "PENDING" },
+    letter:       { type: DataTypes.STRING(500) },
+    signedName:   { type: DataTypes.STRING(200) },
+    submittedAt:  { type: DataTypes.DATE },
+  },
+  {
+    tableName:  "candidate_referees",
+    timestamps: false,   // no createdAt/updatedAt needed on this child
+  }
+);
+
+
+// ─── Experience (child table) ─────────────────────────────────────────────────
+const CandidateExperience = sequelize.define(
+  "CandidateExperience",
+  {
+    id: {
+      type:          DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey:    true,
+    },
+    applicationId: {
+      type:      DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
+    type:         { type: DataTypes.STRING(50) },  // Research | Teaching | Industrial
+    organization: { type: DataTypes.STRING(300) },
+    designation:  { type: DataTypes.STRING(200) },
+    department:   { type: DataTypes.STRING(150) },
+    fromDate:     { type: DataTypes.DATE },
+    toDate:       { type: DataTypes.DATE },
+    certificate:  { type: DataTypes.STRING(500) },
+    natureOfWork: { type: DataTypes.TEXT },
+  },
+  {
+    tableName:  "candidate_experiences",
+    timestamps: false,
+  }
+);
+
+CandidateApplication.hasMany(CandidateReferee, {
+  foreignKey: "applicationId",
+  as: "referees",
+  onDelete: "CASCADE",
+});
+CandidateReferee.belongsTo(CandidateApplication, {
+  foreignKey: "applicationId",
 });
 
-const experienceSchema = new mongoose.Schema({
-  type:         String,   // "Research" | "Teaching" | "Industrial"
-  organization: String,
-  designation:  String,
-  department:   String,
-  fromDate:     Date,
-  toDate:       Date,
-  certificate:  String,
-  natureOfWork: String,
+CandidateApplication.hasMany(CandidateExperience, {
+  foreignKey: "applicationId",
+  as: "experiences",
+  onDelete: "CASCADE",
+});
+CandidateExperience.belongsTo(CandidateApplication, {
+  foreignKey: "applicationId",
 });
 
-const candidateApplicationSchema = new mongoose.Schema({
-
-  candidate: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref:  "User",
-  },
-
-  name:        String,
-  email:       String,
-  phone:       String,
-  department:  String,
-  acceptance:  Boolean,
-  accommodation: Boolean,
-
-  /* ── Documents ── */
-  documents: {
-    cv:                String,
-    teachingStatement: String,
-    researchStatement: String,
-
-    // Academic
-    marks10:           String,   // 10th marksheet (single PDF)
-    marks12:           String,   // 12th marksheet (single PDF)
-    graduation:        String,   // Graduation certificate (single PDF)
-    postGraduation:    String,   // PG certificate (single PDF)
-
-    // PhD
-    phdCourseWork:     String,   // PhD course work certificate
-    phdProvisional:    String,   // Provisional PhD degree
-    phdDegree:         String,   // PhD degree certificate
-    dateOfDefense:     String,   // Date of PhD defense (stored as string date)
-
-    // Multi-file documents (arrays of paths)
-    researchExpCerts:  [String], // Up to 5 research exp certificates
-    teachingExpCerts:  [String], // Up to 5 teaching exp certificates
-    industryExpCerts:  [String], // Up to 5 industry exp certificates
-    bestPapers:        [String], // Up to 5 best papers (PDF, 100MB each)
-    postDocDocs:       [String], // Up to 5 post-doc documents
-    salarySlips:       [String], // Current/previous month salary slips
-
-    otherDocs: [{
-      name: String,
-      file: String,
-    }],
-  },
-
-  /* ── Experience types selected ── */
-  experienceTypes: {
-    research:   { type: Boolean, default: false },
-    teaching:   { type: Boolean, default: false },
-    industrial: { type: Boolean, default: false },
-  },
-
-  publications: [String],
-  experiences:  [experienceSchema],
-  referees:     [refereeSchema],
-
-  status: {
-    type:    String,
-    default: "DRAFT",
-  },
-
-  verdicts: mongoose.Schema.Types.Mixed,
-
-}, { timestamps: true });
-
-module.exports = mongoose.model("CandidateApplication", candidateApplicationSchema);
+module.exports = { CandidateApplication, CandidateReferee, CandidateExperience };

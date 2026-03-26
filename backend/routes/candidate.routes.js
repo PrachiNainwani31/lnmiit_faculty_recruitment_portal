@@ -19,7 +19,7 @@ router.get("/onboarding", auth(["CANDIDATE"]), async (req, res) => {
     const userEmail = req.user.email;
 
     const Candidate = require("../models/Candidate");
-    const candidateDoc = await Candidate.findOne({ email: userEmail });
+    const candidateDoc = await Candidate.findOne({ where:{email: userEmail }});
 
     if (!candidateDoc) {
       return res.json({ selected: false, record: null });
@@ -27,12 +27,14 @@ router.get("/onboarding", auth(["CANDIDATE"]), async (req, res) => {
 
     // Now query using the Candidate's _id
     const selected = await SelectedCandidate.findOne({
-      candidate: candidateDoc._id
-    }).populate("candidate");
+      where:{candidate: candidateDoc.id},
+      include:[{model:Candidate,as:"candidate"}]
+    });
 
     const record = await OnboardingRecord.findOne({
-      candidate: candidateDoc._id
-    }).populate("candidate");
+      where: { candidateId: candidateDoc.id },
+      include: [{ model: Candidate, as: "candidate" }]
+    });
 
     res.json({
       selected: !!selected,

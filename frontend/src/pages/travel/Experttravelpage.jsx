@@ -127,7 +127,7 @@ function ExpertWorkflow({ item, onRefresh }) {
     if (!quote.amount || !quote.vendor) return alert("Amount and vendor are required");
     setSavingQ(true);
     try {
-      await API.post(`/expert-travel/quote/${expert._id}`, quote);
+      await API.post(`/expert-travel/quote/${expert.id}`, quote);
       alert("Quote submitted. DOFA has been notified.");
       onRefresh();
     } catch { alert("Failed"); } finally { setSavingQ(false); }
@@ -139,7 +139,7 @@ function ExpertWorkflow({ item, onRefresh }) {
     fd.append(type, file);
     type === "ticket" ? setUpTicket(true) : setUpInvoice(true);
     try {
-      await API.post(`/expert-travel/${type}/${expert._id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      await API.post(`/expert-travel/${type}/${expert.id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
       alert(`${type.charAt(0).toUpperCase() + type.slice(1)} uploaded.`);
       onRefresh();
     } catch { alert("Upload failed"); } finally {
@@ -151,7 +151,7 @@ function ExpertWorkflow({ item, onRefresh }) {
     if (!driver.driverName || !driver.driverContact) return alert("Driver name and contact required");
     setSavingD(true);
     try {
-      await API.post(`/expert-travel/driver/${expert._id}`, driver);
+      await API.post(`/expert-travel/driver/${expert.id}`, driver);
       alert("Driver info saved. DOFA has been notified.");
       onRefresh();
     } catch { alert("Failed"); } finally { setSavingD(false); }
@@ -375,7 +375,7 @@ export default function ExpertTravelPage() {
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">No offline experts assigned yet.</div>
       )}
       {items.map(item => (
-        <ExpertWorkflow key={item.expert._id} item={item} onRefresh={load} />
+        <ExpertWorkflow key={item.expert.id} item={item} onRefresh={load} />
       ))}
     </div>
   );

@@ -42,8 +42,8 @@ router.get("/candidates/template/:cycle", downloadTemplate);
 
 // Stats & status
 router.post("/candidates/stats", auth(["HOD"]), saveCandidateStats);
-router.get("/candidates/stats/:cycle", auth(["HOD"]),getCandidateStats);
-router.get("/candidates/status/:cycle", auth(["HOD"]),getCandidateStatus);
+router.get("/candidates/stats/", auth(["HOD"]),getCandidateStats);
+router.get("/candidates/status/", auth(["HOD"]),getCandidateStatus);
 
 // Upload CSV
 router.post(
@@ -67,18 +67,13 @@ router.post(
 router.delete("/candidates/clear/:cycle",auth(["HOD"]), freezeGuard, clearCandidateStats);
 router.delete("/candidates/:id", auth(["HOD"]),freezeGuard, deleteCandidate);
 
-// ⚠️ MUST BE LAST
-router.get("/candidates/:cycle",auth(["HOD","DOFA","DOFA_OFFICE"]), getCandidatesByCycle);
-
-/* =========================
-   DOFA – VIEW BY DEPARTMENT
-========================= */
 
 router.get(
   "/candidates/department/:department",
   auth(["DOFA"]),
   getCandidatesByDepartment
 );
+router.get("/candidates/:cycle",auth(["HOD","DOFA","DOFA_OFFICE"]), getCandidatesByCycle);
 
 /* =========================
    EXPERTS
@@ -107,7 +102,7 @@ router.delete(
     const filePath = path.join(
       __dirname,
       "../uploads/resumes",
-      req.user._id.toString(),
+      req.user.id.toString(),
       req.params.filename
     );
 

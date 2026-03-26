@@ -119,7 +119,7 @@ export default function Experts() {
           </thead>
           <tbody>
             {experts.map((exp) => (
-              <tr key={exp._id}>
+              <tr key={exp.id}>
                 <td className="border p-2">{exp.fullName}</td>
                 <td className="border p-2">{exp.email}</td>
                 <td className="border p-2">{exp.designation}</td>

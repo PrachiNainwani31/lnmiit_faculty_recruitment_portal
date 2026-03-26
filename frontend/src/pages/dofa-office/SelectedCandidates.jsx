@@ -42,7 +42,7 @@ export default function SelectCandidates() {
       // Pre-fill existing selections
       const selMap = {};
       selRes.data.forEach(s => {
-        selMap[s.candidate._id || s.candidate] = s.status;
+        selMap[s.candidate.id || s.candidate] = s.status;
       });
       setSelections(selMap);
       setPublished(selRes.data.length > 0);
@@ -63,8 +63,8 @@ export default function SelectCandidates() {
     Object.entries(grouped).forEach(([dept, { hodId, candidates }]) => {
       candidates.forEach(c => {
         payload.push({
-          candidateId: c._id,
-          status:      selections[c._id] === "SELECTED" ? "SELECTED" : "NOT_SELECTED",
+          candidateId: c.id,
+          status:      selections[c.id] === "SELECTED" ? "SELECTED" : "NOT_SELECTED",
           hodId,
           department:  dept,
         });
@@ -197,19 +197,19 @@ export default function SelectCandidates() {
           <div className="bg-indigo-600 px-5 py-3 flex items-center justify-between">
             <p className="text-white font-medium text-sm">{dept}</p>
             <span className="text-indigo-200 text-xs">
-              {candidates.filter(c => selections[c._id] === "SELECTED").length} selected
+              {candidates.filter(c => selections[c.id] === "SELECTED").length} selected
             </span>
           </div>
 
           {candidates.map(c => {
-            const isSelected = selections[c._id] === "SELECTED";
+            const isSelected = selections[c.id] === "SELECTED";
             return (
-              <div key={c._id}
+              <div key={c.id}
                 className="flex items-center gap-4 px-5 py-3 border-b last:border-0 hover:bg-gray-50 transition">
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  onChange={() => dofaApproved && toggle(c._id, hodId, dept)}
+                  onChange={() => dofaApproved && toggle(c.id, hodId, dept)}
                   disabled={!dofaApproved}
                   className="w-4 h-4 accent-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 />

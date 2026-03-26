@@ -140,7 +140,7 @@ export default function ExpertsTab({ refreshCounts, isFrozen }) {
           </thead>
           <tbody>
             {experts.map((e) => (
-              <tr key={e._id} className="border-t">
+              <tr key={e.id} className="border-t">
                 <td className="px-3 py-2">{e.srNo}</td>
                 <td className="px-3 py-2">{e.fullName}</td>
                 <td className="px-3 py-2">{e.designation}</td>

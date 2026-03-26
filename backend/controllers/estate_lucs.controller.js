@@ -1,17 +1,22 @@
-const OnboardingRecord = require("../models/OnboardingRecord");
-const { sendEmail }    = require("../utils/emailSender");
-const CYCLE            = require("../config/activeCycle");
+const { OnboardingRecord, Candidate } = require("../models");
+const { sendEmail } = require("../utils/emailSender");
+const CYCLE = require("../config/activeCycle");
 
 /* ════════════════════════════
    ESTATE CONTROLLER
 ════════════════════════════ */
 exports.getPendingHandovers = async (req, res) => {
   try {
-    const records = await OnboardingRecord.find({
-      cycle: CYCLE,
-      roomNumber: { $exists: true, $ne: "" },
-    }).populate("candidate");
+    const records = await OnboardingRecord.findAll({
+      where: {
+        cycle: CYCLE,
+        roomNumber: { [require("sequelize").Op.ne]: "" },
+      },
+      include: [{ model: Candidate, as: "candidate" }],
+    });
+
     res.json(records);
+
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch" });
   }
@@ -21,24 +26,31 @@ exports.confirmHandover = async (req, res) => {
   try {
     const { candidateId, handoverDate, handoverNotes } = req.body;
 
-    const record = await OnboardingRecord.findOneAndUpdate(
-      { candidate: candidateId, cycle: CYCLE },
+    await OnboardingRecord.update(
       {
-        roomHandedOver:    true,
-        roomHandoverDate:  new Date(handoverDate),
+        roomHandedOver: true,
+        roomHandoverDate: new Date(handoverDate),
         roomHandoverNotes: handoverNotes,
       },
-      { new: true }
-    ).populate("candidate");
+      {
+        where: { candidateId, cycle: CYCLE },
+      }
+    );
+
+    const record = await OnboardingRecord.findOne({
+      where: { candidateId, cycle: CYCLE },
+      include: [{ model: Candidate, as: "candidate" }],
+    });
 
     // Notify DOFA Office
     await sendEmail(
       process.env.DOFA_OFFICE_EMAIL || "dofaoffice@lnmiit.ac.in",
       `Room Handover Confirmed: ${record?.candidate?.fullName}`,
-      `<p>Room ${record?.roomNumber} in ${record?.roomBuilding} has been handed over to ${record?.candidate?.fullName} on ${new Date(handoverDate).toLocaleDateString("en-GB")}.</p>`
+      `<p>Room ${record?.roomNumber} in ${record?.roomBuilding} handed over to ${record?.candidate?.fullName}</p>`
     ).catch(console.error);
 
     res.json({ success: true, record });
+
   } catch (err) {
     res.status(500).json({ message: "Failed to confirm handover" });
   }
@@ -49,11 +61,16 @@ exports.confirmHandover = async (req, res) => {
 ════════════════════════════ */
 exports.getLucsRecords = async (req, res) => {
   try {
-    const records = await OnboardingRecord.find({
-      cycle: CYCLE,
-      roomHandedOver: true,
-    }).populate("candidate");
+    const records = await OnboardingRecord.findAll({
+      where: {
+        cycle: CYCLE,
+        roomHandedOver: true,
+      },
+      include: [{ model: Candidate, as: "candidate" }],
+    });
+
     res.json(records);
+
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch" });
   }
@@ -61,36 +78,63 @@ exports.getLucsRecords = async (req, res) => {
 
 exports.updateLucs = async (req, res) => {
   try {
-    const { candidateId, emailAssigned, emailId, itAssetsIssued, wifiProvided, portalLoginDone } = req.body;
+    const {
+      candidateId,
+      emailAssigned,
+      emailId,
+      itAssetsIssued,
+      wifiProvided,
+      portalLoginDone
+    } = req.body;
 
-    const allDone = emailAssigned && itAssetsIssued && wifiProvided && portalLoginDone;
+    const allDone =
+      emailAssigned &&
+      itAssetsIssued &&
+      wifiProvided &&
+      portalLoginDone;
 
-    const record = await OnboardingRecord.findOneAndUpdate(
-      { candidate: candidateId, cycle: CYCLE },
-      {
-        "lucs.emailAssigned":   emailAssigned,
-        "lucs.emailId":         emailId,
-        "lucs.itAssetsIssued":  itAssetsIssued,
-        "lucs.wifiProvided":    wifiProvided,
-        "lucs.portalLoginDone": portalLoginDone,
-        ...(allDone ? {
-          "lucs.confirmedAt": new Date(),
-          "lucs.confirmedBy": req.user._id,
-        } : {}),
-      },
-      { new: true }
-    ).populate("candidate");
+    // 👇 JSON field handling
+    const record = await OnboardingRecord.findOne({
+      where: { candidateId, cycle: CYCLE }
+    });
 
-    // Notify establishment when all done
+    if (!record)
+      return res.status(404).json({ message: "Record not found" });
+
+    const lucs = record.lucs || {};
+
+    lucs.emailAssigned = emailAssigned;
+    lucs.emailId = emailId;
+    lucs.itAssetsIssued = itAssetsIssued;
+    lucs.wifiProvided = wifiProvided;
+    lucs.portalLoginDone = portalLoginDone;
+
+    if (allDone) {
+      lucs.confirmedAt = new Date();
+      lucs.confirmedBy = req.user.id;
+    }
+
+    await OnboardingRecord.update(
+      { lucs },
+      { where: { candidateId, cycle: CYCLE } }
+    );
+
+    const updated = await OnboardingRecord.findOne({
+      where: { candidateId, cycle: CYCLE },
+      include: [{ model: Candidate, as: "candidate" }]
+    });
+
+    // Notify establishment
     if (allDone) {
       await sendEmail(
         process.env.ESTABLISHMENT_EMAIL || "establishment@lnmiit.ac.in",
-        `IT Assets Assigned: ${record?.candidate?.fullName}`,
-        `<p>LUCS has completed IT asset assignment for ${record?.candidate?.fullName}. Institute email: ${emailId}.</p>`
+        `IT Assets Assigned: ${updated?.candidate?.fullName}`,
+        `<p>LUCS completed IT setup for ${updated?.candidate?.fullName}</p>`
       ).catch(console.error);
     }
 
-    res.json({ success: true, record });
+    res.json({ success: true, record: updated });
+
   } catch (err) {
     console.error("updateLucs error:", err);
     res.status(500).json({ message: "Failed to update" });

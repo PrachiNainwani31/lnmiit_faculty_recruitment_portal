@@ -17,7 +17,7 @@ export default function TravelPickup() {
         // pre-fill driver forms with existing data
         const forms = {};
         filtered.forEach(({ expert, travel }) => {
-          forms[expert._id] = {
+          forms[expert.id] = {
             driverName:    travel.pickupDrop?.driverName    || "",
             driverContact: travel.pickupDrop?.driverContact || "",
           };
@@ -63,11 +63,11 @@ export default function TravelPickup() {
 
       {items.map(({ expert, travel }) => {
         const pd = travel.pickupDrop;
-        const form = driverForms[expert._id] || {};
+        const form = driverForms[expert.id] || {};
         const driverSaved = pd?.driverName && pd?.driverContact;
 
         return (
-          <div key={expert._id} className="bg-white rounded-xl shadow p-5 border border-gray-100 space-y-4">
+          <div key={expert.id} className="bg-white rounded-xl shadow p-5 border border-gray-100 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-gray-800">{expert.fullName}</p>
@@ -112,7 +112,7 @@ export default function TravelPickup() {
                     value={form.driverName || ""}
                     onChange={e => setDriverForms(f => ({
                       ...f,
-                      [expert._id]: { ...f[expert._id], driverName: e.target.value }
+                      [expert.id]: { ...f[expert.id], driverName: e.target.value }
                     }))}
                   />
                 </div>
@@ -124,17 +124,17 @@ export default function TravelPickup() {
                     value={form.driverContact || ""}
                     onChange={e => setDriverForms(f => ({
                       ...f,
-                      [expert._id]: { ...f[expert._id], driverContact: e.target.value }
+                      [expert.id]: { ...f[expert.id], driverContact: e.target.value }
                     }))}
                   />
                 </div>
               </div>
               <button
-                onClick={() => handleSaveDriver(expert._id)}
-                disabled={saving === expert._id}
+                onClick={() => handleSaveDriver(expert.id)}
+                disabled={saving === expert.id}
                 className="mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2 rounded-lg disabled:opacity-60"
               >
-                {saving === expert._id ? "Saving..." : "Save & Notify DOFA"}
+                {saving === expert.id ? "Saving..." : "Save & Notify DOFA"}
               </button>
             </div>
           </div>

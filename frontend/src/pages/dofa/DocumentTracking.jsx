@@ -494,8 +494,8 @@ export default function DocumentTracking() {
           {/* Candidate rows */}
           {(dept.candidates || []).map((c, ci) => (
             <CandidateRow
-              key={c.id || c._id}
-              candidate={{ ...c, id: c.id || c._id, srNo: ci + 1 }}
+              key={c.id || c.id}
+              candidate={{ ...c, id: c.id || c.id, srNo: ci + 1 }}
               onVerdictChange={handleVerdictChange}
               onReminderClick={setReminderCandidate}
             />

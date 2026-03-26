@@ -86,7 +86,7 @@ function EmailModal({ candidate, allCandidates, onClose }) {
       setSending(true);
       for (const c of targets) {
         await API.post(`/email/send-interview-invite`, {
-          candidateId: c._id,
+          candidateId: c.id,
           subject:     applyVariables(template.subject, c),
           body:        applyVariables(template.body, c),
         });
@@ -333,7 +333,7 @@ export default function DofaCandidates() {
           </thead>
           <tbody>
             {candidates.map((c, i) => (
-              <tr key={c._id}>
+              <tr key={c.id}>
                 <td className="border p-2">{i + 1}</td>
                 <td className="border p-2">{c.fullName}</td>
                 <td className="border p-2">{c.email}</td>

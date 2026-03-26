@@ -1,13 +1,17 @@
-const mongoose = require("mongoose");
+// models/Comment.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-const commentSchema = new mongoose.Schema(
+const Comment = sequelize.define(
+  "Comment",
   {
-    cycle: { type: String, required: true },
-    fromRole: { type: String, required: true },
-    toRole: { type: String, required: true },
-    message: { type: String, required: true },
+    id:       { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    cycle:    { type: DataTypes.STRING(20),  allowNull: false },
+    fromRole: { type: DataTypes.STRING(50),  allowNull: false },
+    toRole:   { type: DataTypes.STRING(50),  allowNull: false },
+    message:  { type: DataTypes.TEXT,        allowNull: false },
   },
-  { timestamps: true }
+  { tableName: "comments" }
 );
 
-module.exports = mongoose.model("Comment", commentSchema);
+module.exports = Comment;
