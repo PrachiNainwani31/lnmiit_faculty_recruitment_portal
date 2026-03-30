@@ -6,7 +6,8 @@ const CandidateApplication = require("../models/CandidateApplication");
 const {
 getDocumentTracking,
 updateDocumentVerdict,
-sendReminder
+sendReminder,
+downloadCandidateDocs,downloadByCandidate
 }=require("../controllers/dofaDocument.controller")
 
 router.get(
@@ -28,4 +29,6 @@ router.get("/documents", auth(["DOFA"]), async (req, res) => {
 router.get("/document-tracking",auth(["DOFA"]),getDocumentTracking)
 router.post("/document-verdict",auth(["DOFA"]),updateDocumentVerdict)
 router.post("/document-reminder",auth(["DOFA"]),sendReminder)
+router.get("/candidate-docs/:appId/download",              auth(["DOFA","ADOFA","DOFA_OFFICE"]), downloadCandidateDocs);
+router.get("/candidate-docs/:candidateId/download-by-candidate", auth(["DOFA","ADOFA","DOFA_OFFICE"]), downloadByCandidate);
 module.exports = router;

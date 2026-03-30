@@ -11,6 +11,6 @@ const {
 router.get("/",                    auth(["DOFA","ADOFA","DOFA_OFFICE","HOD","ESTABLISHMENT"]), getSelectedCandidates);
 router.post("/publish",            auth(["DOFA_OFFICE"]), publishSelection);
 router.post("/interview-complete", auth(["DOFA_OFFICE"]), markInterviewComplete);
-router.post("/manual-expert",      auth(["DOFA_OFFICE"]), addManualExpert);
+router.post("/manual-expert",      auth(["DOFA","ADOFA"]), addManualExpert);
 
 module.exports = router;

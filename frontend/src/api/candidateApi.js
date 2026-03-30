@@ -1,10 +1,11 @@
+// frontend/api/candidateApi.js
 import API from "./api";
 
 export const saveCandidateStats = (data) =>
   API.post("/hod/candidates/stats", data);
 
 export const getCandidateStats = (cycle) =>
-  API.get(`/hod/candidates/stats`);
+  API.get("/hod/candidates/stats");
 
 export const downloadCandidateTemplate = (cycle) =>
   API.get(`/hod/candidates/template/${cycle}`, {
@@ -25,5 +26,14 @@ export const getCandidatesByCycle = (cycle) =>
 export const deleteCandidateById = (id) =>
   API.delete(`/hod/candidates/${id}`);
 
-export const getCandidateStatus = (cycle) =>
-  API.get(`/hod/candidates/status`);
+export const getCandidateStatus = () =>
+  API.get("/hod/candidates/status");
+
+export const getNotifications     = (role, cycle) =>
+  API.get("/notifications", { params: { role, cycle } });
+
+export const markNotificationRead = (id) =>
+  API.post(`/notifications/${id}/read`);
+
+export const markCandidateAppeared = (id, appeared) =>
+  API.patch(`/hod/candidates/appeared/${id}`, { appeared });

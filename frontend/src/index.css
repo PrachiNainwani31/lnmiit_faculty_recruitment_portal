@@ -18,3 +18,5 @@
 html {
   scroll-behavior: smooth;
 }
+
+.input-sm { @apply w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-300; }

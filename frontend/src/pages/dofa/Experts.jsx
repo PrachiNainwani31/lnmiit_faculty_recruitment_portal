@@ -1,13 +1,13 @@
+// pages/dofa/Experts.jsx
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getAllExperts } from "../../api/dofaApi";
 import API from "../../api/api";
 import { downloadAsCSV } from "../../components/DownloadCSVButton";
 
-const STORAGE_KEY = "dofa_expert_email_template";
-
+const STORAGE_KEY     = "dofa_expert_email_template";
 const DEFAULT_SUBJECT = "Interview Invitation – Faculty Recruitment | LNMIIT";
-
-const DEFAULT_BODY = `Dear $name,
+const DEFAULT_BODY    = `Dear $name,
 
 We wish to invite you as an expert for the upcoming faculty recruitment interview process at The LNM Institute of Information Technology, Jaipur.
 
@@ -22,217 +22,118 @@ With Regards,
 Webmaster LNMIIT
 webmaster@lnmiit.ac.in`;
 
-function loadTemplate() {
+const loadTemplate = () => {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) return JSON.parse(s);
   } catch {}
   return { subject: DEFAULT_SUBJECT, body: DEFAULT_BODY };
-}
+};
 
-function applyVariables(text, expert = {}) {
-  return text
-    .replace(/\$name/g,        expert?.fullName     || "Expert")
-    .replace(/\$email/g,       expert?.email        || "")
-    .replace(/\$designation/g, expert?.designation  || "")
-    .replace(/\$institute/g,   expert?.institute    || "")
-    .replace(/\$department/g,  expert?.department   || "");
-}
+const applyVars = (text, e = {}) =>
+  text
+    .replace(/\$name/g,        e.fullName    || "Expert")
+    .replace(/\$email/g,       e.email       || "")
+    .replace(/\$designation/g, e.designation || "")
+    .replace(/\$institute/g,   e.institute   || "")
+    .replace(/\$department/g,  e.department  || "");
 
 /* ── Email Modal ── */
 function EmailModal({ expert, allExperts, onClose }) {
-  const [template, setTemplate] = useState(loadTemplate);
-  const [preview,  setPreview]  = useState(false);
-  const [sending,  setSending]  = useState(false);
+  const [tpl,     setTpl]     = useState(loadTemplate);
+  const [preview, setPreview] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const updateSubject = (val) => {
-    const updated = { ...template, subject: val };
-    setTemplate(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  const save = (key, val) => {
+    const u = { ...tpl, [key]: val };
+    setTpl(u);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
   };
 
-  const updateBody = (val) => {
-    const updated = { ...template, body: val };
-    setTemplate(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  };
-
-  const resetToDefault = () => {
-    const def = { subject: DEFAULT_SUBJECT, body: DEFAULT_BODY };
-    setTemplate(def);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(def));
-  };
-
-  const previewFor = expert || allExperts?.[0];
   const targets    = expert ? [expert] : allExperts;
+  const previewFor = expert || allExperts?.[0];
 
   const handleSend = async () => {
     if (!targets?.length) return;
     if (!window.confirm(`Send email to ${targets.length} expert(s)?`)) return;
-
     try {
       setSending(true);
       for (const e of targets) {
         await API.post("/email/send-expert-invite", {
           expertId: e.id,
-          subject:  applyVariables(template.subject, e),
-          body:     applyVariables(template.body,    e),
+          subject:  applyVars(tpl.subject, e),
+          body:     applyVars(tpl.body,    e),
         });
       }
-      alert(`Email sent to ${targets.length} expert(s) successfully`);
+      alert(`Email sent to ${targets.length} expert(s)`);
       onClose();
-    } catch {
-      alert("Failed to send email. Please try again.");
-    } finally {
-      setSending(false);
-    }
+    } catch { alert("Failed to send email"); }
+    finally  { setSending(false); }
   };
 
+  const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300";
+
   return (
-    <div style={{
-      position:"fixed", inset:0, background:"rgba(0,0,0,0.5)",
-      display:"flex", alignItems:"center", justifyContent:"center",
-      zIndex:1000, padding:"16px"
-    }}>
-      <div style={{
-        background:"white", borderRadius:"12px",
-        width:"100%", maxWidth:"760px",
-        maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden"
-      }}>
-
-        {/* Header */}
-        <div style={{
-          padding:"16px 20px", borderBottom:"0.5px solid #e5e7eb",
-          display:"flex", alignItems:"center", justifyContent:"space-between"
-        }}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
-            <h3 style={{fontSize:"15px", fontWeight:500, margin:0}}>Send Expert Invitation</h3>
-            <p style={{fontSize:"12px", color:"#6b7280", margin:"2px 0 0"}}>
-              Use{" "}
-              {["$name","$designation","$institute","$department"].map(v => (
-                <code key={v} style={{background:"#f3f4f6",padding:"1px 5px",borderRadius:"4px",marginRight:"4px"}}>{v}</code>
-              ))}
-              for personalization
-            </p>
-          </div>
-          <button onClick={onClose} style={{
-            background:"none", border:"none", fontSize:"20px",
-            cursor:"pointer", color:"#6b7280", lineHeight:1
-          }}>✕</button>
-        </div>
-
-        {/* Edit/Preview toggle */}
-        <div style={{padding:"10px 20px 0", display:"flex", gap:"8px", alignItems:"center"}}>
-          {["edit","preview"].map(m => (
-            <button key={m} onClick={() => setPreview(m==="preview")}
-              style={{
-                fontSize:"12px", padding:"5px 14px", borderRadius:"6px", cursor:"pointer",
-                border:"0.5px solid",
-                background: (m==="preview") === preview ? "#111827" : "white",
-                color:      (m==="preview") === preview ? "white"   : "#374151",
-                borderColor:(m==="preview") === preview ? "#111827" : "#d1d5db"
-              }}>
-              {m.charAt(0).toUpperCase() + m.slice(1)}
-            </button>
-          ))}
-          <button onClick={resetToDefault} style={{
-            marginLeft:"auto", fontSize:"11px", color:"#6b7280",
-            background:"none", border:"none", cursor:"pointer", textDecoration:"underline"
-          }}>
-            Reset to default
-          </button>
-        </div>
-
-        {/* Body */}
-        <div style={{flex:1, overflowY:"auto", padding:"12px 20px"}}>
-
-          {/* To */}
-          <div style={{marginBottom:"10px"}}>
-            <label style={{fontSize:"11px",fontWeight:500,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em"}}>To</label>
-            <div style={{
-              marginTop:"4px", padding:"8px 12px",
-              background:"#f9fafb", border:"0.5px solid #e5e7eb",
-              borderRadius:"6px", fontSize:"13px", color:"#374151"
-            }}>
+            <h3 className="font-semibold text-gray-800 text-sm">Send Expert Invitation</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              To:{" "}
               {expert
                 ? `${expert.fullName} <${expert.email}>`
                 : `All ${allExperts?.length} experts`}
-            </div>
+            </p>
           </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
 
-          {/* Subject */}
-          <div style={{marginBottom:"10px"}}>
-            <label style={{fontSize:"11px",fontWeight:500,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em"}}>Subject</label>
-            {preview ? (
-              <div style={{
-                marginTop:"4px", padding:"8px 12px",
-                background:"#f9fafb", border:"0.5px solid #e5e7eb",
-                borderRadius:"6px", fontSize:"13px"
-              }}>
-                {applyVariables(template.subject, previewFor)}
-              </div>
-            ) : (
-              <input value={template.subject} onChange={e => updateSubject(e.target.value)}
-                style={{
-                  marginTop:"4px", width:"100%", padding:"8px 12px",
-                  border:"0.5px solid #d1d5db", borderRadius:"6px",
-                  fontSize:"13px", outline:"none", boxSizing:"border-box"
-                }} />
-            )}
-          </div>
+        <div className="flex gap-2 px-6 pt-3 items-center">
+          {["edit", "preview"].map(m => (
+            <button key={m} onClick={() => setPreview(m === "preview")}
+              className={`text-xs px-4 py-1.5 rounded-lg border transition ${
+                (m === "preview") === preview
+                  ? "bg-gray-800 text-white border-gray-800"
+                  : "text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}>
+              {m === "edit" ? "Edit" : "Preview"}
+            </button>
+          ))}
+          <button
+            onClick={() => { setTpl({ subject: DEFAULT_SUBJECT, body: DEFAULT_BODY }); localStorage.removeItem(STORAGE_KEY); }}
+            className="ml-auto text-xs text-gray-400 hover:underline"
+          >
+            Reset
+          </button>
+        </div>
 
-          {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-3 space-y-3">
           <div>
-            <label style={{fontSize:"11px",fontWeight:500,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em"}}>
-              Email Body
-              {preview && previewFor && (
-                <span style={{marginLeft:"8px",color:"#3b82f6",textTransform:"none",fontSize:"11px"}}>
-                  Preview for: {previewFor.fullName}
-                </span>
-              )}
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Subject</label>
+            {preview
+              ? <p className="mt-1 text-sm bg-gray-50 rounded-lg px-3 py-2">{applyVars(tpl.subject, previewFor)}</p>
+              : <input className={`mt-1 ${inputCls}`} value={tpl.subject} onChange={e => save("subject", e.target.value)} />}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Body
+              {preview && previewFor && <span className="text-blue-500 normal-case ml-1">Preview: {previewFor.fullName}</span>}
             </label>
-            {preview ? (
-              <pre style={{
-                marginTop:"4px", padding:"12px 14px",
-                background:"#f9fafb", border:"0.5px solid #e5e7eb",
-                borderRadius:"6px", fontSize:"13px", lineHeight:1.7,
-                whiteSpace:"pre-wrap", fontFamily:"inherit",
-                maxHeight:"320px", overflowY:"auto"
-              }}>
-                {applyVariables(template.body, previewFor)}
-              </pre>
-            ) : (
-              <textarea value={template.body} onChange={e => updateBody(e.target.value)}
-                rows={14}
-                style={{
-                  marginTop:"4px", width:"100%", padding:"10px 12px",
-                  border:"0.5px solid #d1d5db", borderRadius:"6px",
-                  fontSize:"13px", lineHeight:1.7, fontFamily:"monospace",
-                  outline:"none", resize:"vertical", boxSizing:"border-box"
-                }} />
-            )}
+            {preview
+              ? <pre className="mt-1 bg-gray-50 rounded-lg px-4 py-3 text-sm whitespace-pre-wrap max-h-72 overflow-y-auto font-sans">
+                  {applyVars(tpl.body, previewFor)}
+                </pre>
+              : <textarea rows={12} className={`mt-1 font-mono resize-none ${inputCls}`}
+                  value={tpl.body} onChange={e => save("body", e.target.value)} />}
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding:"14px 20px", borderTop:"0.5px solid #e5e7eb",
-          display:"flex", justifyContent:"flex-end", gap:"10px"
-        }}>
-          <button onClick={onClose} style={{
-            padding:"8px 18px", border:"0.5px solid #d1d5db",
-            borderRadius:"8px", background:"white", cursor:"pointer", fontSize:"13px"
-          }}>
-            Cancel
-          </button>
-          <button onClick={handleSend} disabled={sending} style={{
-            padding:"8px 20px",
-            background: sending ? "#93c5fd" : "#1d4ed8",
-            color:"white", border:"none", borderRadius:"8px",
-            cursor: sending ? "not-allowed" : "pointer",
-            fontSize:"13px", fontWeight:500
-          }}>
-            {sending ? "Sending..." : `Send Email`}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t">
+          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={handleSend} disabled={sending}
+            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
+            {sending ? "Sending…" : "Send Email"}
           </button>
         </div>
       </div>
@@ -240,99 +141,234 @@ function EmailModal({ expert, allExperts, onClose }) {
   );
 }
 
-/* ── Main Page ── */
-export default function DofaExperts() {
-  const [groupedExperts, setGroupedExperts] = useState({});
-  const [modal,          setModal]          = useState(null);
+/* ── Add Expert Manually — inline collapsible panel ── */
+function AddExpertPanel({ onAdded }) {
+  const [open,   setOpen]   = useState(false);
+  const [form,   setForm]   = useState({
+    fullName:"", designation:"", department:"",
+    institute:"", email:"", phone:"", specialization:""
+  });
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    getAllExperts().then(res => {
-      const grouped = {};
-      res.data.forEach(e => {
-        if (!e.uploadedBy) return;
-        const hodId = e.uploadedBy.id;
-        if (!grouped[hodId]) {
-          grouped[hodId] = {
-            hodName:    e.uploadedBy.name,
-            department: e.uploadedBy.department,
-            experts:    [],
-          };
-        }
-        grouped[hodId].experts.push(e);
-      });
-      setGroupedExperts(grouped);
-    });
-  }, []);
+  const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-300";
+  const lbl      = "text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1";
+
+  const FIELDS = [
+    { k:"fullName",       l:"Full Name (with Salutation)", cols: 2 },
+    { k:"designation",    l:"Designation" },
+    { k:"department",     l:"Department"  },
+    { k:"institute",      l:"Institute"   },
+    { k:"email",          l:"Email"       },
+    { k:"phone",          l:"Phone"       },
+    { k:"specialization", l:"Specialization" },
+  ];
+
+  const handleAdd = async () => {
+    if (!form.fullName || !form.email) return alert("Full name and email are required");
+    try {
+      setSaving(true);
+      await API.post("/selected-candidates/manual-expert", form);
+      alert(`Expert ${form.fullName} added`);
+      setForm({ fullName:"", designation:"", department:"", institute:"", email:"", phone:"", specialization:"" });
+      setOpen(false);
+      onAdded();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to add expert");
+    } finally { setSaving(false); }
+  };
 
   return (
-    <div className="space-y-8">
-      <h2 className="text-xl font-semibold">Experts Uploaded by HODs</h2>
-
-      {Object.keys(groupedExperts).map(hodId => (
-        <div key={hodId} className="bg-white rounded shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">
-              {groupedExperts[hodId].department} HOD
-            </h3>
-            <div className="flex gap-3">
-              <button
-                onClick={() => downloadAsCSV(
-                  groupedExperts[hodId].experts.map(e => ({
-                    fullName: e.fullName, email: e.email,
-                    designation: e.designation, department: e.department,
-                    institute: e.institute, specialization: e.specialization,
-                  })),
-                  `experts_${groupedExperts[hodId].department}.csv`
-                )}
-                className="flex items-center gap-2 text-sm border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg font-medium"
-              >
-                Download CSV
-              </button>
-              <button
-                onClick={() => setModal({ allExperts: groupedExperts[hodId].experts })}
-                className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
-              >
-                Send Email to All
-              </button>
-            </div>
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Toggle row */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700 font-bold text-base">+</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Add Expert Manually</p>
+            <p className="text-xs text-gray-400 mt-0.5">Add an expert not uploaded via CSV</p>
           </div>
-
-          <table className="min-w-full border text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border p-2">Sr</th>
-                <th className="border p-2">Name</th>
-                <th className="border p-2">Email</th>
-                <th className="border p-2">Designation</th>
-                <th className="border p-2">Department</th>
-                <th className="border p-2">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groupedExperts[hodId].experts.map((e, i) => (
-                <tr key={e.id}>
-                  <td className="border p-2">{i + 1}</td>
-                  <td className="border p-2">{e.fullName}</td>
-                  <td className="border p-2">{e.email}</td>
-                  <td className="border p-2">{e.designation}</td>
-                  <td className="border p-2">{e.department}</td>
-                  <td className="border p-2 text-center">
-                    <button
-                      onClick={() => setModal({ expert: e })}
-                      className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
-                    >
-                      Send Email
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
+        <span className="text-gray-400 text-sm">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {/* Form */}
+      {open && (
+        <div className="border-t border-gray-100 px-5 py-5 bg-gray-50">
+          <div className="grid grid-cols-2 gap-3">
+            {FIELDS.map(({ k, l, cols }) => (
+              <div key={k} className={cols === 2 ? "col-span-2" : ""}>
+                <label className={lbl}>{l}</label>
+                <input
+                  className={inputCls}
+                  placeholder={l}
+                  value={form[k]}
+                  onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <button onClick={() => setOpen(false)}
+              className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-100 transition">
+              Cancel
+            </button>
+            <button onClick={handleAdd} disabled={saving}
+              className="px-5 py-2 text-sm bg-red-700 hover:bg-red-800 text-white rounded-lg font-medium disabled:opacity-60 transition">
+              {saving ? "Adding…" : "Add Expert"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Department card ── */
+function DeptCard({ department, experts, onEmail }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-gray-700 to-gray-800">
+        <div>
+          <h3 className="text-white font-semibold text-sm">{department}</h3>
+          <p className="text-white/50 text-xs mt-0.5">{experts.length} expert{experts.length !== 1 ? "s" : ""}</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => downloadAsCSV(
+              experts.map(e => ({
+                fullName:e.fullName, email:e.email, designation:e.designation,
+                department:e.department, institute:e.institute, specialization:e.specialization||"",
+              })),
+              `experts_${department}.csv`
+            )}
+            className="text-xs border border-white/30 text-white/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition font-medium"
+          >
+            ↓ CSV
+          </button>
+          <button
+            onClick={() => onEmail({ allExperts: experts })}
+            className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition font-medium"
+          >
+            Email All
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100">
+              {["Sr","Name","Email","Designation","Department","Institute","Specialization","Action"].map(h => (
+                <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {experts.map((e, i) => (
+              <tr key={e.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition">
+                <td className="px-3 py-2.5 text-gray-400 text-xs">{i + 1}</td>
+                <td className="px-3 py-2.5 font-medium text-gray-800 whitespace-nowrap">{e.fullName}</td>
+                <td className="px-3 py-2.5 text-blue-600 text-xs">{e.email}</td>
+                <td className="px-3 py-2.5 text-gray-600 text-xs">{e.designation}</td>
+                <td className="px-3 py-2.5 text-gray-600 text-xs">{e.department}</td>
+                <td className="px-3 py-2.5 text-gray-500 text-xs">{e.institute}</td>
+                <td className="px-3 py-2.5 text-gray-500 text-xs">{e.specialization || "—"}</td>
+                <td className="px-3 py-2.5">
+                  <button
+                    onClick={() => onEmail({ expert: e })}
+                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition"
+                  >
+                    Send Email
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Page ── */
+export default function DofaExperts() {
+  const [searchParams] = useSearchParams();
+  const deptFilter     = searchParams.get("dept")?.toUpperCase() || null;
+
+  const [allExperts, setAllExperts] = useState([]);
+  const [modal,      setModal]      = useState(null);
+  const [loading,    setLoading]    = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    getAllExperts()
+      .then(res => setAllExperts(Array.isArray(res.data) ? res.data : []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  // ✅ FIX: group by uploadedBy.department
+  // (getAllExperts only fetches attributes: ["name","department"] — no id)
+  const grouped = {};
+  allExperts.forEach(e => {
+    const dept = e.uploadedBy?.department || "Unknown";
+    if (!grouped[dept]) grouped[dept] = [];
+    grouped[dept].push(e);
+  });
+
+  const allDepts     = Object.keys(grouped).sort();
+  // Apply URL dept filter
+  const visibleDepts = deptFilter
+    ? allDepts.filter(d => d === deptFilter)
+    : allDepts;
+
+  const totalVisible = visibleDepts.reduce((n, d) => n + grouped[d].length, 0);
+
+  if (loading)
+    return <p className="text-gray-400 text-sm p-6">Loading experts…</p>;
+
+  return (
+    <div className="space-y-5">
+
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-semibold text-gray-800">
+          {deptFilter ? `${deptFilter} — Experts` : "Experts Uploaded by HODs"}
+        </h2>
+        <p className="text-sm text-gray-400 mt-0.5">
+          {totalVisible} expert{totalVisible !== 1 ? "s" : ""}
+          {!deptFilter && ` across ${visibleDepts.length} department(s)`}
+          {deptFilter && (
+            <a href="/dofa/experts" className="ml-3 text-blue-500 hover:underline text-xs">
+              ← All departments
+            </a>
+          )}
+        </p>
+      </div>
+
+      {/* Add Expert panel */}
+      <AddExpertPanel onAdded={load} />
+
+      {/* Per-dept cards */}
+      {visibleDepts.map(dept => (
+        <DeptCard
+          key={dept}
+          department={dept}
+          experts={grouped[dept]}
+          onEmail={setModal}
+        />
       ))}
 
-      {Object.keys(groupedExperts).length === 0 && (
-        <p className="text-center text-gray-500">No experts uploaded</p>
+      {visibleDepts.length === 0 && (
+        <div className="bg-white rounded-xl border p-14 text-center text-gray-400">
+          <p className="text-4xl mb-3">👨‍🏫</p>
+          <p>{deptFilter ? `No experts uploaded by ${deptFilter} HOD yet` : "No experts uploaded yet"}</p>
+        </div>
       )}
 
       {modal && (

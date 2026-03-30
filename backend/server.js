@@ -23,6 +23,7 @@ app.use("/api/director",            require("./routes/director.routes"));
 app.use("/api/selected-candidates", require("./routes/selectedCandidates.routes"));
 app.use("/api/establishment",       require("./routes/establishment.routes"));
 app.use("/api/onboarding",          require("./routes/estate_lucs.routes"));
+app.use("/api/interview-logs", require("./routes/interviewLog.routes"));
 
 async function startServer() {
   try {

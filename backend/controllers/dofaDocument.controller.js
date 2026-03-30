@@ -1,4 +1,7 @@
-const { CandidateApplication, CandidateReferee, CandidateExperience } = require("../models");
+const archiver = require("archiver");
+const fs       = require("fs");
+const path     = require("path");
+const { CandidateApplication, CandidateReferee, CandidateExperience,User } = require("../models");
 const { sendEmail } = require("../utils/emailSender");
 
 /* =====================================================
@@ -6,6 +9,69 @@ const { sendEmail } = require("../utils/emailSender");
    DOFA sees all candidates grouped by department,
    with their documents, verdicts, referees, experiences
 ===================================================== */
+
+const SINGLE_DOC_COLS = [
+  "docCv","docTeachingStatement","docResearchStatement",
+  "docMarks10","docMarks12","docGraduation","docPostGraduation",
+  "docPhdCourseWork","docPhdProvisional","docPhdDegree",
+];
+const MULTI_DOC_COLS = [
+  "docResearchExpCerts","docTeachingExpCerts","docIndustryExpCerts",
+  "docBestPapers","docPostDocDocs","docSalarySlips","docOtherDocs",
+];
+const DOC_LABELS = {
+  docCv:"CV", docTeachingStatement:"Teaching_Statement",
+  docResearchStatement:"Research_Statement", docMarks10:"10th_Marksheet",
+  docMarks12:"12th_Marksheet", docGraduation:"Graduation_Cert",
+  docPostGraduation:"PostGraduation_Cert", docPhdCourseWork:"PhD_CourseWork",
+  docPhdProvisional:"PhD_Provisional", docPhdDegree:"PhD_Degree",
+  docResearchExpCerts:"Research_Exp", docTeachingExpCerts:"Teaching_Exp",
+  docIndustryExpCerts:"Industry_Exp", docBestPapers:"Best_Papers",
+  docPostDocDocs:"PostDoc", docSalarySlips:"Salary_Slips", docOtherDocs:"Other",
+};
+ 
+/* ── Shared ZIP builder ── */
+async function streamDocsAsZip(app, res) {
+  const candidateName = (app.name || `candidate_${app.id}`)
+    .replace(/[^a-zA-Z0-9_ -]/g, "_").replace(/\s+/g, "_");
+ 
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename="${candidateName}_Documents.zip"`);
+ 
+  const archive = archiver("zip", { zlib: { level: 6 } });
+  archive.on("error", err => { if (!res.headersSent) res.status(500).end(); });
+  archive.pipe(res);
+ 
+  let fileCount = 0;
+ 
+  for (const col of SINGLE_DOC_COLS) {
+    const fp = app[col];
+    if (!fp) continue;
+    const abs = path.resolve(fp);
+    if (!fs.existsSync(abs)) continue;
+    archive.file(abs, { name: `${DOC_LABELS[col] || col}${path.extname(fp) || ".pdf"}` });
+    fileCount++;
+  }
+ 
+  for (const col of MULTI_DOC_COLS) {
+    const files = app[col];
+    if (!Array.isArray(files) || !files.length) continue;
+    const label = DOC_LABELS[col] || col;
+    files.forEach((f, i) => {
+      const fp = typeof f === "string" ? f : f?.path;
+      if (!fp) return;
+      const abs = path.resolve(fp);
+      if (!fs.existsSync(abs)) return;
+      const name = (typeof f === "object" && f.name) ? f.name : `file_${i+1}${path.extname(fp)||".pdf"}`;
+      archive.file(abs, { name: `${label}/${name}` });
+      fileCount++;
+    });
+  }
+ 
+  if (fileCount === 0) archive.append("No documents uploaded yet.", { name: "README.txt" });
+  await archive.finalize();
+}
+ 
 exports.getDocumentTracking = async (req, res) => {
   try {
     // ✅ Include child tables in the query
@@ -189,5 +255,36 @@ exports.sendReminder = async (req, res) => {
   } catch (err) {
     console.error("sendReminder error:", err.message);
     res.status(500).json({ error: "Failed to send reminder" });
+  }
+};
+
+exports.downloadCandidateDocs = async (req, res) => {
+  try {
+    const app = await CandidateApplication.findByPk(req.params.appId);
+    if (!app) return res.status(404).json({ message: "Application not found" });
+    await streamDocsAsZip(app, res);
+  } catch (err) {
+    console.error("downloadCandidateDocs:", err);
+    if (!res.headersSent) res.status(500).json({ message: "Download failed" });
+  }
+};
+ 
+/* ── Download by Candidate.userId (DOFA Office candidates page) ── */
+exports.downloadByCandidate = async (req, res) => {
+  try {
+    // candidateId here is Candidate.id → look up the User, then find CandidateApplication
+    const { Candidate } = require("../models");
+    const candidate = await Candidate.findByPk(req.params.candidateId);
+    if (!candidate) return res.status(404).json({ message: "Candidate not found" });
+ 
+    const app = await CandidateApplication.findOne({
+      where: { candidateUserId: candidate.userId },
+    });
+    if (!app) return res.status(404).json({ message: "No application found for this candidate" });
+ 
+    await streamDocsAsZip(app, res);
+  } catch (err) {
+    console.error("downloadByCandidate:", err);
+    if (!res.headersSent) res.status(500).json({ message: "Download failed" });
   }
 };

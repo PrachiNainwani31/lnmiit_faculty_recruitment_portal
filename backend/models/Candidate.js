@@ -1,4 +1,3 @@
-// models/Candidate.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
@@ -18,7 +17,7 @@ const Candidate = sequelize.define(
       type:      DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
-    // userId → FK to User (ref: "User" — the candidate user)
+    // FK → User (the candidate's own user account)
     userId: {
       type:      DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
@@ -32,6 +31,19 @@ const Candidate = sequelize.define(
       allowNull: false,
       set(val) { this.setDataValue("email", val.toLowerCase().trim()); },
     },
+
+    // ── NEW: optional secondary / alternate email ──────────────────
+    secondaryEmail: {
+      type:      DataTypes.STRING(255),
+      allowNull: true,
+      set(val) {
+        this.setDataValue(
+          "secondaryEmail",
+          val ? val.toLowerCase().trim() : null
+        );
+      },
+    },
+
     phone: {
       type:      DataTypes.STRING(30),
       allowNull: false,
@@ -44,6 +56,20 @@ const Candidate = sequelize.define(
       type:      DataTypes.STRING(200),
       allowNull: false,
     },
+
+    // ── NEW: position the candidate applied for ────────────────────
+    appliedPosition: {
+      type:      DataTypes.STRING(200),
+      allowNull: true,
+    },
+
+    // ── NEW: position HOD recommends this candidate for ───────────
+    recommendedPosition: {
+      type:      DataTypes.STRING(200),
+      allowNull: true,
+    },
+
+    // renamed label in UI — field name stays the same in DB
     reviewerObservation: {
       type:      DataTypes.TEXT,
       allowNull: true,
@@ -52,10 +78,18 @@ const Candidate = sequelize.define(
       type:      DataTypes.TEXT,
       allowNull: true,
     },
-    // hodId → FK to User (ref: "User" — the HOD)
+
+    // FK → User (the HOD)
     hodId: {
       type:      DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
+    },
+
+    // ── NEW: HOD marks which candidates actually appeared ─────────
+    //    Reflected on DOFA page and DOFA Office page
+    appearedInInterview: {
+      type:         DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {

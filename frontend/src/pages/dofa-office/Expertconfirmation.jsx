@@ -1,9 +1,10 @@
+// pages/dofa-office/Expertconfirmation.jsx
 import { useEffect, useState } from "react";
 import API from "../../api/api";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const inputCls  = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-300";
-const selectCls = inputCls;
+const BASE       = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const inputCls   = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-300";
+const selectCls  = inputCls;
 
 function Field({ label, children }) {
   return (
@@ -14,71 +15,99 @@ function Field({ label, children }) {
   );
 }
 
-/* ── Add Expert Form ── */
-function AddExpertForm({ onAdded }) {
-  const [show, setShow] = useState(false);
-  const [form, setForm] = useState({
-    fullName:"", designation:"", department:"", institute:"", email:"", phone:""
-  });
-  const [saving, setSaving] = useState(false);
+/* ── Status panel: shows ticket / quote / driver info from Travel portal ── */
+function TravelStatusPanel({ travel }) {
+  const t  = travel || {};
+  const pd = t.pickupDrop || {};
+  const q  = t.quote;
 
-  const handleAdd = async () => {
-    if (!form.fullName || !form.email) return alert("Full name and email are required");
-    try {
-      setSaving(true);
-      await API.post("/selected-candidates/manual-expert", form);
-      alert(`Expert ${form.fullName} added.`);
-      setForm({ fullName:"", designation:"", department:"", institute:"", email:"", phone:"" });
-      setShow(false);
-      onAdded();
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to add expert");
-    } finally {
-      setSaving(false);
-    }
-  };
+  const hasAny = q || t.ticketPath || t.invoicePath || pd.driverName || pd.pickupLocation;
+  if (!hasAny) return null;
+
+  const qColor = {
+    PENDING:  "bg-amber-50 border-amber-200 text-amber-700",
+    APPROVED: "bg-green-50 border-green-200 text-green-700",
+    REJECTED: "bg-red-50 border-red-200 text-red-700",
+  }[q?.status] || "";
 
   return (
-    <div>
-      {!show ? (
-        <button onClick={() => setShow(true)}
-          className="text-sm border border-indigo-300 text-indigo-700 px-4 py-2 rounded-lg hover:bg-indigo-50 transition">
-          + Add Expert Manually
-        </button>
-      ) : (
-        <div className="bg-white rounded-xl border border-indigo-200 p-5 space-y-3">
-          <p className="text-sm font-medium text-gray-700">Add Expert Manually</p>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { k:"fullName",    l:"Full Name"    },
-              { k:"designation", l:"Designation"  },
-              { k:"department",  l:"Department"   },
-              { k:"institute",   l:"Institute"    },
-              { k:"email",       l:"Email"        },
-              { k:"phone",       l:"Phone Number" },
-            ].map(({ k, l }) => (
-              <div key={k}>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">{l}</label>
-                <input className={inputCls} placeholder={l}
-                  value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} />
-              </div>
-            ))}
+    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+        📋 Live Status from Travel Portal
+      </p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+        {/* Quote */}
+        {q && (
+          <div className={`rounded-lg border px-3 py-2 ${qColor}`}>
+            <p className="font-semibold uppercase tracking-wide opacity-70">Quote</p>
+            <p className="font-bold text-sm mt-0.5">₹{q.amount}</p>
+            <p className="opacity-70">{q.vendor || "—"} · {q.status}</p>
+            {q.status === "REJECTED" && q.rejectionNote && (
+              <p className="text-red-600 mt-1">❌ {q.rejectionNote}</p>
+            )}
           </div>
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setShow(false)}
-              className="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={handleAdd} disabled={saving}
-              className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg disabled:opacity-60">
-              {saving ? "Adding..." : "Add Expert"}
-            </button>
-          </div>
+        )}
+
+        {/* Ticket */}
+        <div className={`rounded-lg border px-3 py-2 ${t.ticketPath ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+          <p className="font-semibold uppercase tracking-wide opacity-70">Ticket</p>
+          {t.ticketPath ? (
+            <a href={`${BASE}/${t.ticketPath}`} target="_blank" rel="noreferrer"
+              className="text-blue-600 hover:underline mt-0.5 block font-medium">📄 View Ticket</a>
+          ) : (
+            <p className="text-gray-400 mt-0.5">Not uploaded yet</p>
+          )}
+          {t.ticketUploadedAt && (
+            <p className="opacity-60">{new Date(t.ticketUploadedAt).toLocaleDateString("en-GB")}</p>
+          )}
         </div>
-      )}
+
+        {/* Invoice */}
+        <div className={`rounded-lg border px-3 py-2 ${t.invoicePath ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+          <p className="font-semibold uppercase tracking-wide opacity-70">Invoice</p>
+          {t.invoicePath ? (
+            <a href={`${BASE}/${t.invoicePath}`} target="_blank" rel="noreferrer"
+              className="text-blue-600 hover:underline mt-0.5 block font-medium">🧾 View Invoice</a>
+          ) : (
+            <p className="text-gray-400 mt-0.5">Not uploaded yet</p>
+          )}
+        </div>
+
+        {/* Pickup */}
+        {pd.pickupLocation && (
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+            <p className="font-semibold uppercase tracking-wide text-indigo-600 opacity-80">Pickup</p>
+            <p className="font-medium text-indigo-800 mt-0.5">{pd.pickupLocation}</p>
+            <p className="text-indigo-600 opacity-80">{pd.pickupTime || "—"}</p>
+          </div>
+        )}
+
+        {/* Drop */}
+        {pd.dropLocation && (
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+            <p className="font-semibold uppercase tracking-wide text-indigo-600 opacity-80">Drop</p>
+            <p className="font-medium text-indigo-800 mt-0.5">{pd.dropLocation}</p>
+            <p className="text-indigo-600 opacity-80">{pd.dropTime || "—"}</p>
+          </div>
+        )}
+
+        {/* Driver */}
+        <div className={`rounded-lg border px-3 py-2 ${pd.driverName ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+          <p className="font-semibold uppercase tracking-wide opacity-70">Driver</p>
+          {pd.driverName ? (
+            <>
+              <p className="font-medium text-gray-800 mt-0.5">{pd.driverName}</p>
+              <p className="text-gray-600">{pd.driverContact}</p>
+            </>
+          ) : (
+            <p className="text-amber-600 mt-0.5 font-medium">Not yet assigned</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ── Expert Card ── */
 function ExpertCard({ item, onSaved }) {
   const { expert, travel } = item;
   const [open,    setOpen]    = useState(false);
@@ -92,19 +121,27 @@ function ExpertCard({ item, onSaved }) {
     onlineLink:     travel?.onlineLink     ?? "",
     modeOfTravel:   travel?.modeOfTravel   ?? "Rail",
     traveller: {
-      name:              travel?.traveller?.name             ?? expert.fullName ?? "",
-      gender:            travel?.traveller?.gender           ?? "Male",
-      age:               travel?.traveller?.age              ?? "",
-      mealPreference:    travel?.traveller?.mealPreference   ?? "Veg",
-      preferredSeat:     travel?.traveller?.preferredSeat    ?? "Lower",
-      journeyType:       travel?.traveller?.journeyType      ?? "Direct",
-      onwardFrom:        travel?.traveller?.onwardFrom ? travel.traveller.onwardFrom.slice(0,10) : "",
-      onwardTime:        travel?.traveller?.onwardTime       ?? "",
-      returnFrom:        travel?.traveller?.returnFrom ? travel.traveller.returnFrom.slice(0,10) : "",
-      returnTime:        travel?.traveller?.returnTime       ?? "",
-      connections:       travel?.traveller?.connections       ?? [{ from:"", to:"", date:"", time:"" }],
-      returnConnections: travel?.traveller?.returnConnections ?? [{ from:"", to:"", date:"", time:"" }],
-    }
+      name:              travel?.traveller?.name              ?? expert.fullName ?? "",
+      gender:            travel?.traveller?.gender            ?? "Male",
+      age:               travel?.traveller?.age               ?? "",
+      mealPreference:    travel?.traveller?.mealPreference    ?? "Veg",
+      preferredSeat:     travel?.traveller?.preferredSeat     ?? "Lower",
+      journeyType:       travel?.traveller?.journeyType       ?? "Direct",
+      onwardFrom:        travel?.traveller?.onwardFrom
+        ? new Date(travel.traveller.onwardFrom).toISOString().split("T")[0] : "",
+      onwardTime:        travel?.traveller?.onwardTime        ?? "",
+      onwardFromCity:    travel?.traveller?.onwardFromCity    ?? "",
+      onwardToCity:      travel?.traveller?.onwardToCity      ?? "",
+      onwardFlightNo:    travel?.traveller?.onwardFlightNo    ?? "",
+      returnFrom:        travel?.traveller?.returnFrom
+        ? new Date(travel.traveller.returnFrom).toISOString().split("T")[0] : "",
+      returnTime:        travel?.traveller?.returnTime        ?? "",
+      returnFromCity:    travel?.traveller?.returnFromCity    ?? "",
+      returnToCity:      travel?.traveller?.returnToCity      ?? "",
+      returnFlightNo:    travel?.traveller?.returnFlightNo    ?? "",
+      connections:       travel?.traveller?.connections       ?? [{ from:"", to:"", date:"", time:"", flightNo:"" }],
+      returnConnections: travel?.traveller?.returnConnections ?? [{ from:"", to:"", date:"", time:"", flightNo:"" }],
+    },
   });
 
   const set  = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -116,9 +153,9 @@ function ExpertCard({ item, onSaved }) {
     arr[i] = { ...arr[i], [field]: value };
     setT(key, arr);
   };
-  const addConn = (type) => {
+  const addConn    = (type) => {
     const key = type === "onward" ? "connections" : "returnConnections";
-    setT(key, [...form.traveller[key], { from:"", to:"", date:"", time:"" }]);
+    setT(key, [...form.traveller[key], { from:"", to:"", date:"", time:"", flightNo:"" }]);
   };
   const removeConn = (type, i) => {
     const key = type === "onward" ? "connections" : "returnConnections";
@@ -131,7 +168,7 @@ function ExpertCard({ item, onSaved }) {
       await API.post(`/expert-travel/confirm/${expert.id}`, form);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-      await onSaved();
+      onSaved();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to save");
     } finally {
@@ -146,7 +183,8 @@ function ExpertCard({ item, onSaved }) {
   }[travel?.presenceStatus || "Pending"];
 
   const initials = expert.fullName?.split(" ").filter(Boolean).slice(0,2).map(w => w[0]).join("").toUpperCase() || "EX";
-  const jt = form.traveller.journeyType;
+  const jt  = form.traveller.journeyType;
+  const isAir = form.modeOfTravel === "Air";
 
   return (
     <div className="border-b last:border-0">
@@ -157,14 +195,36 @@ function ExpertCard({ item, onSaved }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-gray-800 text-sm">{expert.fullName}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{expert.designation} · {expert.institute} · {expert.email}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{expert.designation} · {expert.institute}</p>
         </div>
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${statusColor}`}>
-          {travel?.presenceStatus || "Awaiting confirmation"}
-        </span>
-        {travel?.confirmed && (
-          <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full ml-1">✔ Confirmed</span>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+          <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${statusColor}`}>
+            {travel?.presenceStatus || "Pending"}
+          </span>
+          {travel?.confirmed && (
+            <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">✔ Confirmed</span>
+          )}
+          {travel?.traveller?.age && (
+            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Age: {travel.traveller.age}</span>
+          )}
+          {/* Show driver badge if assigned */}
+          {travel?.pickupDrop?.driverName && (
+            <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
+              🚗 {travel.pickupDrop.driverName}
+            </span>
+          )}
+          {/* Ticket badge */}
+          {travel?.ticketPath && (
+            <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">🎫 Ticket</span>
+          )}
+          {/* Quote badge */}
+          {travel?.quote?.status === "APPROVED" && (
+            <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">✓ Quote</span>
+          )}
+          {travel?.quote?.status === "PENDING" && (
+            <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">Quote Pending</span>
+          )}
+        </div>
         <span className="text-gray-400 text-xs ml-2">{open ? "▲" : "▼"}</span>
       </div>
 
@@ -172,10 +232,14 @@ function ExpertCard({ item, onSaved }) {
         <div className="border-t border-gray-100 px-5 py-5 bg-gray-50 space-y-4">
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg">
-              ✅ Saved! {form.presenceStatus === "Offline" ? "Ramswaroop has been notified." : "Email sent."}
+              ✅ Saved! {form.presenceStatus === "Offline" ? "Ramswaroop has been notified." : ""}
             </div>
           )}
 
+          {/* ── Live status panel from Travel portal ── */}
+          <TravelStatusPanel travel={travel} />
+
+          {/* ── Confirmation form ── */}
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.confirmed}
               onChange={e => set("confirmed", e.target.checked)}
@@ -245,12 +309,12 @@ function ExpertCard({ item, onSaved }) {
                         <option>Male</option><option>Female</option><option>Other</option>
                       </select>
                     </Field>
-                    {form.modeOfTravel === "Rail" && (
-                      <Field label="Age (Rail only)">
-                        <input className={inputCls} type="number" value={form.traveller.age}
-                          onChange={e => setT("age", e.target.value)} placeholder="Age" />
-                      </Field>
-                    )}
+                    <Field label="Age">
+                      <input className={inputCls} type="number" min="1" max="120"
+                        value={form.traveller.age}
+                        onChange={e => setT("age", e.target.value)}
+                        placeholder="e.g. 52" />
+                    </Field>
                     <Field label="Meal Preference">
                       <select className={selectCls} value={form.traveller.mealPreference}
                         onChange={e => setT("mealPreference", e.target.value)}>
@@ -258,11 +322,20 @@ function ExpertCard({ item, onSaved }) {
                       </select>
                     </Field>
                     {form.modeOfTravel === "Rail" && (
-                      <Field label="Preferred Seat">
+                      <Field label="Preferred Berth">
                         <select className={selectCls} value={form.traveller.preferredSeat}
                           onChange={e => setT("preferredSeat", e.target.value)}>
                           <option>Lower</option><option>Middle</option><option>Upper</option>
                           <option>Side Lower</option><option>Side Upper</option>
+                        </select>
+                      </Field>
+                    )}
+                    {isAir && (
+                      <Field label="Seat Preference (Flight)">
+                        <select className={selectCls} value={form.traveller.preferredSeat}
+                          onChange={e => setT("preferredSeat", e.target.value)}>
+                          <option>Window</option><option>Middle</option><option>Aisle</option>
+                          <option>No preference</option>
                         </select>
                       </Field>
                     )}
@@ -284,11 +357,64 @@ function ExpertCard({ item, onSaved }) {
                   </Field>
 
                   {jt === "Direct" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Onward Date"><input className={inputCls} type="date" value={form.traveller.onwardFrom} onChange={e => setT("onwardFrom", e.target.value)} /></Field>
-                      <Field label="Onward Time"><input className={inputCls} type="time" value={form.traveller.onwardTime} onChange={e => setT("onwardTime", e.target.value)} /></Field>
-                      <Field label="Return Date"><input className={inputCls} type="date" value={form.traveller.returnFrom} onChange={e => setT("returnFrom", e.target.value)} /></Field>
-                      <Field label="Return Time"><input className={inputCls} type="time" value={form.traveller.returnTime} onChange={e => setT("returnTime", e.target.value)} /></Field>
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Onward Journey</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="From (City / Station / Airport)">
+                          <input className={inputCls} value={form.traveller.onwardFromCity}
+                            onChange={e => setT("onwardFromCity", e.target.value)}
+                            placeholder="e.g. Delhi (DEL)" />
+                        </Field>
+                        <Field label="To (City / Station / Airport)">
+                          <input className={inputCls} value={form.traveller.onwardToCity}
+                            onChange={e => setT("onwardToCity", e.target.value)}
+                            placeholder="e.g. Jaipur (JAI)" />
+                        </Field>
+                        <Field label="Date">
+                          <input className={inputCls} type="date" value={form.traveller.onwardFrom}
+                            onChange={e => setT("onwardFrom", e.target.value)} />
+                        </Field>
+                        <Field label="Time">
+                          <input className={inputCls} type="time" value={form.traveller.onwardTime}
+                            onChange={e => setT("onwardTime", e.target.value)} />
+                        </Field>
+                        {(isAir || form.modeOfTravel === "Rail") && (
+                          <Field label={isAir ? "Flight No. (e.g. 6E 5033)" : "Train No."}>
+                            <input className={inputCls} value={form.traveller.onwardFlightNo}
+                              onChange={e => setT("onwardFlightNo", e.target.value)}
+                              placeholder={isAir ? "e.g. 6E 5033 (A321)" : "e.g. 12956 Jaipur SF"} />
+                          </Field>
+                        )}
+                      </div>
+
+                      <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mt-2">Return Journey</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="From (City / Station / Airport)">
+                          <input className={inputCls} value={form.traveller.returnFromCity}
+                            onChange={e => setT("returnFromCity", e.target.value)}
+                            placeholder="e.g. Jaipur (JAI)" />
+                        </Field>
+                        <Field label="To (City / Station / Airport)">
+                          <input className={inputCls} value={form.traveller.returnToCity}
+                            onChange={e => setT("returnToCity", e.target.value)}
+                            placeholder="e.g. Delhi (DEL)" />
+                        </Field>
+                        <Field label="Date">
+                          <input className={inputCls} type="date" value={form.traveller.returnFrom}
+                            onChange={e => setT("returnFrom", e.target.value)} />
+                        </Field>
+                        <Field label="Time">
+                          <input className={inputCls} type="time" value={form.traveller.returnTime}
+                            onChange={e => setT("returnTime", e.target.value)} />
+                        </Field>
+                        {(isAir || form.modeOfTravel === "Rail") && (
+                          <Field label={isAir ? "Return Flight No." : "Return Train No."}>
+                            <input className={inputCls} value={form.traveller.returnFlightNo}
+                              onChange={e => setT("returnFlightNo", e.target.value)}
+                              placeholder={isAir ? "e.g. 6E 2376 (A321)" : "e.g. 12955 Jaipur SF"} />
+                          </Field>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -300,7 +426,7 @@ function ExpertCard({ item, onSaved }) {
                             {type === "onward" ? "Onward" : "Return"} Journey Legs
                           </p>
                           {form.traveller[type === "onward" ? "connections" : "returnConnections"].map((leg, i) => (
-                            <div key={i} className="grid grid-cols-5 gap-2 mb-2 items-end bg-gray-50 border border-gray-100 rounded-lg p-3">
+                            <div key={i} className="grid grid-cols-3 gap-2 mb-2 items-end bg-gray-50 border border-gray-100 rounded-lg p-3">
                               {["from","to"].map(f => (
                                 <div key={f} className="flex flex-col gap-1">
                                   <label className="text-xs text-gray-400 capitalize">{f}</label>
@@ -310,11 +436,18 @@ function ExpertCard({ item, onSaved }) {
                               ))}
                               <div className="flex flex-col gap-1">
                                 <label className="text-xs text-gray-400">Date</label>
-                                <input className={inputCls} type="date" value={leg.date} onChange={e => updateConn(type, i, "date", e.target.value)} />
+                                <input className={inputCls} type="date" value={leg.date}
+                                  onChange={e => updateConn(type, i, "date", e.target.value)} />
                               </div>
                               <div className="flex flex-col gap-1">
                                 <label className="text-xs text-gray-400">Time</label>
-                                <input className={inputCls} type="time" value={leg.time} onChange={e => updateConn(type, i, "time", e.target.value)} />
+                                <input className={inputCls} type="time" value={leg.time}
+                                  onChange={e => updateConn(type, i, "time", e.target.value)} />
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="text-xs text-gray-400">{isAir ? "Flight No." : "Train No."}</label>
+                                <input className={inputCls} value={leg.flightNo || ""}
+                                  onChange={e => updateConn(type, i, "flightNo", e.target.value)} />
                               </div>
                               {i > 0 && (
                                 <button onClick={() => removeConn(type, i)}
@@ -338,7 +471,7 @@ function ExpertCard({ item, onSaved }) {
           <div className="flex justify-end">
             <button onClick={handleSave} disabled={saving}
               className="bg-[#6b0f1a] hover:bg-rose-800 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60">
-              {saving ? "Saving..." : form.presenceStatus === "Offline" ? "Save & Notify Ramswaroop" : "Save & Send Email"}
+              {saving ? "Saving..." : form.presenceStatus === "Offline" ? "Save & Notify Ramswaroop" : "Save"}
             </button>
           </div>
         </div>
@@ -347,24 +480,18 @@ function ExpertCard({ item, onSaved }) {
   );
 }
 
-/* ── Main Page ── */
 export default function ExpertConfirmation() {
-  const [grouped,  setGrouped]  = useState({});
-  const [loading,  setLoading]  = useState(true);
+  const [grouped, setGrouped] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = () => {
     API.get("/expert-travel")
       .then(res => {
         const map = {};
         res.data.forEach(({ expert, travel }) => {
-          // HOD-uploaded: group by HOD department label
-          // DOFA-manually-added: group by expert.department field
-          let groupKey;
-          if (expert.uploadedBy?.role === "HOD") {
-            groupKey = `${expert.uploadedBy.department || "HOD"} Department`;
-          } else {
-            groupKey = expert.department || "Manual Entry (DOFA Office)";
-          }
+          const groupKey = expert.uploadedBy?.role === "HOD"
+            ? `${expert.uploadedBy.department || "HOD"} Department`
+            : expert.department || "Manual Entry";
           if (!map[groupKey]) map[groupKey] = { isHod: expert.uploadedBy?.role === "HOD", items: [] };
           map[groupKey].items.push({ expert, travel });
         });
@@ -376,9 +503,9 @@ export default function ExpertConfirmation() {
 
   useEffect(() => { load(); }, []);
 
-  if (loading) return <p className="text-gray-400 text-sm p-6">Loading experts...</p>;
+  if (loading) return <p className="text-gray-400 text-sm p-6">Loading experts…</p>;
 
-  const allItems  = Object.values(grouped).flatMap(g => g.items || []);
+  const allItems  = Object.values(grouped).flatMap(g => g.items);
   const confirmed = allItems.filter(i => i.travel?.confirmed).length;
   const pending   = allItems.filter(i => !i.travel?.confirmed).length;
 
@@ -387,42 +514,22 @@ export default function ExpertConfirmation() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-800">External Expert Confirmation</h1>
-          <p className="text-sm text-gray-500 mt-1">Mark attendance and enter travel details for each expert. Grouped by department.</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Mark attendance and enter travel details. Ticket, quote, and driver status are shown live.
+          </p>
         </div>
         <div className="flex gap-3">
           <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded-full">{confirmed} confirmed</span>
           <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full">{pending} pending</span>
         </div>
       </div>
-      <div className="flex gap-3">
-                    <button
-                      onClick={() => downloadAsCSV(
-                        groupedExperts[hodId].experts.map(e => ({
-                          fullName: e.fullName, email: e.email,
-                          designation: e.designation, department: e.department,
-                          institute: e.institute, specialization: e.specialization,
-                        })),
-                        `experts_${groupedExperts[hodId].department}.csv`
-                      )}
-                      className="flex items-center gap-2 text-sm border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg font-medium"
-                    >
-                      Download CSV
-                    </button>
-                  </div>
-      <AddExpertForm onAdded={load} />
-
-      {Object.keys(grouped).length === 0 && (
-        <div className="bg-white rounded-xl border p-12 text-center text-gray-400">No experts uploaded yet.</div>
-      )}
 
       {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([groupKey, { isHod, items }]) => (
         <div key={groupKey} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className={`px-5 py-3 flex items-center justify-between ${isHod ? "bg-[#6b0f1a]" : "bg-indigo-600"}`}>
             <div>
               <p className="text-white font-medium text-sm">{groupKey}</p>
-              <p className="text-white/50 text-xs mt-0.5">
-                {isHod ? "HOD uploaded" : "Added by DOFA Office"}
-              </p>
+              <p className="text-white/50 text-xs mt-0.5">{isHod ? "HOD uploaded" : "Added by DOFA"}</p>
             </div>
             <span className="text-white/60 text-xs">
               {items.filter(i => i.travel?.confirmed).length}/{items.length} confirmed
@@ -433,6 +540,10 @@ export default function ExpertConfirmation() {
           ))}
         </div>
       ))}
+
+      {Object.keys(grouped).length === 0 && (
+        <div className="bg-white rounded-xl border p-12 text-center text-gray-400">No experts uploaded yet.</div>
+      )}
     </div>
   );
 }

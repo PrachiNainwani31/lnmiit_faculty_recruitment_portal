@@ -18,6 +18,7 @@ const CandidateStats     = require("./CandidateStats");
 const Comment            = require("./Comment");
 const Expert             = require("./Expert");
 const ExpertTravel       = require("./ExpertTravel");
+const InterviewLog       = require("./InterviewLog");
 const Notification       = require("./Notification");
 const OfficeOrder        = require("./OfficeOrder");
 const OnboardingRecord   = require("./OnboardingRecord");
@@ -47,6 +48,10 @@ User.hasMany(Expert,   { as: "uploadedExperts", foreignKey: "uploadedById" });
 // ExpertTravel ↔ Expert
 ExpertTravel.belongsTo(Expert, { as: "expert", foreignKey: "expertId" });
 Expert.hasOne(ExpertTravel,    { as: "travel",  foreignKey: "expertId" });
+
+
+InterviewLog.belongsTo(User, { as: "hod", foreignKey: "hodId" });
+User.hasMany(InterviewLog,   { as: "interviewLogs", foreignKey: "hodId" });
 
 // OfficeOrder ↔ User
 OfficeOrder.belongsTo(User, { as: "uploadedBy", foreignKey: "uploadedById" });
@@ -81,6 +86,7 @@ module.exports = {
   Comment,
   Expert,
   ExpertTravel,
+  InterviewLog,
   Notification,
   OfficeOrder,
   OnboardingRecord,

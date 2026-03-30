@@ -1,382 +1,281 @@
-import { useEffect, useState, useRef } from "react";
+// pages/travel/Experttravelpage.jsx
+// Shows the same unified detail view seen on the DOFA Office side
+// Mirrors the "car arrangement" email format: name, dept, arrival date,
+// pickup place, flight no, arrival time, departure date, drop place, departure time, contact
+import { useEffect, useState } from "react";
 import API from "../../api/api";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-function Step({ num, label, status, children }) {
-  const [open, setOpen] = useState(status === "active");
-  const color = status === "done"   ? "bg-green-100 text-green-700 border-green-300"
-              : status === "active" ? "bg-blue-100 text-blue-700 border-blue-300"
-              : "bg-gray-100 text-gray-400 border-gray-200";
-  return (
-    <div className="flex gap-3 pb-2">
-      <div className="flex flex-col items-center">
-        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border ${color} shrink-0`}>
-          {status === "done" ? "✓" : num}
-        </div>
-        <div className="flex-1 w-px bg-gray-200 mt-1" />
-      </div>
-      <div className="flex-1 pb-4">
-        <div className={`flex items-center justify-between cursor-pointer ${status === "pending" ? "opacity-50 pointer-events-none" : ""}`}
-          onClick={() => status !== "pending" && setOpen(o => !o)}>
-          <p className={`text-sm font-medium ${status === "done" ? "text-green-700" : status === "active" ? "text-blue-700" : "text-gray-400"}`}>
-            {label}
-          </p>
-          {status !== "pending" && <span className="text-xs text-gray-400">{open ? "▲" : "▼"}</span>}
-        </div>
-        {open && status !== "pending" && <div className="mt-3">{children}</div>}
-      </div>
-    </div>
-  );
-}
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "—";
+const fmtTime = (t) => t ? t.slice(0,5) : "—";
 
-/* ── Travel Details Banner ── */
-function TravelDetailsBanner({ travel }) {
-  const t  = travel?.traveller;
-  const jt = t?.journeyType || "Direct";
-  if (!t) return null;
-
-  return (
-    <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm mb-5 space-y-2">
-      <p className="font-medium text-blue-800">Travel Details from DOFA Office</p>
-      <p className="text-blue-600 text-xs">
-        {t.name} · {t.gender}
-        {t.age ? ` · Age ${t.age}` : ""}
-        {" · "}Meal: {t.mealPreference}
-        {t.preferredSeat ? ` · Seat: ${t.preferredSeat}` : ""}
-        {" · "}Journey: <strong>{jt}</strong>
-      </p>
-
-      {jt === "Direct" ? (
-        <div className="space-y-0.5">
-          <p className="text-blue-600 text-xs">
-            Onward: {t.onwardFrom ? new Date(t.onwardFrom).toLocaleDateString("en-GB") : "—"}
-            {t.onwardTime ? ` at ${t.onwardTime}` : ""}
-          </p>
-          <p className="text-blue-600 text-xs">
-            Return: {t.returnFrom ? new Date(t.returnFrom).toLocaleDateString("en-GB") : "—"}
-            {t.returnTime ? ` at ${t.returnTime}` : ""}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {/* Onward connecting legs */}
-          {t.connections?.length > 0 && (
-            <div>
-              <p className="text-blue-700 text-xs font-semibold uppercase tracking-wide mb-1">Onward legs</p>
-              {t.connections.map((leg, i) => (
-                <p key={i} className="text-blue-600 text-xs ml-2">
-                  Leg {i+1}: {leg.from || "—"} → {leg.to || "—"}
-                  {leg.date ? ` on ${leg.date}` : ""}
-                  {leg.time ? ` at ${leg.time}` : ""}
-                </p>
-              ))}
-            </div>
-          )}
-          {/* Return connecting legs */}
-          {t.returnConnections?.length > 0 && (
-            <div>
-              <p className="text-blue-700 text-xs font-semibold uppercase tracking-wide mb-1">Return legs</p>
-              {t.returnConnections.map((leg, i) => (
-                <p key={i} className="text-blue-600 text-xs ml-2">
-                  Leg {i+1}: {leg.from || "—"} → {leg.to || "—"}
-                  {leg.date ? ` on ${leg.date}` : ""}
-                  {leg.time ? ` at ${leg.time}` : ""}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ExpertWorkflow({ item, onRefresh }) {
-  const { expert, travel } = item;
-  const [open, setOpen] = useState(false);
-  const [quote,  setQuote]  = useState({ amount: travel?.quote?.amount || "", vendor: travel?.quote?.vendor || "", remarks: travel?.quote?.remarks || "" });
-  const [driver, setDriver] = useState({ driverName: travel?.pickupDrop?.driverName || "", driverContact: travel?.pickupDrop?.driverContact || "" });
-  const [savingQ, setSavingQ] = useState(false);
-  const [savingD, setSavingD] = useState(false);
-  const ticketRef  = useRef();
-  const invoiceRef = useRef();
-  const [upTicket,  setUpTicket]  = useState(false);
-  const [upInvoice, setUpInvoice] = useState(false);
-
-  const qs           = travel?.quote?.status;
-  const hasTicket    = !!travel?.ticketPath;
-  const hasInvoice   = !!travel?.invoicePath;
-  const hasPickup    = !!travel?.pickupDrop?.pickupLocation;
-  const hasDriver    = !!travel?.pickupDrop?.driverName;
-  const mode         = travel?.modeOfTravel;
-  const isOwnVehicle = mode === "Own Vehicle";
-
-  const overallBadge =
-    isOwnVehicle && hasDriver ? { label:"Complete",      cls:"bg-green-100 text-green-700 border-green-200"  }
-    : isOwnVehicle            ? { label:"Own Vehicle",   cls:"bg-indigo-100 text-indigo-700 border-indigo-200" }
-    : hasDriver               ? { label:"Complete",      cls:"bg-green-100 text-green-700 border-green-200"  }
-    : hasTicket               ? { label:"Ticket Booked", cls:"bg-teal-100 text-teal-700 border-teal-200"     }
-    : qs === "APPROVED"       ? { label:"Quote Approved",cls:"bg-green-100 text-green-700 border-green-200"  }
-    : qs === "PENDING"        ? { label:"Quote Pending", cls:"bg-amber-100 text-amber-700 border-amber-200"  }
-    : qs === "REJECTED"       ? { label:"Quote Rejected",cls:"bg-red-100 text-red-700 border-red-200"        }
-    : { label:"Awaiting Quote", cls:"bg-gray-100 text-gray-500 border-gray-200" };
-
-  const submitQuote = async () => {
-    if (!quote.amount || !quote.vendor) return alert("Amount and vendor are required");
-    setSavingQ(true);
-    try {
-      await API.post(`/expert-travel/quote/${expert.id}`, quote);
-      alert("Quote submitted. DOFA has been notified.");
-      onRefresh();
-    } catch { alert("Failed"); } finally { setSavingQ(false); }
+/* ── Status badge ── */
+function Badge({ children, color }) {
+  const colors = {
+    green:  "bg-green-100 text-green-700 border-green-200",
+    amber:  "bg-amber-100 text-amber-700 border-amber-200",
+    blue:   "bg-blue-100 text-blue-700 border-blue-200",
+    gray:   "bg-gray-100 text-gray-500 border-gray-200",
+    violet: "bg-violet-100 text-violet-700 border-violet-200",
   };
-
-  const uploadFile = async (type, file) => {
-    if (!file) return;
-    const fd = new FormData();
-    fd.append(type, file);
-    type === "ticket" ? setUpTicket(true) : setUpInvoice(true);
-    try {
-      await API.post(`/expert-travel/${type}/${expert.id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      alert(`${type.charAt(0).toUpperCase() + type.slice(1)} uploaded.`);
-      onRefresh();
-    } catch { alert("Upload failed"); } finally {
-      type === "ticket" ? setUpTicket(false) : setUpInvoice(false);
-    }
-  };
-
-  const saveDriver = async () => {
-    if (!driver.driverName || !driver.driverContact) return alert("Driver name and contact required");
-    setSavingD(true);
-    try {
-      await API.post(`/expert-travel/driver/${expert.id}`, driver);
-      alert("Driver info saved. DOFA has been notified.");
-      onRefresh();
-    } catch { alert("Failed"); } finally { setSavingD(false); }
-  };
-
-  const initials = expert.fullName?.split(" ").filter(Boolean).slice(0,2).map(w => w[0]).join("").toUpperCase();
-
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100"
-        onClick={() => setOpen(o => !o)}>
-        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm shrink-0">
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-800 text-sm">{expert.fullName}</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {expert.institute} · {mode || "Mode TBD"}
-            {travel?.traveller?.journeyType ? ` · ${travel.traveller.journeyType}` : ""}
-          </p>
-        </div>
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${overallBadge.cls}`}>{overallBadge.label}</span>
-        <span className="text-gray-400 text-xs ml-2">{open ? "▲" : "▼"}</span>
-      </div>
-
-      {open && (
-        <div className="px-5 py-5">
-
-          {/* Travel details banner — Rail/Air only */}
-          {!isOwnVehicle && <TravelDetailsBanner travel={travel} />}
-
-          {isOwnVehicle ? (
-            <div className="space-y-4">
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 text-sm text-indigo-700">
-                <p className="font-medium">Own Vehicle — no booking required</p>
-                <p className="text-xs mt-1 text-indigo-500">Pickup/drop-off details will appear once entered by DOFA Office.</p>
-              </div>
-
-              <Step num={1} label="Pickup / Drop-off Details (from DOFA Office)" status={hasPickup ? "done" : "active"}>
-                {hasPickup ? (
-                  <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-700 space-y-0.5">
-                    <p>Pickup: {travel.pickupDrop.pickupLocation} at {travel.pickupDrop.pickupTime}</p>
-                    <p>Drop: {travel.pickupDrop.dropLocation} at {travel.pickupDrop.dropTime}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400">Waiting for DOFA Office to enter pickup/drop-off details...</p>
-                )}
-              </Step>
-
-              <Step num={2} label="Enter Driver Info" status={hasDriver ? "done" : hasPickup ? "active" : "pending"}>
-                {hasDriver ? (
-                  <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                    Driver: {travel.pickupDrop.driverName} · {travel.pickupDrop.driverContact}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-gray-500 uppercase tracking-wide font-medium">Driver Name</label>
-                        <input className={inputCls} placeholder="Full name" value={driver.driverName}
-                          onChange={e => setDriver(d => ({ ...d, driverName: e.target.value }))} />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-gray-500 uppercase tracking-wide font-medium">Contact Number</label>
-                        <input className={inputCls} placeholder="Phone" value={driver.driverContact}
-                          onChange={e => setDriver(d => ({ ...d, driverContact: e.target.value }))} />
-                      </div>
-                    </div>
-                    <button onClick={saveDriver} disabled={savingD}
-                      className="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-60 transition">
-                      {savingD ? "Saving..." : "Save Driver Info"}
-                    </button>
-                  </div>
-                )}
-              </Step>
-            </div>
-          ) : (
-            <>
-              <Step num={1} label="Submit Quote" status={qs ? "done" : "active"}>
-                {qs === "APPROVED" || qs === "PENDING" ? (
-                  <div className={`rounded-lg px-4 py-3 text-sm border ${qs === "APPROVED" ? "bg-green-50 border-green-200 text-green-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
-                    ₹{travel.quote.amount} · {travel.quote.vendor}
-                    {qs === "APPROVED" && " · ✔ Approved"}
-                    {qs === "PENDING"  && " · Awaiting DOFA approval"}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {qs === "REJECTED" && (
-                      <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg">
-                        Rejected: {travel?.quote?.rejectionNote || "No reason given"}. Please resubmit.
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-gray-500 uppercase tracking-wide font-medium">Amount (₹)</label>
-                        <input className={inputCls} type="number" placeholder="e.g. 4500"
-                          value={quote.amount} onChange={e => setQuote(q => ({ ...q, amount: e.target.value }))} />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-gray-500 uppercase tracking-wide font-medium">Vendor / Agency</label>
-                        <input className={inputCls} placeholder="Vendor name"
-                          value={quote.vendor} onChange={e => setQuote(q => ({ ...q, vendor: e.target.value }))} />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs text-gray-500 uppercase tracking-wide font-medium">Remarks</label>
-                      <input className={inputCls} placeholder="Optional notes"
-                        value={quote.remarks} onChange={e => setQuote(q => ({ ...q, remarks: e.target.value }))} />
-                    </div>
-                    <button onClick={submitQuote} disabled={savingQ}
-                      className="bg-[#0c2340] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-900 disabled:opacity-60 transition">
-                      {savingQ ? "Submitting..." : "Submit Quote → Notify DOFA"}
-                    </button>
-                  </div>
-                )}
-              </Step>
-
-              <Step num={2} label="Awaiting DOFA Approval" status={qs === "APPROVED" ? "done" : qs === "PENDING" ? "active" : "pending"}>
-                <p className="text-sm text-amber-700">Quote is under review by DOFA/ADoFA. You'll be notified once approved.</p>
-              </Step>
-
-              <Step num={3} label="Upload Ticket" status={hasTicket ? "done" : qs === "APPROVED" ? "active" : "pending"}>
-                {hasTicket ? (
-                  <a href={`${BASE_URL}/${travel.ticketPath}`} target="_blank" rel="noreferrer"
-                    className="text-sm text-blue-600 hover:underline">View Uploaded Ticket</a>
-                ) : (
-                  <div>
-                    <input ref={ticketRef} type="file" accept=".pdf,image/*" className="hidden"
-                      onChange={e => uploadFile("ticket", e.target.files[0])} />
-                    <button onClick={() => ticketRef.current.click()} disabled={upTicket}
-                      className="border border-dashed border-gray-300 text-gray-600 px-4 py-3 rounded-lg text-sm hover:bg-gray-50 w-full text-center disabled:opacity-60">
-                      {upTicket ? "Uploading..." : "Click to upload ticket (PDF / image)"}
-                    </button>
-                  </div>
-                )}
-              </Step>
-
-              <Step num={4} label="Upload Invoice" status={hasInvoice ? "done" : hasTicket ? "active" : "pending"}>
-                {hasInvoice ? (
-                  <a href={`${BASE_URL}/${travel.invoicePath}`} target="_blank" rel="noreferrer"
-                    className="text-sm text-blue-600 hover:underline">View Invoice</a>
-                ) : (
-                  <div>
-                    <input ref={invoiceRef} type="file" accept=".pdf" className="hidden"
-                      onChange={e => uploadFile("invoice", e.target.files[0])} />
-                    <button onClick={() => invoiceRef.current.click()} disabled={upInvoice}
-                      className="border border-dashed border-gray-300 text-gray-600 px-4 py-3 rounded-lg text-sm hover:bg-gray-50 w-full text-center disabled:opacity-60">
-                      {upInvoice ? "Uploading..." : "Click to upload final invoice (PDF)"}
-                    </button>
-                  </div>
-                )}
-              </Step>
-
-              <Step num={5} label="Pickup / Drop-off Details (from DOFA Office)" status={hasPickup ? "done" : hasTicket ? "active" : "pending"}>
-                {hasPickup ? (
-                  <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-700 space-y-0.5">
-                    <p>Pickup: {travel.pickupDrop.pickupLocation} at {travel.pickupDrop.pickupTime}</p>
-                    <p>Drop: {travel.pickupDrop.dropLocation} at {travel.pickupDrop.dropTime}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400">Waiting for DOFA Office to enter pickup details...</p>
-                )}
-              </Step>
-
-              <Step num={6} label="Enter Driver Info" status={hasDriver ? "done" : hasPickup ? "active" : "pending"}>
-                {hasDriver ? (
-                  <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                    Driver: {travel.pickupDrop.driverName} · {travel.pickupDrop.driverContact}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-gray-500 uppercase tracking-wide font-medium">Driver Name</label>
-                        <input className={inputCls} placeholder="Full name" value={driver.driverName}
-                          onChange={e => setDriver(d => ({ ...d, driverName: e.target.value }))} />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-gray-500 uppercase tracking-wide font-medium">Contact Number</label>
-                        <input className={inputCls} placeholder="Phone" value={driver.driverContact}
-                          onChange={e => setDriver(d => ({ ...d, driverContact: e.target.value }))} />
-                      </div>
-                    </div>
-                    <button onClick={saveDriver} disabled={savingD}
-                      className="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-60 transition">
-                      {savingD ? "Saving..." : "Save Driver Info"}
-                    </button>
-                  </div>
-                )}
-              </Step>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+    <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${colors[color] || colors.gray}`}>
+      {children}
+    </span>
   );
 }
 
 export default function ExpertTravelPage() {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter,  setFilter]  = useState("all"); // all | offline | online
 
-  const load = () => {
+  useEffect(() => {
     API.get("/expert-travel")
-      .then(res => setItems(res.data.filter(i => i.travel?.presenceStatus === "Offline")))
-      .catch(() => {})
+      .then(res => setItems(Array.isArray(res.data) ? res.data : []))
+      .catch(console.error)
       .finally(() => setLoading(false));
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  if (loading) return <p className="text-gray-400 text-sm p-6">Loading…</p>;
 
-  if (loading) return <p className="text-gray-400 text-sm">Loading...</p>;
+  const filtered = items.filter(i => {
+    if (filter === "offline") return i.travel?.presenceStatus === "Offline";
+    if (filter === "online")  return i.travel?.presenceStatus === "Online";
+    return true;
+  });
+
+  const offline = items.filter(i => i.travel?.presenceStatus === "Offline");
+  const online  = items.filter(i => i.travel?.presenceStatus === "Online");
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-800">Expert Travel Management</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage quotes, tickets, and logistics for each offline expert.</p>
+    <div className="space-y-6">
+
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-800">Expert Travel Overview</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Full travel details — pickup, flight, driver, and contact information.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {[
+            { key:"all",     label:`All (${items.length})`     },
+            { key:"offline", label:`Offline (${offline.length})` },
+            { key:"online",  label:`Online (${online.length})`  },
+          ].map(({ key, label }) => (
+            <button key={key} onClick={() => setFilter(key)}
+              className={`text-xs px-4 py-2 rounded-lg border font-medium transition ${
+                filter === key
+                  ? "bg-gray-800 text-white border-gray-800"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
-      {items.length === 0 && (
-        <div className="bg-white rounded-xl border p-12 text-center text-gray-400">No offline experts assigned yet.</div>
+
+      {/* ── Car Arrangement Table (offline experts) ── */}
+      {filter !== "online" && offline.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="px-5 py-3 bg-blue-600 flex items-center justify-between">
+            <p className="text-white font-semibold text-sm">🚗 Car Arrangement — Offline Experts</p>
+            <span className="text-blue-200 text-xs">{offline.length} expert{offline.length !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  {[
+                    "Sr","Name","Dept","Mode","Age","Arrival Date","Place to Pick",
+                    "Flight/Train No.","Arrival Time","Depart Date","Place to Drop",
+                    "Return Flight/Train","Depart Time","Contact","Driver","Driver Contact"
+                  ].map(h => (
+                    <th key={h} className="px-3 py-3 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {offline.map(({ expert, travel }, i) => {
+                  const t  = travel || {};
+                  const tr = t.traveller || {};
+                  const pd = t.pickupDrop || {};
+                  return (
+                    <tr key={expert.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
+                      <td className="px-3 py-3 text-gray-400">{i + 1}</td>
+                      <td className="px-3 py-3 font-medium text-gray-800 whitespace-nowrap">{expert.fullName}</td>
+                      <td className="px-3 py-3 text-gray-600">{expert.uploadedBy?.department || expert.department}</td>
+                      <td className="px-3 py-3">
+                        <Badge color={t.modeOfTravel === "Air" ? "blue" : t.modeOfTravel === "Rail" ? "violet" : "gray"}>
+                          {t.modeOfTravel || "—"}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-3 text-gray-600">{tr.age || "—"}</td>
+                      <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{fmtDate(tr.onwardFrom)}</td>
+                      <td className="px-3 py-3 text-gray-700">{pd.pickupLocation || "—"}</td>
+                      <td className="px-3 py-3 font-medium text-indigo-700">{tr.onwardFlightNo || "—"}</td>
+                      <td className="px-3 py-3 text-gray-700">{fmtTime(tr.onwardTime)}</td>
+                      <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{fmtDate(tr.returnFrom)}</td>
+                      <td className="px-3 py-3 text-gray-700">{pd.dropLocation || "—"}</td>
+                      <td className="px-3 py-3 font-medium text-indigo-700">{tr.returnFlightNo || "—"}</td>
+                      <td className="px-3 py-3 text-gray-700">{fmtTime(tr.returnTime)}</td>
+                      <td className="px-3 py-3 text-gray-600">{t.contactNumber || "—"}</td>
+                      <td className="px-3 py-3 font-medium text-gray-800">{pd.driverName || <span className="text-amber-500">Pending</span>}</td>
+                      <td className="px-3 py-3 text-gray-600">{pd.driverContact || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
-      {items.map(item => (
-        <ExpertWorkflow key={item.expert.id} item={item} onRefresh={load} />
-      ))}
+
+      {/* ── All expert cards ── */}
+      <div className="space-y-4">
+        {filtered.map(({ expert, travel }) => {
+          const t  = travel || {};
+          const tr = t.traveller || {};
+          const pd = t.pickupDrop || {};
+          const q  = t.quote;
+
+          const presColor = { Online:"green", Offline:"blue", Pending:"amber" }[t.presenceStatus] || "gray";
+
+          return (
+            <div key={expert.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              {/* Expert header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 bg-gray-50">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm shrink-0">
+                  {expert.fullName?.split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-800">{expert.fullName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{expert.designation} · {expert.institute}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <Badge color={presColor}>{t.presenceStatus || "Pending"}</Badge>
+                  {t.confirmed && <Badge color="green">✔ Confirmed</Badge>}
+                  {t.modeOfTravel && <Badge color="blue">{t.modeOfTravel}</Badge>}
+                  {q?.status === "APPROVED" && <Badge color="green">Quote Approved</Badge>}
+                  {q?.status === "PENDING"  && <Badge color="amber">Quote Pending</Badge>}
+                </div>
+              </div>
+
+              <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-4 gap-5 text-sm">
+                {/* Contact */}
+                <div>
+                  <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Contact</p>
+                  <p className="font-medium text-gray-800">{t.contactNumber || "—"}</p>
+                </div>
+
+                {/* Traveller */}
+                {tr.name && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Traveller</p>
+                    <p className="font-medium text-gray-800">{tr.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {tr.gender}{tr.age ? ` · Age: ${tr.age}` : ""}{tr.preferredSeat ? ` · ${tr.preferredSeat}` : ""}
+                    </p>
+                  </div>
+                )}
+
+                {/* Onward journey */}
+                {tr.onwardFrom && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Arrival (Onward)</p>
+                    <p className="font-medium text-gray-800">{fmtDate(tr.onwardFrom)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{fmtTime(tr.onwardTime)}</p>
+                    {tr.onwardFlightNo && (
+                      <p className="text-xs font-semibold text-indigo-700 mt-0.5">✈ {tr.onwardFlightNo}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Return journey */}
+                {tr.returnFrom && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Departure (Return)</p>
+                    <p className="font-medium text-gray-800">{fmtDate(tr.returnFrom)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{fmtTime(tr.returnTime)}</p>
+                    {tr.returnFlightNo && (
+                      <p className="text-xs font-semibold text-indigo-700 mt-0.5">✈ {tr.returnFlightNo}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Pickup */}
+                {pd.pickupLocation && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Pickup</p>
+                    <p className="font-medium text-gray-800">{pd.pickupLocation}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{pd.pickupTime}</p>
+                  </div>
+                )}
+
+                {/* Drop */}
+                {pd.dropLocation && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Drop</p>
+                    <p className="font-medium text-gray-800">{pd.dropLocation}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{pd.dropTime}</p>
+                  </div>
+                )}
+
+                {/* Driver */}
+                {pd.driverName ? (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Driver</p>
+                    <p className="font-medium text-gray-800">{pd.driverName}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{pd.driverContact}</p>
+                  </div>
+                ) : (pd.enteredByDofa && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Driver</p>
+                    <p className="text-xs text-amber-600 font-medium">Not yet assigned</p>
+                  </div>
+                ))}
+
+                {/* Quote */}
+                {q && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Quote</p>
+                    <p className="font-medium text-gray-800">₹{q.amount}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{q.vendor || "—"}</p>
+                  </div>
+                )}
+
+                {/* Ticket */}
+                {t.ticketPath && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Ticket</p>
+                    <a href={`${BASE}/${t.ticketPath}`} target="_blank" rel="noreferrer"
+                      className="text-sm text-blue-600 hover:underline">📄 View Ticket</a>
+                  </div>
+                )}
+
+                {/* Online link */}
+                {t.presenceStatus === "Online" && t.onlineLink && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">Online Link</p>
+                    <a href={t.onlineLink} target="_blank" rel="noreferrer"
+                      className="text-sm text-blue-600 hover:underline break-all">{t.onlineLink}</a>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="bg-white rounded-xl border p-14 text-center text-gray-400">
+          <p className="text-4xl mb-3">✈</p>
+          <p>No expert travel details available yet.</p>
+        </div>
+      )}
     </div>
   );
 }

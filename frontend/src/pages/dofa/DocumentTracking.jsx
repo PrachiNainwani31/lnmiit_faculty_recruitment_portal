@@ -146,10 +146,35 @@ LNMIIT`}
 }
 
 /* ── Candidate Row (collapsible) ────────────────────────── */
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
   const [open, setOpen]           = useState(false);
   const [localRemarks, setLocalRemarks] = useState({});
   const [toast, setToast]         = useState(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadZip = async (e) => {
+    e.stopPropagation(); // don't toggle open
+    try {
+      setDownloading(true);
+      const res = await fetch(`${BASE_URL}/api/dofa/candidate-docs/${candidate.id}/download`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url  = window.URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `${candidate.name || "candidate"}_Documents.zip`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to download documents ZIP");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const counts = getCounts(candidate.verdicts);
 
@@ -193,6 +218,14 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
           <Badge count={counts.pending}   label="Awaiting Review" colorClass="bg-blue-50 text-blue-600 border-blue-200" />
         </div>
 
+        <button
+          onClick={handleDownloadZip}
+          disabled={downloading}
+          title="Download all documents as ZIP"
+          className="shrink-0 flex items-center gap-1.5 text-xs border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-medium transition disabled:opacity-60"
+        >
+          {downloading ? "…" : "↓ ZIP"}
+        </button>
         <span className="text-gray-400 text-sm ml-2">{open ? "▲" : "›"}</span>
       </div>
 

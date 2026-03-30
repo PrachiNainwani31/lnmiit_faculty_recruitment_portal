@@ -1,3 +1,4 @@
+// components/OnBoardingStatus.jsx
 import { useEffect, useState } from "react";
 import API from "../api/api";
 
@@ -8,7 +9,6 @@ export default function OnboardingStatus() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Uses dedicated candidate endpoint — no 403 issues
     API.get("/candidate/onboarding")
       .then(res => setData(res.data))
       .catch(console.error)
@@ -19,12 +19,29 @@ export default function OnboardingStatus() {
 
   const r = data.record;
 
+  // LUCS detail string
+  const lucsEmailDone = r?.lucsEmailAssigned && r?.lucsItAssetsIssued;
+  const lucsDetail = lucsEmailDone
+    ? [
+        r.lucsEmailId          ? `Email: ${r.lucsEmailId}`           : null,
+        r.lucsItAssetsNote     ? `Assets: ${r.lucsItAssetsNote}`     : null,
+        r.lucsWebsiteLogin     ? "Website login provided"            : null,
+        r.lucsWebsiteLoginNote ? r.lucsWebsiteLoginNote              : null,
+        r.lucsOtherNote        ? `Other: ${r.lucsOtherNote}`         : null,
+      ].filter(Boolean).join(" · ")
+    : "LUCS team will assign institute email, IT assets, WiFi and portal login";
+
   const steps = [
     {
       label:  "Selected for position",
       done:   true,
-      detail: `Assistant Professor · ${data.department || "LNMIIT"}`,
-      color:  "green",
+      // ✅ Show designation + employmentType from selection record
+      detail: [
+        data.designation     || "Faculty Position",
+        data.employmentType  ? `(${data.employmentType})` : null,
+        data.department      ? `· ${data.department}`     : null,
+      ].filter(Boolean).join(" "),
+      color: "green",
     },
     {
       label:     "Offer letter",
@@ -42,14 +59,7 @@ export default function OnboardingStatus() {
         : "Establishment will confirm your joining date",
       color:  "blue",
     },
-    {
-      label:     "Joining letter",
-      done:      !!r?.joiningLetterPath,
-      detail:    r?.joiningLetterPath ? null : "Available after joining date is confirmed",
-      link:      r?.joiningLetterPath ? `${BASE}/${r.joiningLetterPath}` : null,
-      linkLabel: "Download joining letter",
-      color:     "blue",
-    },
+    // ✅ Joining letter intentionally excluded — internal document only
     {
       label:  "Room allotment",
       done:   !!r?.roomNumber,
@@ -67,11 +77,46 @@ export default function OnboardingStatus() {
       color:  "pink",
     },
     {
+      label:  "MIS portal login",
+      done:   !!r?.misLoginDone,
+      // ✅ Candidate sees full details including note
+      detail: r?.misLoginDone
+        ? (r.misLoginNote || "MIS login assigned — check your email for credentials")
+        : "Establishment will provide your MIS login credentials",
+      color:  "teal",
+    },
+    {
+      label:  "Library membership",
+      done:   !!r?.libraryDone,
+      // ✅ Candidate sees full library details
+      detail: r?.libraryDone
+        ? (r.libraryDetails || "Library access activated")
+        : "Establishment will provide library membership details",
+      color:  "teal",
+    },
+    {
+      // ✅ RFID: candidate can download once sent
+      label:     "RFID access card",
+      done:      !!r?.rfidSentToCandidate,
+      detail:    r?.rfidSentToCandidate ? null : "Establishment will send your RFID access card",
+      link:      r?.rfidSentToCandidate && r?.rfidPath ? `${BASE}/${r.rfidPath}` : null,
+      linkLabel: "Download RFID card",
+      color:     "teal",
+    },
+    {
       label:  "IT assets & institute email",
-      done:   !!(r?.lucs?.emailAssigned && r?.lucs?.itAssetsIssued),
-      detail: r?.lucs?.emailId
-        ? `Institute email: ${r.lucs.emailId} · WiFi and portal login assigned`
-        : "LUCS team will assign institute email, IT assets and WiFi",
+      done:   lucsEmailDone,
+      // ✅ Show all LUCS textbox answers to candidate
+      detail: lucsEmailDone
+        ? [
+            r?.lucsEmailId          ? `Email: ${r.lucsEmailId}`                   : null,
+            r?.lucsItAssetsNote     ? `Assets issued: ${r.lucsItAssetsNote}`      : null,
+            r?.lucsWifiProvided     ? "WiFi access provided"                       : null,
+            r?.lucsWebsiteLogin     ? "Website login credentials provided"         : null,
+            r?.lucsWebsiteLoginNote ? r.lucsWebsiteLoginNote                       : null,
+            r?.lucsOtherNote        ? `Other: ${r.lucsOtherNote}`                 : null,
+          ].filter(Boolean).join(" · ")
+        : "LUCS team will assign institute email, IT assets, WiFi and portal login",
       color:  "teal",
     },
   ];
@@ -85,31 +130,42 @@ export default function OnboardingStatus() {
   };
 
   const firstPending = steps.findIndex(s => !s.done);
+  const doneCount    = steps.filter(s => s.done).length;
 
   return (
     <div className="bg-white p-6 rounded-xl shadow border-2 border-green-200 space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0">
-          🎉
-        </div>
-        <div>
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0">🎉</div>
+        <div className="flex-1">
           <h2 className="font-semibold text-lg text-green-800">You have been selected!</h2>
           <p className="text-xs text-green-600 mt-0.5">
-            Track your onboarding progress below. This updates automatically.
+            {data.designation && <span className="font-medium">{data.designation}</span>}
+            {data.employmentType && <span className="text-green-500"> · {data.employmentType}</span>}
+            {data.department && <span> · {data.department}</span>}
           </p>
+        </div>
+        {/* Progress bar */}
+        <div className="text-right flex-shrink-0">
+          <p className="text-xs text-gray-500 mb-1">{doneCount}/{steps.length} steps done</p>
+          <div className="w-32 bg-gray-200 rounded-full h-1.5">
+            <div className="bg-green-500 h-1.5 rounded-full transition-all"
+              style={{ width: `${(doneCount / steps.length) * 100}%` }} />
+          </div>
         </div>
       </div>
 
+      {/* Steps */}
       <div className="space-y-3">
         {steps.map((step, i) => {
           const isActive = !step.done && i === firstPending;
-          const cls = colorCls[step.color];
+          const cls      = colorCls[step.color];
           return (
             <div key={i} className="flex items-start gap-3">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 border mt-0.5 ${
-                step.done  ? cls :
-                isActive   ? "bg-blue-100 text-blue-700 border-blue-300" :
-                             "bg-gray-100 text-gray-400 border-gray-200"
+                step.done  ? cls
+                : isActive ? "bg-blue-100 text-blue-700 border-blue-300"
+                           : "bg-gray-100 text-gray-400 border-gray-200"
               }`}>
                 {step.done ? "✓" : i + 1}
               </div>
@@ -129,9 +185,9 @@ export default function OnboardingStatus() {
                 ) : null}
               </div>
               <span className={`text-xs px-2.5 py-1 rounded-full border font-medium flex-shrink-0 ${
-                step.done  ? cls :
-                isActive   ? "bg-blue-50 text-blue-600 border-blue-200" :
-                             "bg-gray-100 text-gray-400 border-gray-200"
+                step.done  ? cls
+                : isActive ? "bg-blue-50 text-blue-600 border-blue-200"
+                           : "bg-gray-100 text-gray-400 border-gray-200"
               }`}>
                 {step.done ? "Done" : isActive ? "In progress" : "Pending"}
               </span>

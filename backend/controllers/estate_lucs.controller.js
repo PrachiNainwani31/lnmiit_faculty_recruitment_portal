@@ -1,16 +1,18 @@
+// controllers/estate_lucs.controller.js
 const { OnboardingRecord, Candidate } = require("../models");
 const { sendEmail } = require("../utils/emailSender");
+const { Op } = require("sequelize");
 const CYCLE = require("../config/activeCycle");
 
 /* ════════════════════════════
-   ESTATE CONTROLLER
+   ESTATE
 ════════════════════════════ */
 exports.getPendingHandovers = async (req, res) => {
   try {
     const records = await OnboardingRecord.findAll({
       where: {
-        cycle: CYCLE,
-        roomNumber: { [require("sequelize").Op.ne]: "" },
+        cycle:      CYCLE,
+        roomNumber: { [Op.ne]: null },
       },
       include: [{ model: Candidate, as: "candidate" }],
     });
@@ -28,21 +30,18 @@ exports.confirmHandover = async (req, res) => {
 
     await OnboardingRecord.update(
       {
-        roomHandedOver: true,
-        roomHandoverDate: new Date(handoverDate),
+        roomHandedOver:    true,
+        roomHandoverDate:  new Date(handoverDate),
         roomHandoverNotes: handoverNotes,
       },
-      {
-        where: { candidateId, cycle: CYCLE },
-      }
+      { where: { candidateId, cycle: CYCLE } }
     );
 
     const record = await OnboardingRecord.findOne({
-      where: { candidateId, cycle: CYCLE },
+      where:   { candidateId, cycle: CYCLE },
       include: [{ model: Candidate, as: "candidate" }],
     });
 
-    // Notify DOFA Office
     await sendEmail(
       process.env.DOFA_OFFICE_EMAIL || "dofaoffice@lnmiit.ac.in",
       `Room Handover Confirmed: ${record?.candidate?.fullName}`,
@@ -57,14 +56,18 @@ exports.confirmHandover = async (req, res) => {
 };
 
 /* ════════════════════════════
-   LUCS CONTROLLER
+   LUCS
+   Gated behind joining letter upload.
+   Establishment must upload joining
+   letter before LUCS can fill anything.
 ════════════════════════════ */
 exports.getLucsRecords = async (req, res) => {
   try {
+    // Gate: only show records where joining letter has been uploaded
     const records = await OnboardingRecord.findAll({
       where: {
-        cycle: CYCLE,
-        roomHandedOver: true,
+        cycle:             CYCLE,
+        joiningLetterPath: { [Op.ne]: null },  // ← GATE: joining letter must exist
       },
       include: [{ model: Candidate, as: "candidate" }],
     });
@@ -80,51 +83,61 @@ exports.updateLucs = async (req, res) => {
   try {
     const {
       candidateId,
+      // Checkboxes
       emailAssigned,
       emailId,
       itAssetsIssued,
+      itAssetsNote,       // NEW text
       wifiProvided,
-      portalLoginDone
+      websiteLogin,       // renamed from portalLoginDone
+      websiteLoginNote,   // NEW text
+      otherDone,          // NEW
+      otherNote,          // NEW text
     } = req.body;
 
-    const allDone =
-      emailAssigned &&
-      itAssetsIssued &&
-      wifiProvided &&
-      portalLoginDone;
-
-    // 👇 JSON field handling
+    // Security gate: joining letter must exist
     const record = await OnboardingRecord.findOne({
-      where: { candidateId, cycle: CYCLE }
+      where: { candidateId, cycle: CYCLE },
     });
 
     if (!record)
       return res.status(404).json({ message: "Record not found" });
 
-    const lucs = record.lucs || {};
+    if (!record.joiningLetterPath)
+      return res.status(403).json({
+        message: "Cannot update LUCS details before establishment uploads joining letter",
+        gated: true,
+      });
 
-    lucs.emailAssigned = emailAssigned;
-    lucs.emailId = emailId;
-    lucs.itAssetsIssued = itAssetsIssued;
-    lucs.wifiProvided = wifiProvided;
-    lucs.portalLoginDone = portalLoginDone;
-
-    if (allDone) {
-      lucs.confirmedAt = new Date();
-      lucs.confirmedBy = req.user.id;
-    }
+    const allDone =
+      emailAssigned && itAssetsIssued && wifiProvided && websiteLogin;
 
     await OnboardingRecord.update(
-      { lucs },
+      {
+        lucsEmailAssigned:    emailAssigned,
+        lucsEmailId:          emailId            || null,
+        lucsItAssetsIssued:   itAssetsIssued,
+        lucsItAssetsNote:     itAssetsNote        || null,
+        lucsWifiProvided:     wifiProvided,
+        lucsWebsiteLogin:     websiteLogin,
+        lucsWebsiteLoginNote: websiteLoginNote    || null,
+        lucsOtherDone:        otherDone           || false,
+        lucsOtherNote:        otherNote           || null,
+        ...(allDone && {
+          lucsConfirmedAt:    new Date(),
+          lucsConfirmedById:  req.user.id,
+          onboardingComplete: true,
+          onboardingCompletedAt: new Date(),
+        }),
+      },
       { where: { candidateId, cycle: CYCLE } }
     );
 
     const updated = await OnboardingRecord.findOne({
-      where: { candidateId, cycle: CYCLE },
-      include: [{ model: Candidate, as: "candidate" }]
+      where:   { candidateId, cycle: CYCLE },
+      include: [{ model: Candidate, as: "candidate" }],
     });
 
-    // Notify establishment
     if (allDone) {
       await sendEmail(
         process.env.ESTABLISHMENT_EMAIL || "establishment@lnmiit.ac.in",

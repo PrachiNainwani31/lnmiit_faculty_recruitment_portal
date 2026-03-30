@@ -1,3 +1,4 @@
+// frontend/api/hodApi.js
 import API from "./api";
 
 export const uploadCandidates = (formData) =>
@@ -12,9 +13,8 @@ export const addExpert = (data) =>
 export const getExperts = () =>
   API.get("/hod/experts");
 
-export const clearExperts = async () => {
-  return API.delete("/hod/experts/clear");
-};
+export const clearExperts = () =>
+  API.delete("/hod/experts/clear");
 
 export const deleteCandidate = (id) =>
   API.delete(`/hod/candidates/${id}`);
@@ -28,10 +28,9 @@ export const getHodCounts = () =>
 export const submitToDofa = () =>
   API.post("/cycle/submit");
 
-export const uploadExpertsCSV = async (file) => {
+export const uploadExpertsCSV = (file) => {
   const formData = new FormData();
   formData.append("file", file);
-
   return API.post("/hod/upload-experts", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
@@ -39,3 +38,14 @@ export const uploadExpertsCSV = async (file) => {
 
 export const getCurrentCycle = () =>
   API.get("/cycle/current");
+
+// ── NEW ──────────────────────────────────────────────────────────
+/**
+ * HOD marks a candidate as appeared / not appeared in interview.
+ * @param {number|string} id   - Candidate ID
+ * @param {boolean}       appeared
+ */
+export const markCandidateAppeared = (id, appeared) =>
+  API.patch(`/hod/candidates/appeared/${id}`, { appeared });
+
+export const submitAppearedToDofa = () => API.post("/cycle/submit-appeared");
