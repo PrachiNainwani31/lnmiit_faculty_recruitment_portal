@@ -1,15 +1,12 @@
-const {Notification} = require("../models");
+// utils/notify.js
+const { Notification } = require("../models");
 
-exports.createNotification = async ({ cycle, role, title, message, type }) => {
+exports.createNotification = async ({
+  cycle, role, title, message, type = "SYSTEM", targetUserId = null,
+}) => {
   try {
-    await Notification.create({
-      cycle,
-      role,
-      title,
-      message,
-      type,
-    });
+    await Notification.create({ cycle, role, title, message, type, targetUserId });
   } catch (err) {
-    console.error("Notification Error:", err.message);
+    console.error("createNotification error:", err.message);
   }
 };

@@ -20,10 +20,10 @@ const Expert             = require("./Expert");
 const ExpertTravel       = require("./ExpertTravel");
 const InterviewLog       = require("./InterviewLog");
 const Notification       = require("./Notification");
-const OfficeOrder        = require("./OfficeOrder");
 const OnboardingRecord   = require("./OnboardingRecord");
 const RecruitmentCycle   = require("./RecruitmentCycle");
 const SelectedCandidate  = require("./SelectedCandidate");
+const ActivityLog= require("./ActivityLog");
 
 // ─── Associations ─────────────────────────────────────────────────────────────
 
@@ -52,10 +52,6 @@ Expert.hasOne(ExpertTravel,    { as: "travel",  foreignKey: "expertId" });
 
 InterviewLog.belongsTo(User, { as: "hod", foreignKey: "hodId" });
 User.hasMany(InterviewLog,   { as: "interviewLogs", foreignKey: "hodId" });
-
-// OfficeOrder ↔ User
-OfficeOrder.belongsTo(User, { as: "uploadedBy", foreignKey: "uploadedById" });
-User.hasMany(OfficeOrder,   { as: "officeOrders", foreignKey: "uploadedById" });
 
 // OnboardingRecord ↔ Candidate, User
 OnboardingRecord.belongsTo(Candidate, { as: "candidate",    foreignKey: "candidateId" });
@@ -88,8 +84,8 @@ module.exports = {
   ExpertTravel,
   InterviewLog,
   Notification,
-  OfficeOrder,
   OnboardingRecord,
   RecruitmentCycle,
   SelectedCandidate,
+  ActivityLog,
 };

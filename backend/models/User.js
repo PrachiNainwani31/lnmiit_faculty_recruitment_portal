@@ -28,7 +28,7 @@ const User = sequelize.define(
     role: {
       type:      DataTypes.ENUM(
         "ADMIN", "HOD", "DOFA", "ADOFA", "DOFA_OFFICE",
-        "TRAVEL", "CANDIDATE", "REFEREE", "DIRECTOR",
+        "REGISTRAR_OFFICE", "CANDIDATE", "REFEREE",
         "ESTABLISHMENT", "LUCS", "ESTATE"
       ),
       allowNull: false,
@@ -41,17 +41,24 @@ const User = sequelize.define(
       type:         DataTypes.BOOLEAN,
       defaultValue: true,
     },
+    passwordResetToken:  { type: DataTypes.STRING(100), allowNull: true, defaultValue: null },
+    passwordResetExpiry: { type: DataTypes.DATE,        allowNull: true, defaultValue: null },
   },
   {
-    tableName: "users",
-    hooks: {
-      beforeSave: async (user) => {
-        if (user.changed("password")) {
-          user.password = await bcrypt.hash(user.password, 10);
-        }
-      },
+  tableName: "users",
+  hooks: {
+    // Always hash on new user creation — no changed() check needed
+    beforeCreate: async (user) => {
+      user.password = await bcrypt.hash(user.password, 10);
     },
-  }
+    // Only hash on update if password was actually changed
+    beforeUpdate: async (user) => {
+      if (user.changed("password")) {
+        user.password = await bcrypt.hash(user.password, 10);
+      }
+    },
+  },
+}
 );
 
 // Instance method — compare password

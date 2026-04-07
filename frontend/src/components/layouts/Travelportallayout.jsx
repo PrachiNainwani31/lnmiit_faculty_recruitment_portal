@@ -14,7 +14,7 @@ export default function TravelPortalLayout() {
       <aside className="w-60 bg-[#0c2340] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/12">
           <p className="text-white font-semibold text-sm">Travel Portal</p>
-          <p className="text-white/50 text-xs mt-0.5">Mr. Ramswaroop Sharma</p>
+          <p className="text-white/50 text-xs mt-0.5">Registrar Office</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
           <NavLink to="/travel"              end className={navStyle}>📋 Expert Travel</NavLink>

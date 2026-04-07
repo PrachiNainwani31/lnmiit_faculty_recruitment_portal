@@ -77,33 +77,6 @@ export default function OnboardingStatus() {
       color:  "pink",
     },
     {
-      label:  "MIS portal login",
-      done:   !!r?.misLoginDone,
-      // ✅ Candidate sees full details including note
-      detail: r?.misLoginDone
-        ? (r.misLoginNote || "MIS login assigned — check your email for credentials")
-        : "Establishment will provide your MIS login credentials",
-      color:  "teal",
-    },
-    {
-      label:  "Library membership",
-      done:   !!r?.libraryDone,
-      // ✅ Candidate sees full library details
-      detail: r?.libraryDone
-        ? (r.libraryDetails || "Library access activated")
-        : "Establishment will provide library membership details",
-      color:  "teal",
-    },
-    {
-      // ✅ RFID: candidate can download once sent
-      label:     "RFID access card",
-      done:      !!r?.rfidSentToCandidate,
-      detail:    r?.rfidSentToCandidate ? null : "Establishment will send your RFID access card",
-      link:      r?.rfidSentToCandidate && r?.rfidPath ? `${BASE}/${r.rfidPath}` : null,
-      linkLabel: "Download RFID card",
-      color:     "teal",
-    },
-    {
       label:  "IT assets & institute email",
       done:   lucsEmailDone,
       // ✅ Show all LUCS textbox answers to candidate
@@ -118,6 +91,33 @@ export default function OnboardingStatus() {
           ].filter(Boolean).join(" · ")
         : "LUCS team will assign institute email, IT assets, WiFi and portal login",
       color:  "teal",
+    },
+    {
+      label:  "MIS portal login",
+      done:   !!r?.misUsername,
+      // ✅ Candidate sees full details including note
+      detail: r?.misUsername
+        ? (r.misUsername || "MIS login assigned — check your email for credentials")
+        : "Establishment will provide your MIS login credentials",
+      color:  "teal",
+    },
+    {
+      label:  "Library membership",
+      done:   !!r?.libraryMemberId,
+      // ✅ Candidate sees full library details
+      detail: r?.libraryMemberId
+        ? (r.libraryMemberId || "Library access activated")
+        : "Establishment will provide library membership details",
+      color:  "teal",
+    },
+    {
+      // ✅ RFID: candidate can download once sent
+      label:     "RFID access card",
+      done:      !!r?.rfidSentToCandidate,
+      detail:    r?.rfidSentToCandidate ? null : "Establishment will send your RFID access card",
+      link:      r?.rfidSentToCandidate && r?.rfidPath ? `${BASE}/${r.rfidPath}` : null,
+      linkLabel: "Download RFID card",
+      color:     "teal",
     },
   ];
 

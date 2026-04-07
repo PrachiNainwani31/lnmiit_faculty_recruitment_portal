@@ -1,21 +1,24 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const CYCLE = require("../config/activeCycle");
+const path   = require("path");
+const fs     = require("fs");
+const getCurrentCycle = require("../utils/getCurrentCycle");
 
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const department = req.user.department;
+  destination: async function (req, file, cb) {
+    try {
+      // ✅ Get cycle dynamically from HOD's current cycle
+      const cycleDoc   = await getCurrentCycle(req.user.id);
+      const cycleStr   = cycleDoc?.cycle || "unknown-cycle";
+      const department = req.user.department || "unknown-dept";
 
-    const uploadPath = path.join(
-      __dirname,
-      "../uploads/resumes",
-      CYCLE,
-      department
-    );
-    console.log("Saving ZIP for department:", req.user.department);
-    fs.mkdirSync(uploadPath, { recursive: true });
-    cb(null, uploadPath);
+      const uploadPath = path.join(
+        __dirname, "../uploads/resumes", cycleStr, department
+      );
+      fs.mkdirSync(uploadPath, { recursive: true });
+      cb(null, uploadPath);
+    } catch (err) {
+      cb(err);
+    }
   },
   filename: function (req, file, cb) {
     cb(null, "resumes.zip");
@@ -26,9 +29,8 @@ const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (!file.originalname.endsWith(".zip")) {
+    if (!file.originalname.endsWith(".zip"))
       return cb(new Error("Only ZIP files allowed"));
-    }
     cb(null, true);
   },
 });

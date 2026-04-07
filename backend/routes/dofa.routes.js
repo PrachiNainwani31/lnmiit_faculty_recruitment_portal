@@ -16,7 +16,7 @@ router.get(
   downloadDepartmentResumes
 );
 
-router.get("/documents", auth(["DOFA"]), async (req, res) => {
+router.get("/documents", auth(["DOFA","ADOFA"]), async (req, res) => {
 
   const apps = await CandidateApplication
     .find()
@@ -26,9 +26,9 @@ router.get("/documents", auth(["DOFA"]), async (req, res) => {
 
 });
 
-router.get("/document-tracking",auth(["DOFA"]),getDocumentTracking)
-router.post("/document-verdict",auth(["DOFA"]),updateDocumentVerdict)
-router.post("/document-reminder",auth(["DOFA"]),sendReminder)
+router.get("/document-tracking",auth(["DOFA","ADOFA","DOFA_OFFICE"]),getDocumentTracking)
+router.post("/document-verdict",auth(["DOFA","ADOFA","DOFA_OFFICE"]),updateDocumentVerdict)
+router.post("/document-reminder",auth(["DOFA","ADOFA","DOFA_OFFICE"]),sendReminder)
 router.get("/candidate-docs/:appId/download",              auth(["DOFA","ADOFA","DOFA_OFFICE"]), downloadCandidateDocs);
 router.get("/candidate-docs/:candidateId/download-by-candidate", auth(["DOFA","ADOFA","DOFA_OFFICE"]), downloadByCandidate);
 module.exports = router;

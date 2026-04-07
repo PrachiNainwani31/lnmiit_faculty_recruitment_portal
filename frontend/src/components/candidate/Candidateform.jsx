@@ -7,6 +7,20 @@ import ExperienceEntry from "./Experienceentry";
 import API             from "../../api/api";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+/* ── Validators ── */
+const validateEmail = (v) => v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+  ? "Please enter a valid email address" : null;
+
+const validatePhone = (v) => v && !/^\d{10}$/.test(v.replace(/\s/g, ""))
+  ? "Phone must be exactly 10 digits" : null;
+
+const validateName = (v) => v && /\d/.test(v)
+  ? "Name should not contain numbers" : null;
+
+function FieldError({ msg }) {
+  if (!msg) return null;
+  return <p className="text-red-500 text-xs mt-1">{msg}</p>;
+}
 
 /* ── Experience duration helpers ── */
 export function calcExperience(experiences) {
@@ -63,9 +77,7 @@ export default function Candidateform({
     const fd = new FormData();
     fd.append("file", file);
     fd.append("type", type);
-    const res = await API.post("/candidate/upload", fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const res = await API.post("/candidate/upload", fd);
     const updated = { ...files, [type]: res.data.path };
     setFiles(updated);
     await API.post("/candidate/save", buildPayload({ documents: updated }));
@@ -77,12 +89,11 @@ export default function Candidateform({
     for (const file of selectedFiles) {
       const fd = new FormData();
       fd.append("file", file); fd.append("type", type);
-      const res = await API.post("/candidate/upload", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await API.post("/candidate/upload-multi", fd);
       paths.push(res.data.path);
     }
-    const updated = { ...files, [type]: paths };
+    const existing = files[type] || [];
+    const updated  = { ...files, [type]: [...existing, ...paths] };
     setFiles(updated);
     await API.post("/candidate/save", buildPayload({ documents: updated }));
   };
@@ -94,7 +105,7 @@ export default function Candidateform({
   const handleExpChange = (i, field, value) => {
     setExperiences(prev => prev.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
   };
-  const handleExpBlur  = () => saveNow({ experiences });
+  const handleExpBlur  = () => saveNow();
   const addExperience  = () => setExperiences(prev => [...prev, { ...EMPTY_EXP }]);
   const removeExperience = (i) => {
     if (experiences.length <= 1) { alert("At least 1 experience entry is required."); return; }
@@ -102,6 +113,32 @@ export default function Candidateform({
     setExperiences(updated);
     saveNow({ experiences: updated });
   };
+
+  // Add after handleExpBlur
+const handleCertUpload = async (index, file) => {
+  if (!file) return;
+  // Save first to ensure experiences get DB ids
+  const saved = await saveNow();
+  const freshExps = saved?.experiences || experiences;
+  const exp = freshExps[index];
+
+  if (!exp?.id) {
+    alert("Could not save experience. Please try again.");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("file", file);
+  try {
+    const res = await API.post(`/candidate/experience/${exp.id}/certificate`, fd);
+    // Update local state with the certificate path
+    setExperiences(prev => prev.map((e, i) =>
+      i === index ? { ...e, id: exp.id, certificate: res.data.path } : e
+    ));
+  } catch {
+    alert("Certificate upload failed");
+  }
+};
 
   /* ── Referee ── */
   const handleRefereeChange = (i, field, value) => {
@@ -157,19 +194,78 @@ export default function Candidateform({
       <div ref={personalRef} className="bg-white p-6 rounded shadow space-y-4">
         <h2 className="font-semibold text-lg border-b pb-2">Personal Information</h2>
         <div className="grid grid-cols-2 gap-4">
-          {[
-            { key:"name",    label:"Full Name"      },
-            { key:"email",   label:"Email"          },
-            { key:"contact", label:"Contact Number" },
-          ].map(({ key, label }) => (
-            <div key={key}>
-              <label className={labelCls}>{label}</label>
-              <input value={application[key]} placeholder={`Enter ${label}`}
-                className={inputCls} disabled={isReadOnly}
-                onChange={e => setApplication(a => ({ ...a, [key]: e.target.value }))}
-                onBlur={() => !isReadOnly && saveNow()} />
+
+          {/* Full Name */}
+          <div>
+            <label className={labelCls}>Full Name</label>
+            <input
+              value={application.name || ""}
+              placeholder="Enter Full Name"
+              className={inputCls}
+              disabled={isReadOnly}
+              onKeyPress={e => { if (/\d/.test(e.key)) e.preventDefault(); }}
+              onChange={e => setApplication(a => ({ ...a, name: e.target.value }))}
+              onBlur={() => !isReadOnly && saveNow()}
+            />
+            <FieldError msg={validateName(application.name)} />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className={labelCls}>Email</label>
+            <input
+              type="email"
+              value={application.email || ""}
+              placeholder="Enter Email"
+              className={inputCls}
+              disabled={isReadOnly}
+              onChange={e => setApplication(a => ({ ...a, email: e.target.value }))}
+              onBlur={() => !isReadOnly && saveNow()}
+            />
+            <FieldError msg={validateEmail(application.email)} />
+          </div>
+
+          {/* Contact */}
+          <div>
+            <label className={labelCls}>Contact Number</label>
+            <div className="flex gap-2">
+              <select
+                value={application.countryCode || "+91"}
+                disabled={isReadOnly}
+                onChange={e => setApplication(a => ({ ...a, countryCode: e.target.value }))}
+                onBlur={() => !isReadOnly && saveNow()}
+                className={`border p-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-red-300 w-24 ${isReadOnly ? "bg-gray-50 text-gray-500" : ""}`}
+              >
+                <option value="+91">🇮🇳 +91</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+61">🇦🇺 +61</option>
+                <option value="+971">🇦🇪 +971</option>
+                <option value="+65">🇸🇬 +65</option>
+                <option value="+49">🇩🇪 +49</option>
+                <option value="+33">🇫🇷 +33</option>
+                <option value="+86">🇨🇳 +86</option>
+                <option value="+81">🇯🇵 +81</option>
+              </select>
+              <div className="flex-1">
+                <input
+                  value={application.contact || ""}
+                  placeholder="10-digit number"
+                  className={inputCls}
+                  disabled={isReadOnly}
+                  maxLength={10}
+                  onChange={e => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setApplication(a => ({ ...a, contact: v }));
+                  }}
+                  onBlur={() => !isReadOnly && saveNow()}
+                />
+                <FieldError msg={validatePhone(application.contact)} />
+              </div>
             </div>
-          ))}
+          </div>
+
+          {/* Department */}
           <div>
             <label className={labelCls}>Department Applied For</label>
             <select value={application.department} className={inputCls} disabled={isReadOnly}
@@ -184,8 +280,13 @@ export default function Candidateform({
               <option>Mathematics</option>
               <option>Humanities and Social Sciences</option>
             </select>
+            {!application.department && !isReadOnly && (
+              <p className="text-amber-500 text-xs mt-1">Please select a department</p>
+            )}
           </div>
         </div>
+
+        {/* Referee email validation inline */}
         <div>
           <label className={labelCls}>Letter of Acceptance</label>
           <div className="flex gap-6">
@@ -200,56 +301,55 @@ export default function Candidateform({
           </div>
         </div>
       </div>
-
       {/* ── DOCUMENTS ── */}
       <div ref={docsRef} className="bg-white p-6 rounded shadow space-y-6">
         <h2 className="font-semibold text-lg border-b pb-2">Document Uploads</h2>
         <div className="grid grid-cols-2 gap-6">
-          <FileUpload label="CV" file={files.cv} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"cv")} />
-          <FileUpload label="Teaching Statement" file={files.teachingStatement} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"teachingStatement")} />
+          <FileUpload label="CV" file={files.docCv} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docCv")} />
+          <FileUpload label="Teaching Statement" file={files.docTeachingStatement} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docTeachingStatement")} />
           <div className="col-span-2">
-            <FileUpload label="Research Statement" file={files.researchStatement} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"researchStatement")} />
+            <FileUpload label="Research Statement" file={files.docResearchStatement} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docResearchStatement")} />
           </div>
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Academic Certificates</h3>
           <div className="grid grid-cols-2 gap-6">
-            <FileUpload label="10th Marksheet" file={files.marks10} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"marks10")} />
-            <FileUpload label="12th Marksheet" file={files.marks12} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"marks12")} />
-            <FileUpload label="Graduation Certificate" file={files.graduation} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"graduation")} />
-            <FileUpload label="Post Graduation Certificate" file={files.postGraduation} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"postGraduation")} />
+            <FileUpload label="10th Marksheet" file={files.docMarks10} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docMarks10")} />
+            <FileUpload label="12th Marksheet" file={files.docMarks12} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docMarks12")} />
+            <FileUpload label="Graduation Certificate" file={files.docGraduation} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docGraduation")} />
+            <FileUpload label="Post Graduation Certificate" file={files.docPostGraduation} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPostGraduation")} />
           </div>
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">PhD Documents</h3>
           <div className="grid grid-cols-2 gap-6">
-            <FileUpload label="PhD Course Work Certificate" file={files.phdCourseWork} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"phdCourseWork")} />
+            <FileUpload label="PhD Course Work Certificate" file={files.docPhdCourseWork} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPhdCourseWork")} />
             <div>
               <label className={labelCls}>Date of PhD Defense</label>
-              <input type="date" value={files.dateOfDefense||""} className={inputCls} disabled={isReadOnly}
-                onChange={e=>{ const u={...files,dateOfDefense:e.target.value}; setFiles(u); if(!isReadOnly) saveNow({documents:u}); }} />
+              <input type="date" value={files.docDateOfDefense||""} className={inputCls} disabled={isReadOnly}
+                onChange={e=>{ const u={...files,docDateOfDefense:e.target.value}; setFiles(u); if(!isReadOnly) saveNow({documents:u}); }} />
             </div>
-            <FileUpload label="Provisional PhD Degree" file={files.phdProvisional} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"phdProvisional")} />
-            <FileUpload label="PhD Degree Certificate"  file={files.phdDegree}      disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"phdDegree")} />
+            <FileUpload label="Provisional PhD Degree" file={files.docPhdProvisional} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPhdProvisional")} />
+            <FileUpload label="PhD Degree Certificate"  file={files.docPhdDegree}      disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPhdDegree")} />
           </div>
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Five Best Papers</h3>
           <MultiFileUpload label="Five Best Papers (Max 100 MB each)" maxFiles={5} maxMB={100}
-            existingFiles={files.bestPapers} disabled={isReadOnly}
-            onUpload={f=>!isReadOnly&&handleMultiUpload(f,"bestPapers")} />
+            existingFiles={files.docBestPapers} disabled={isReadOnly}
+            onUpload={f=>!isReadOnly&&handleMultiUpload(f,"docBestPapers")} />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Post-Doc Documents</h3>
           <MultiFileUpload label="Post-Doc Documents (if applicable)" maxFiles={5} maxMB={10}
-            existingFiles={files.postDocDocs} disabled={isReadOnly}
-            onUpload={f=>!isReadOnly&&handleMultiUpload(f,"postDocDocs")} />
+            existingFiles={files.docPostDocDocs} disabled={isReadOnly}
+            onUpload={f=>!isReadOnly&&handleMultiUpload(f,"docPostDocDocs")} />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Salary Slips</h3>
           <MultiFileUpload label="Current/Previous Month Salary Slip" maxFiles={3} maxMB={10}
-            existingFiles={files.salarySlips} disabled={isReadOnly}
-            onUpload={f=>!isReadOnly&&handleMultiUpload(f,"salarySlips")} />
+            existingFiles={files.docSalarySlips} disabled={isReadOnly}
+            onUpload={f=>!isReadOnly&&handleMultiUpload(f,"docSalarySlips")} />
         </div>
       </div>
 
@@ -296,7 +396,8 @@ export default function Candidateform({
         {experiences.map((exp, i) => (
           <div key={i} onBlur={handleExpBlur}>
             <ExperienceEntry exp={exp} index={i} onChange={handleExpChange}
-              onRemove={removeExperience} isReadOnly={isReadOnly} total={experiences.length} />
+              onRemove={removeExperience} isReadOnly={isReadOnly} total={experiences.length} 
+              onCertUpload={(file)=>handleCertUpload(i, file)} />
           </div>
         ))}
 
@@ -325,7 +426,10 @@ export default function Candidateform({
       {/* ── OTHER DOCS ── */}
       <div ref={otherRef} className="bg-white p-6 rounded shadow space-y-4">
         <h2 className="font-semibold text-lg border-b pb-2">Other Documents</h2>
-        <FileUpload label="Upload Additional Documents (if any)" disabled={isReadOnly} />
+        <MultiFileUpload label="Upload Additional Documents" maxFiles={5} maxMB={10}
+          existingFiles={files.docOtherDocs || []}
+          disabled={isReadOnly}
+          onUpload={f => !isReadOnly && handleMultiUpload(f, "docOtherDocs")} />
       </div>
 
       {/* ── REFEREES ── */}

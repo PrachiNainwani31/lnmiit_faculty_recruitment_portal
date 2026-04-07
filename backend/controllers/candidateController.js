@@ -2,7 +2,7 @@ const { Candidate, CandidateStats, User, RecruitmentCycle } = require("../models
 const parseCSV = require("../utils/csvParser");
 const { createNotification } = require("../utils/notify");
 const { Parser } = require("json2csv");
-const CYCLE = require("../config/activeCycle");
+const getCurrentCycle = require("../utils/getCurrentCycle");
 const fs   = require("fs");
 const path = require("path");
 const { notifyDofaUpload } = require("./email.controller");
@@ -48,8 +48,13 @@ exports.uploadCandidates = async (req, res) => {
     const validRows = rows.filter(
       r => r.fullName && r.email && r.phone && r.qualification && r.specialization
     );
+    const cycle = await getCurrentCycle(req.user.id);
 
-    const stats = await CandidateStats.findOne({ where: { cycle: CYCLE, hodId } });
+      if (!cycle) {
+        return res.status(404).json({ message: "No active cycle found" });
+      }
+
+    const stats = await CandidateStats.findOne({ where: { cycle: cycle.cycle, hodId } });
 
     if (!stats)
       return res.status(400).json({ message: "Please enter ILSC count before uploading CSV" });
@@ -59,22 +64,13 @@ exports.uploadCandidates = async (req, res) => {
         message: `Upload exactly ${stats.ilscShortlisted} candidates (found ${validRows.length} valid rows)`,
       });
 
-    await Candidate.destroy({ where: { cycle: CYCLE, hodId } });
+    await Candidate.destroy({ where: { cycle: cycle.cycle, hodId } });
 
     const formatted = [];
 
     for (const r of validRows) {
-      let user = await User.findOne({ where: { email: r.email } });
-
-      if (!user) {
-        user = await User.create({
-          name: r.fullName, email: r.email,
-          password: "123", role: "CANDIDATE", active: true,
-        });
-      }
-
       formatted.push({
-        cycle:               CYCLE,
+        cycle:               cycle.cycle,
         srNo:                Number(r.srNo) || (formatted.length + 1),
         fullName:            r.fullName,
         email:               r.email,
@@ -87,7 +83,6 @@ exports.uploadCandidates = async (req, res) => {
         reviewerObservation: r.reviewerObservation || "",
         ilscComments:        r.ilscComments        || "",
         hodId,
-        userId:              user.id,
         appearedInInterview: false,
       });
     }
@@ -98,7 +93,7 @@ exports.uploadCandidates = async (req, res) => {
     notifyDofaUpload({ department: hod.department, hodName: hod.name }).catch(console.error);
 
     await createNotification({
-      cycle: CYCLE, role: "DOFA",
+      cycle: cycle.cycle, role: "DOFA",
       title: "Candidate List Updated",
       message: `HOD (${hod.department}) uploaded ${formatted.length} candidates`,
       type: "UPLOAD",
@@ -118,35 +113,68 @@ exports.uploadCandidates = async (req, res) => {
 ===================================================== */
 exports.getCandidatesByCycle = async (req, res) => {
   try {
-    const where = { cycle: CYCLE };
-    if (req.user.role === "HOD") where.hodId = req.user.id;
+    if (req.user.role === "HOD") {
+      const cycle = await getCurrentCycle(req.user.id);
+      if (!cycle) return res.status(404).json({ message: "No active cycle found" });
+
+      const candidates = await Candidate.findAll({
+        where: { hodId: req.user.id, cycle: cycle.cycle },
+        include: [{ model: User, as: "hod", attributes: ["department"] }],
+        order: [["srNo", "ASC"]],
+      });
+
+      const rc = await RecruitmentCycle.findOne({
+        where: { cycle: cycle.cycle, hodId: req.user.id },
+      });
+
+      const result = candidates.map(c => ({
+        ...c.toJSON(),
+        department: c.hod?.department || "Unknown",
+      }));
+
+      return res.json({ candidates: result, interviewDate: rc?.interviewDate || null });
+    }
+
+    // DOFA / DOFA_OFFICE — fetch latest cycle per HOD
+    const { Op } = require("sequelize");
+    const hods = await User.findAll({ where: { role: "HOD" }, attributes: ["id"] });
+
+    if (!hods.length) return res.json({ candidates: [], interviewDate: null });
+
+    const cyclePerHod = await Promise.all(
+      hods.map(h => RecruitmentCycle.findOne({
+        where: { hodId: h.id },
+        order: [["createdAt", "DESC"]],
+      }))
+    );
+
+    const conditions = [];
+    hods.forEach((h, i) => {
+      if (cyclePerHod[i]) {
+        conditions.push({ hodId: h.id, cycle: cyclePerHod[i].cycle });
+      }
+    });
+
+    if (!conditions.length) return res.json({ candidates: [], interviewDate: null });
 
     const candidates = await Candidate.findAll({
-      where,
+      where: { [Op.or]: conditions },
       include: [{ model: User, as: "hod", attributes: ["department"] }],
       order: [["srNo", "ASC"]],
     });
-
-    let interviewDate = null;
-    if (req.user.role === "HOD") {
-      const rc = await RecruitmentCycle.findOne({
-        where: { cycle: CYCLE, hodId: req.user.id },
-      });
-      interviewDate = rc?.interviewDate || null;
-    }
 
     const result = candidates.map(c => ({
       ...c.toJSON(),
       department: c.hod?.department || "Unknown",
     }));
 
-    res.json({ candidates: result, interviewDate });
+    return res.json({ candidates: result, interviewDate: null });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });
   }
 };
-
 /* =====================================================
    MARK APPEARED — gated by interview date
 ===================================================== */
@@ -154,9 +182,13 @@ exports.markAppeared = async (req, res) => {
   try {
     const { id }       = req.params;
     const { appeared } = req.body;
+    const cycle = await getCurrentCycle(req.user.id);
 
+    if (!cycle) {
+      return res.status(404).json({ message: "No active cycle found" });
+    }
     const candidate = await Candidate.findOne({
-      where: { id, hodId: req.user.id, cycle: CYCLE },
+      where: { id, hodId: req.user.id, cycle: cycle.cycle },
     });
 
     if (!candidate)
@@ -164,7 +196,7 @@ exports.markAppeared = async (req, res) => {
 
     // Gate: interview date must be set by DOFA
     const rc = await RecruitmentCycle.findOne({
-      where: { cycle: CYCLE, hodId: req.user.id },
+      where: { cycle: cycle.cycle, hodId: req.user.id },
     });
 
     if (!rc?.interviewDate) {
@@ -196,33 +228,49 @@ exports.deleteCandidate = async (req, res) => {
 };
 
 exports.clearCandidateStats = async (req, res) => {
-  await CandidateStats.destroy({ where: { cycle: CYCLE, hodId: req.user.id } });
-  await Candidate.destroy(    { where: { cycle: CYCLE, hodId: req.user.id } });
+  const cycle = await getCurrentCycle(req.user.id);
+  if (!cycle) {
+    return res.status(400).json({ message: "No active cycle found" });
+  }
+  await CandidateStats.destroy({ where: { cycle: cycle.cycle, hodId: req.user.id } });
+  await Candidate.destroy(    { where: { cycle: cycle.cycle, hodId: req.user.id } });
   res.json({ success: true });
 };
 
 exports.saveCandidateStats = async (req, res) => {
+  const cycle = await getCurrentCycle(req.user.id);
+  if (!cycle) {
+    return res.status(400).json({ message: "No active cycle found" });
+  }
   const { totalApplications, dlscShortlisted, ilscShortlisted } = req.body;
   await CandidateStats.upsert({
-    cycle: CYCLE, hodId: req.user.id,
+    cycle: cycle.cycle, hodId: req.user.id,
     totalApplications, dlscShortlisted, ilscShortlisted,
   });
   const stats = await CandidateStats.findOne({
-    where: { cycle: CYCLE, hodId: req.user.id },
+    where: { cycle: cycle.cycle, hodId: req.user.id },
   });
   res.json(stats);
 };
 
 exports.getCandidateStats = async (req, res) => {
+  const cycle = await getCurrentCycle(req.user.id);
+  if (!cycle) {
+    return res.status(400).json({ message: "No active cycle found" });
+  }
   const stats = await CandidateStats.findOne({
-    where: { cycle: CYCLE, hodId: req.user.id },
+    where: { cycle: cycle.cycle, hodId: req.user.id },
   });
   res.json(stats);
 };
 
 exports.getCandidateStatus = async (req, res) => {
-  const stats         = await CandidateStats.findOne({ where: { cycle: CYCLE, hodId: req.user.id } });
-  const uploadedCount = await Candidate.count({ where: { cycle: CYCLE, hodId: req.user.id } });
+  const cycle = await getCurrentCycle(req.user.id);
+  if (!cycle) {
+    return res.status(400).json({ message: "No active cycle found" });
+  }
+  const stats         = await CandidateStats.findOne({ where: { cycle: cycle.cycle, hodId: req.user.id } });
+  const uploadedCount = await Candidate.count({ where: { cycle: cycle.cycle, hodId: req.user.id } });
   res.json({
     statsEntered: !!stats,
     ilscCount:    stats?.ilscShortlisted || 0,
@@ -234,7 +282,13 @@ exports.getCandidateStatus = async (req, res) => {
    DOWNLOAD TEMPLATE — updated with new fields
 ===================================================== */
 exports.downloadTemplate = async (req, res) => {
-  const stats = await CandidateStats.findOne({ where: { cycle: CYCLE } });
+  try{
+  const cycleString =req.params.cycle;
+  if (!cycleString) {
+    return res.status(400).json({ message: "cycle required." });
+  }
+  if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+  const stats = await CandidateStats.findOne({ where: { cycle: cycleString, hodId: req.user.id }, });
   if (!stats) return res.status(400).json({ message: "Stats not found" });
 
   const fields = [
@@ -255,42 +309,116 @@ exports.downloadTemplate = async (req, res) => {
   const csv    = parser.parse(rows);
 
   res.header("Content-Type", "text/csv");
-  res.attachment(`ILSC_Candidates_${CYCLE}.csv`);
+  res.attachment(`ILSC_Candidates_${cycleString}.csv`);
   res.send(csv);
-};
-
-/* =====================================================
-   OTHER APIs
-===================================================== */
-exports.uploadResumes = async (req, res) => {
-  if (!req.file) return res.status(400).json({ message: "ZIP file required" });
-  res.json({ message: "Resume ZIP uploaded successfully" });
-};
+}catch(err){
+  console.error("downloadTemplate error:", err);
+  res.status(500).json({ message: "Failed to generate template" });
+}};
 
 exports.getCandidatesByDepartment = async (req, res) => {
-  if (req.user.role !== "DOFA")
-    return res.status(403).json({ message: "Access denied" });
+  try {
+    if (req.user.role !== "DOFA")
+      return res.status(403).json({ message: "Access denied" });
 
-  const hod = await User.findOne({
-    where: { role: "HOD", department: req.params.department },
-  });
-  if (!hod) return res.status(404).json({ message: "HOD not found" });
+    const hod = await User.findOne({
+      where: {
+        role: "HOD",
+        department: req.params.department,
+      },
+    });
 
-  const candidates = await Candidate.findAll({
-    where: { hodId: hod.id, cycle: CYCLE },
-    order: [["srNo", "ASC"]],
-  });
+    if (!hod) {
+      return res.status(404).json({ message: "HOD not found" });
+    }
+     const latestCycle = await RecruitmentCycle.findOne({
+      where:{hodId:hod.id},
+      order: [["createdAt", "DESC"]],
+    });
+    
+    if (!latestCycle) {
+      return res.status(400).json({ message: "No cycle found" });
+    }
+    const candidates = await Candidate.findAll({
+      where: {
+        hodId: hod.id,
+        cycle: latestCycle.cycle,   // ✅ FIXED
+      },
+      order: [["srNo", "ASC"]],
+    });
 
-  res.json(candidates);
+    res.json(candidates);
+
+  } catch (err) {
+    console.error("getCandidatesByDepartment error:", err);
+    res.status(500).json({ message: err.message });
+  }
 };
 
+exports.uploadResumes = async (req, res) => {
+  try {
+    const cycle = await getCurrentCycle(req.user.id);
+    if (!cycle) {
+      return res.status(400).json({ message: "No active cycle found" });
+    }
+    if (!req.file)
+      return res.status(400).json({ message: "ZIP file required" });
+ 
+    const { User } = require("../models");
+    const hod  = await User.findByPk(req.user.id);
+    const dept = (hod?.department || "UNKNOWN").toUpperCase().replace(/\s+/g, "_");
+  
+    const destDir  = path.join(__dirname, "../uploads/resumes", cycle.cycle, dept);
+    const destFile = path.join(destDir, "resumes.zip");
+ 
+    // Ensure directory exists
+    fs.mkdirSync(destDir, { recursive: true });
+ 
+    // Move uploaded temp file → correct location
+    fs.renameSync(req.file.path, destFile);
+
+    await RecruitmentCycle.update(
+      {
+        resumesZip: `uploads/resumes/${cycle.cycle}/${dept}/resumes.zip`
+      },
+      {
+        where: { cycle: cycle.cycle, hodId: req.user.id }
+      }
+    );
+    res.json({ message: "Resume ZIP uploaded successfully", path: destFile });
+  } catch (err) {
+    console.error("uploadResumes error:", err);
+    res.status(500).json({ message: "Upload failed" });
+  }
+};
+ 
+/* ── Get uploaded ZIP — checks the dept-specific path ── */
 exports.getUploadedResumes = async (req, res) => {
-  const filePath = path.join(
-    __dirname, "../uploads/resumes", CYCLE, req.user.department, "resumes.zip"
-  );
-  if (!fs.existsSync(filePath)) return res.json([]);
-  res.json([{
-    name: "resumes.zip",
-    url:  `/uploads/resumes/${CYCLE}/${req.user.department}/resumes.zip`,
-  }]);
+  try {
+    const cycle = await getCurrentCycle(req.user.id);
+    if (!cycle) {
+      return res.status(400).json({ message: "No active cycle found" });
+    }
+    const { User } = require("../models");
+    const hod  = await User.findByPk(req.user.id);
+    const dept = (hod?.department || "UNKNOWN").toUpperCase().replace(/\s+/g, "_");
+
+    // Reconstruct the exact path where the file is saved
+    const filePath = path.join(__dirname, "../uploads/resumes", cycle.cycle, dept, "resumes.zip");
+
+    // ✅ FIX: Physically check the server's hard drive. No database queries needed!
+    if (fs.existsSync(filePath)) {
+      return res.json([{
+        name: "resumes.zip",
+        url: `/uploads/resumes/${cycle.cycle}/${dept}/resumes.zip` 
+      }]);
+    }
+
+    // File not found on disk
+    return res.json([]);
+
+  } catch (err) {
+    console.error("Error fetching resumes:", err);
+    return res.json([]);
+  }
 };

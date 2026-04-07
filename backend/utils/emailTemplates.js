@@ -1,372 +1,445 @@
-/**
- * emailTemplates.js
- *
- * Each function returns { subject, html } — the base defaults that your
- * system pre-fills into the edit/preview dialog.
- *
- * All placeholders use {{VARIABLE}} format so your frontend dialog can
- * find & replace them before sending, or display them as editable fields.
- *
- * Usage example (in a controller):
- *   const { candidateUploadTemplate } = require("../utils/emailTemplates");
- *   const { subject, html } = candidateUploadTemplate({ hodName: hod.name, department: hod.department });
- *   await sendEmail(dofa.email, subject, html);
- *
- *  — OR if going through the dialog system —
- *   return res.json(candidateUploadTemplate({ hodName, department }));
- *   // Frontend opens dialog pre-filled, user edits, clicks Send
- */
+const PORTAL_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const FROM_NAME  = process.env.EMAIL_FROM_NAME || "LNMIIT Recruitment Portal";
 
-/* ─── Shared wrapper ──────────────────────────────────────────────────────── */
 const wrap = (body) => `
-<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;">
-  <div style="background:#8b0000;padding:18px 24px;text-align:center;">
-    <h2 style="margin:0;color:#fff;font-size:20px;letter-spacing:0.5px;">LNMIIT Recruitment Portal</h2>
+<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:30px">
+  <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
+    <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment Portal</h2>
   </div>
-  <div style="padding:28px 24px;color:#333;line-height:1.7;">
+  <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;line-height:1.7;color:#333">
     ${body}
   </div>
-  <div style="background:#f5f5f5;padding:14px 24px;text-align:center;font-size:12px;color:#888;">
-    This is an automated message from LNMIIT Recruitment Portal. Do not reply to this email.
-  </div>
+  <p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">
+    This is an automated message from the LNMIIT Recruitment Portal. Do not reply directly to this email.
+  </p>
 </div>`;
 
-const date = () =>
-  new Date().toLocaleDateString("en-GB", {
-    day: "numeric", month: "long", year: "numeric",
-  });
+const btn = (label, url) =>
+  `<table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0">
+    <tr>
+      <td align="center" bgcolor="#8b0000" style="border-radius:5px">
+        <a href="${url}"
+          target="_blank"
+          style="display:inline-block;background:#8b0000;color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;text-decoration:none;padding:12px 24px;border-radius:5px;mso-padding-alt:0;border:1px solid #8b0000">
+          ${label}
+        </a>
+      </td>
+    </tr>
+  </table>`;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   1. HOD → DOFA  :  Candidate list uploaded
-═══════════════════════════════════════════════════════════════════════════ */
-exports.candidateUploadTemplate = ({ hodName = "{{HOD_NAME}}", department = "{{DEPARTMENT}}" } = {}) => ({
-  subject: `Candidate List Uploaded — ${department}`,
+/* ══════════════════════════════════════════════
+   1. HOD submits candidates + experts to DOFA
+══════════════════════════════════════════════ */
+exports.hodSubmittedToDofa = ({ department, candidateCount, expertCount }) => ({
+  subject: `Request to Schedule Interview — ${department} Department`,
   html: wrap(`
-    <p>Date: ${date()}</p>
     <p>Dear DOFA Team,</p>
-    <p>
-      HOD <strong>${hodName}</strong> from the <strong>${department}</strong> department
-      has uploaded the ILSC candidate list on the portal.
-    </p>
-    <p>Please log in to the portal to review and take necessary action.</p>
-    <br>
-    <p>Regards,<br><strong>LNMIIT Recruitment System</strong></p>
+    <p>The <strong>${department}</strong> department HOD has submitted their recruitment data for the current cycle.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidates submitted</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateCount}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Experts submitted</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${expertCount}</td></tr>
+    </table>
+    <p>Please review the submission and schedule the interview at the earliest.</p>
+    ${btn("Review on Portal", `${PORTAL_URL}/dofa/dashboard`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
   `),
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   2. HOD → DOFA  :  Expert list uploaded
-═══════════════════════════════════════════════════════════════════════════ */
-exports.expertUploadTemplate = ({ hodName = "{{HOD_NAME}}", department = "{{DEPARTMENT}}" } = {}) => ({
-  subject: `Expert List Uploaded — ${department}`,
+/* ══════════════════════════════════════════════
+   2. DOFA raises query to HOD
+══════════════════════════════════════════════ */
+exports.dofaQueryToHod = ({ hodName, department, comment }) => ({
+  subject: `Notification for Request for Change/Comments — ${department}`,
   html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear DOFA Team,</p>
-    <p>
-      HOD <strong>${hodName}</strong> from <strong>${department}</strong>
-      has uploaded the expert panel list for the current recruitment cycle.
-    </p>
-    <p>Please log in to review the expert list.</p>
-    <br>
-    <p>Regards,<br><strong>LNMIIT Recruitment System</strong></p>
-  `),
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   3. DOFA → HOD  :  Query / Comment raised
-═══════════════════════════════════════════════════════════════════════════ */
-exports.dofaQueryTemplate = ({ hodName = "{{HOD_NAME}}", comment = "{{COMMENT}}" } = {}) => ({
-  subject: `Query Raised by DOFA — Action Required`,
-  html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear <strong>${hodName}</strong>,</p>
-    <p>The DOFA office has raised a query regarding your submitted data:</p>
-    <blockquote style="border-left:4px solid #8b0000;margin:12px 0;padding:10px 16px;background:#fdf4f4;color:#555;">
-      ${comment}
-    </blockquote>
-    <p>Please log in to the portal, review the comment, and resubmit your data.</p>
-    <br>
+    <p>Dear ${hodName || "HOD"},</p>
+    <p>The DOFA team has reviewed your submission for the <strong>${department}</strong> department 
+    and has raised a query that requires your attention.</p>
+    <div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:12px 16px;margin:15px 0;border-radius:0 6px 6px 0">
+      <p style="margin:0;font-style:italic;color:#92400e">"${comment}"</p>
+    </div>
+    <p>Please log in to the portal, address the comments, and resubmit.</p>
+    ${btn("Go to Portal", `${PORTAL_URL}/hod/dashboard`)}
     <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
   `),
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   4. Candidate  :  Document upload reminder / correction required
-═══════════════════════════════════════════════════════════════════════════ */
-exports.documentReminderTemplate = ({
-  candidateName = "{{CANDIDATE_NAME}}",
-  issues = [],           // array of strings like ["• Degree Certificate — Missing"]
-  portalUrl = process.env.FRONTEND_URL || "{{PORTAL_URL}}",
-} = {}) => {
-  const issueBlock = issues.length
-    ? `<p>The following document(s) require your attention:</p>
-       <ul style="color:#8b0000;padding-left:20px;">
-         ${issues.map(i => `<li>${i}</li>`).join("")}
-       </ul>`
-    : `<p>Please ensure all required documents are uploaded correctly on the portal.</p>`;
-
-  return {
-    subject: `Action Required — Document Submission / Correction`,
-    html: wrap(`
-      <p>Date: ${date()}</p>
-      <p>Dear <strong>${candidateName}</strong>,</p>
-      ${issueBlock}
-      <p>
-        Please log in to the portal and take action at the earliest:
-        <a href="${portalUrl}" style="color:#8b0000;">${portalUrl}</a>
-      </p>
-      <br>
-      <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
-    `),
-  };
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   5. Candidate  :  General recruitment update
-═══════════════════════════════════════════════════════════════════════════ */
-exports.recruitmentUpdateTemplate = ({
-  candidateName = "{{CANDIDATE_NAME}}",
-  portalUrl = process.env.FRONTEND_URL || "{{PORTAL_URL}}",
-} = {}) => ({
-  subject: `Recruitment Update — LNMIIT`,
+/* ══════════════════════════════════════════════
+   3. HOD resubmits after query
+══════════════════════════════════════════════ */
+exports.hodResubmittedToDofa = ({ department }) => ({
+  subject: `Notification for Changes Requested — ${department} Department`,
   html: wrap(`
-    <p>Date: ${date()}</p>
+    <p>Dear DOFA Team,</p>
+    <p>The HOD of <strong>${department}</strong> department has addressed your query 
+    and resubmitted their recruitment data for review.</p>
+    ${btn("Review Updated Submission", `${PORTAL_URL}/dofa/dashboard`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+  `),
+});
+
+/* ══════════════════════════════════════════════
+   4. HOD adds expert — email to DOFA + expert
+   (built in HOD portal, editable before send)
+══════════════════════════════════════════════ */
+exports.expertInvitationToDofa = ({ expertName, department, expertEmail }) => ({
+  subject: `Expert Added for Interview — ${department}`,
+  html: wrap(`
+    <p>Dear DOFA Team,</p>
+    <p>The <strong>${department}</strong> HOD has added an expert for the upcoming interview panel.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Expert Name</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${expertName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Expert Email</td>
+          <td style="padding:8px;border:1px solid #ddd">${expertEmail}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Department</td>
+          <td style="padding:8px;border:1px solid #ddd">${department}</td></tr>
+    </table>
+    ${btn("View Experts", `${PORTAL_URL}/dofa/experts`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+  `),
+});
+
+exports.expertInvitationToExpert = ({ expertName, department, interviewDate, portalLink, customMessage }) => ({
+  subject: `Invitation to Interview Panel — ${department}, LNMIIT`,
+  html: wrap(`
+    <p>Dear ${expertName},</p>
+    ${customMessage
+      ? `<p>${customMessage}</p>`
+      : `<p>You have been invited to serve as an expert on the interview panel for faculty recruitment 
+         in the <strong>${department}</strong> department at LNMIIT.</p>`
+    }
+    ${interviewDate ? `<p><strong>Interview Date:</strong> ${interviewDate}</p>` : ""}
+    <p>Please confirm your availability and travel preferences via the portal link below.</p>
+    ${btn("Confirm Participation", portalLink || PORTAL_URL)}
+    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+  `),
+});
+
+/* ══════════════════════════════════════════════
+   5. Candidate submits application — email to DOFA Office
+══════════════════════════════════════════════ */
+exports.candidateApplicationSubmitted = ({ candidateName, department, email }) => ({
+  subject: `New Application Received — ${candidateName} (${department})`,
+  html: wrap(`
+    <p>Dear DOFA Office Team,</p>
+    <p>A new faculty application has been submitted and is ready for document verification.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidate Name</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Department Applied</td>
+          <td style="padding:8px;border:1px solid #ddd">${department || "Not specified"}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Email</td>
+          <td style="padding:8px;border:1px solid #ddd">${email}</td></tr>
+    </table>
+    ${btn("Review Documents", `${PORTAL_URL}/dofa-office/document-tracking`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+  `),
+});
+
+/* ══════════════════════════════════════════════
+   6. DOFA Office sends document remark to candidate
+══════════════════════════════════════════════ */
+exports.documentRemarkToCandidate = ({ candidateName, issues }) => ({
+  subject: `Action Required — Document Submission / Correction`,
+  html: wrap(`
     <p>Dear <strong>${candidateName}</strong>,</p>
-    <p>
-      We have an update regarding your application. Please log in to the
-      recruitment portal to view details and upload any required documents.
-    </p>
-    <p>
-      <a href="${portalUrl}" style="display:inline-block;padding:10px 20px;background:#8b0000;color:#fff;border-radius:5px;text-decoration:none;">
-        Visit Portal
-      </a>
-    </p>
-    <br>
+    <p>The DOFA Office has reviewed your application documents and found the following issue(s) 
+    that require your immediate attention:</p>
+    ${issues.length > 0
+      ? `<ul style="margin:15px 0;padding-left:20px">
+           ${issues.map(i =>
+             `<li style="margin:6px 0"><strong>${i.doc}</strong> — 
+              <span style="color:#8b0000">${i.status}</span>
+              ${i.remark ? ` &mdash; <em>${i.remark}</em>` : ""}</li>`
+           ).join("")}
+         </ul>`
+      : `<p>Please ensure all required documents are uploaded correctly.</p>`
+    }
+    <p>Please log in to the portal, make the necessary corrections, and resubmit your application.</p>
+    ${btn("Update My Application", `${PORTAL_URL}/candidate`)}
     <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
   `),
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   6. Expert  :  Interview invitation
-═══════════════════════════════════════════════════════════════════════════ */
-exports.expertInvitationTemplate = ({
-  expertName = "{{EXPERT_NAME}}",
-  department = "{{DEPARTMENT}}",
-  interviewDate = "{{INTERVIEW_DATE}}",
-  portalUrl = process.env.FRONTEND_URL || "{{PORTAL_URL}}",
-} = {}) => ({
-  subject: `Interview Panel Invitation — LNMIIT`,
+/* ══════════════════════════════════════════════
+   7. Candidate resubmits after remark — email to DOFA Office
+══════════════════════════════════════════════ */
+exports.candidateResubmitted = ({ candidateName, department }) => ({
+  subject: `Remarks Response — ${candidateName} Resubmitted Application`,
   html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear <strong>${expertName}</strong>,</p>
-    <p>
-      You are cordially invited to serve on the Selection Committee for the
-      recruitment of faculty in the <strong>${department}</strong> department at LNMIIT.
-    </p>
-    ${interviewDate !== "{{INTERVIEW_DATE}}"
-      ? `<p><strong>Interview Date:</strong> ${interviewDate}</p>`
-      : ""}
-    <p>
-      Please confirm your participation and travel preferences on the portal:
-      <a href="${portalUrl}" style="color:#8b0000;">${portalUrl}</a>
-    </p>
-    <br>
-    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+    <p>Dear DOFA Office Team,</p>
+    <p><strong>${candidateName}</strong> (${department || "—"}) has addressed your document remarks 
+    and resubmitted their application for review.</p>
+    ${btn("Review Updated Documents", `${PORTAL_URL}/dofa-office/document-tracking`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
   `),
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   7. Referee  :  Reference letter request
-═══════════════════════════════════════════════════════════════════════════ */
-exports.refereeRequestTemplate = ({
-  refereeName = "{{REFEREE_NAME}}",
-  candidateName = "{{CANDIDATE_NAME}}",
-  portalLink = "{{PORTAL_LINK}}",
-} = {}) => ({
-  subject: `Reference Letter Request — ${candidateName}`,
+/* ══════════════════════════════════════════════
+   8a. Referee invitation when candidate adds referee
+══════════════════════════════════════════════ */
+exports.refereeInvitation = ({ refereeName, candidateName, portalLink }) => ({
+  subject: `Reference Letter Request — ${candidateName}, LNMIIT`,
   html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear <strong>${refereeName}</strong>,</p>
-    <p>
-      <strong>${candidateName}</strong> has applied for a faculty position at LNMIIT and
-      has listed you as a referee. We kindly request you to submit a reference letter
-      through the link below.
-    </p>
-    <p>
-      <a href="${portalLink}" style="display:inline-block;padding:10px 20px;background:#8b0000;color:#fff;border-radius:5px;text-decoration:none;">
-        Submit Reference Letter
-      </a>
-    </p>
-    <p style="font-size:12px;color:#888;">Link: ${portalLink}</p>
-    <br>
+    <p>Dear ${refereeName},</p>
+    <p><strong>${candidateName}</strong> has applied for a faculty position at LNMIIT and has 
+    listed you as a referee.</p>
+    <p>We request you to kindly submit your reference letter through the secure portal link below.</p>
+    ${btn("Submit Reference Letter", portalLink)}
+    <p>This link is unique to you. Please do not share it.</p>
     <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
   `),
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   8. Referee  :  Reminder
-═══════════════════════════════════════════════════════════════════════════ */
-exports.refereeReminderTemplate = ({
-  refereeName = "{{REFEREE_NAME}}",
-  candidateName = "{{CANDIDATE_NAME}}",
-  portalLink = "{{PORTAL_LINK}}",
-} = {}) => ({
+/* ══════════════════════════════════════════════
+   8b. Referee reminder
+══════════════════════════════════════════════ */
+exports.refereeReminder = ({ refereeName, candidateName, portalLink }) => ({
   subject: `Reminder — Reference Letter Pending for ${candidateName}`,
   html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear <strong>${refereeName}</strong>,</p>
-    <p>
-      This is a gentle reminder that the reference letter for
-      <strong>${candidateName}</strong> is still pending.
-    </p>
-    <p>
-      <a href="${portalLink}" style="display:inline-block;padding:10px 20px;background:#8b0000;color:#fff;border-radius:5px;text-decoration:none;">
-        Submit Reference Letter
-      </a>
-    </p>
-    <br>
+    <p>Dear ${refereeName},</p>
+    <p>This is a gentle reminder that your reference letter for <strong>${candidateName}</strong>'s 
+    faculty application at LNMIIT is still pending.</p>
+    <p>We would appreciate if you could submit it at the earliest convenience.</p>
+    ${btn("Submit Reference Letter", portalLink)}
     <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
   `),
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   9. Candidate  :  Offer letter uploaded
-═══════════════════════════════════════════════════════════════════════════ */
-exports.offerLetterTemplate = ({
-  candidateName = "{{CANDIDATE_NAME}}",
-  portalUrl = process.env.FRONTEND_URL || "{{PORTAL_URL}}",
-} = {}) => ({
-  subject: `Offer Letter — LNMIIT`,
+/* ══════════════════════════════════════════════
+   9. Referee submits letter — email to DOFA Office
+══════════════════════════════════════════════ */
+exports.refereeSubmitted = ({ refereeName, candidateName, department }) => ({
+  subject: `Reference Letter Submitted — ${candidateName}`,
   html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear <strong>${candidateName}</strong>,</p>
-    <p>
-      We are pleased to inform you that your offer letter has been uploaded
-      on the recruitment portal. Please log in to view and download it.
-    </p>
-    <p>
-      <a href="${portalUrl}" style="display:inline-block;padding:10px 20px;background:#8b0000;color:#fff;border-radius:5px;text-decoration:none;">
-        View Offer Letter
-      </a>
-    </p>
-    <br>
-    <p>Regards,<br><strong>Establishment Section, LNMIIT</strong></p>
-  `),
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   10. Candidate  :  Joining letter + date
-═══════════════════════════════════════════════════════════════════════════ */
-exports.joiningLetterTemplate = ({
-  candidateName = "{{CANDIDATE_NAME}}",
-  joiningDate = "{{JOINING_DATE}}",
-  portalUrl = process.env.FRONTEND_URL || "{{PORTAL_URL}}",
-} = {}) => ({
-  subject: `Joining Letter — LNMIIT`,
-  html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear <strong>${candidateName}</strong>,</p>
-    <p>
-      Your joining letter has been issued. Your joining date is
-      <strong>${joiningDate}</strong>.
-    </p>
-    <p>
-      Please log in to the portal to download your joining letter and complete
-      any pending formalities.
-    </p>
-    <p>
-      <a href="${portalUrl}" style="display:inline-block;padding:10px 20px;background:#8b0000;color:#fff;border-radius:5px;text-decoration:none;">
-        View Joining Letter
-      </a>
-    </p>
-    <br>
-    <p>Regards,<br><strong>Establishment Section, LNMIIT</strong></p>
-  `),
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   11. Candidate  :  Room allotment
-═══════════════════════════════════════════════════════════════════════════ */
-exports.roomAllotmentTemplate = ({
-  candidateName = "{{CANDIDATE_NAME}}",
-  roomNumber = "{{ROOM_NUMBER}}",
-  roomBuilding = "{{ROOM_BUILDING}}",
-} = {}) => ({
-  subject: `Accommodation Allotted — LNMIIT`,
-  html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear <strong>${candidateName}</strong>,</p>
-    <p>
-      Your accommodation has been arranged. Details are as follows:
-    </p>
-    <table style="border-collapse:collapse;margin:12px 0;">
-      <tr>
-        <td style="padding:6px 16px 6px 0;font-weight:bold;color:#555;">Building</td>
-        <td style="padding:6px 0;">${roomBuilding}</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 16px 6px 0;font-weight:bold;color:#555;">Room No.</td>
-        <td style="padding:6px 0;">${roomNumber}</td>
-      </tr>
+    <p>Dear DOFA Office Team,</p>
+    <p>A reference letter has been submitted for candidate <strong>${candidateName}</strong> 
+    (${department || "—"}).</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Referee</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${refereeName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidate</td>
+          <td style="padding:8px;border:1px solid #ddd">${candidateName}</td></tr>
     </table>
-    <p>Please contact the Estate Office for key handover formalities.</p>
-    <br>
-    <p>Regards,<br><strong>Estate Office, LNMIIT</strong></p>
+    ${btn("View Reference Letters", `${PORTAL_URL}/dofa-office/document-tracking`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
   `),
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   12. DOFA/HOD  :  Office order uploaded (Director)
-═══════════════════════════════════════════════════════════════════════════ */
-exports.officeOrderTemplate = ({
-  cycle = "{{CYCLE}}",
-  orderNumber = "{{ORDER_NUMBER}}",
-  portalUrl = process.env.FRONTEND_URL || "{{PORTAL_URL}}",
-} = {}) => ({
-  subject: `Interview Panel Office Order Uploaded — ${cycle}`,
+/* ══════════════════════════════════════════════
+   10. Expert travel email chain
+   All emails use same subject pattern for threading
+══════════════════════════════════════════════ */
+const expertTravelSubject = (expertName, expertId) =>
+  `Expert Travel Coordination — ${expertName} [Ref: EXP-${expertId}]`;
+
+exports.travelDetailsToTravel = ({ expertName, expertId, department, travelDetails }) => ({
+  subject: expertTravelSubject(expertName, expertId),
   html: wrap(`
-    <p>Date: ${date()}</p>
-    <p>Dear Team,</p>
-    <p>
-      The Interview Panel Office Order <strong>(${orderNumber})</strong> for
-      recruitment cycle <strong>${cycle}</strong> has been uploaded.
-    </p>
-    <p>Please log in to the portal to view the order.</p>
-    <p>
-      <a href="${portalUrl}" style="display:inline-block;padding:10px 20px;background:#8b0000;color:#fff;border-radius:5px;text-decoration:none;">
-        View Office Order
-      </a>
-    </p>
-    <br>
-    <p>Regards,<br><strong>Director's Office, LNMIIT</strong></p>
+    <p>Dear Travel Team,</p>
+    <p>Please arrange travel for the following expert invited for the LNMIIT faculty interview panel.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Expert Name</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${expertName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Department</td>
+          <td style="padding:8px;border:1px solid #ddd">${department}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Mode of Travel</td>
+          <td style="padding:8px;border:1px solid #ddd">${travelDetails.mode || "—"}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">From</td>
+          <td style="padding:8px;border:1px solid #ddd">${travelDetails.from || "—"}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Interview Date</td>
+          <td style="padding:8px;border:1px solid #ddd">${travelDetails.interviewDate || "—"}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Presence</td>
+          <td style="padding:8px;border:1px solid #ddd">${travelDetails.presenceStatus || "Offline"}</td></tr>
+    </table>
+    <p>Please provide a quote for the travel arrangement.</p>
+    ${btn("Update on Portal", `${PORTAL_URL}/travel`)}
+    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
   `),
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   13. Travel  :  Quote submitted (Ramswaroop / Transport)
-═══════════════════════════════════════════════════════════════════════════ */
-exports.travelQuoteTemplate = ({
-  expertName = "{{EXPERT_NAME}}",
-  amount = "{{AMOUNT}}",
-  vendor = "{{VENDOR}}",
-} = {}) => ({
-  subject: `Travel Quote Submitted — ${expertName}`,
+exports.travelQuoteToDofa = ({ expertName, expertId, quoteAmount, quoteDetails }) => ({
+  subject: expertTravelSubject(expertName, expertId),
   html: wrap(`
-    <p>Date: ${date()}</p>
     <p>Dear DOFA Team,</p>
-    <p>A travel quote has been submitted for expert <strong>${expertName}</strong>.</p>
-    <table style="border-collapse:collapse;margin:12px 0;">
-      <tr>
-        <td style="padding:6px 16px 6px 0;font-weight:bold;color:#555;">Amount</td>
-        <td>₹${amount}</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 16px 6px 0;font-weight:bold;color:#555;">Vendor</td>
-        <td>${vendor}</td>
-      </tr>
+    <p>Travel team has submitted a quote for expert <strong>${expertName}</strong>.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Quote Amount</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">₹${quoteAmount}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Details</td>
+          <td style="padding:8px;border:1px solid #ddd">${quoteDetails || "—"}</td></tr>
     </table>
-    <p>Please log in to approve or reject the quote.</p>
-    <br>
-    <p>Regards,<br><strong>LNMIIT Recruitment System</strong></p>
+    <p>Please review and approve/reject the quote.</p>
+    ${btn("Approve Quote", `${PORTAL_URL}/dofa/experts`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+  `),
+});
+
+exports.quoteApprovedToTravel = ({ expertName, expertId, quoteAmount }) => ({
+  subject: expertTravelSubject(expertName, expertId),
+  html: wrap(`
+    <p>Dear Travel Team,</p>
+    <p>DOFA has <strong style="color:green">approved</strong> the travel quote of 
+    <strong>₹${quoteAmount}</strong> for expert <strong>${expertName}</strong>.</p>
+    <p>Please proceed with booking the tickets and update the details on the portal.</p>
+    ${btn("Update Ticket Details", `${PORTAL_URL}/travel`)}
+    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+  `),
+});
+
+exports.ticketUpdatedToDofaOffice = ({ expertName, expertId, ticketDetails }) => ({
+  subject: expertTravelSubject(expertName, expertId),
+  html: wrap(`
+    <p>Dear DOFA Office Team,</p>
+    <p>Travel team has updated ticket details for expert <strong>${expertName}</strong>.</p>
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;padding:12px 16px;border-radius:6px;margin:15px 0">
+      <p style="margin:0">${ticketDetails || "Ticket booked. Please check the portal for full details."}</p>
+    </div>
+    ${btn("View Expert Travel", `${PORTAL_URL}/dofa-office/experts`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+  `),
+});
+
+exports.pickupDetailsToTravel = ({ expertName, expertId, pickupDetails }) => ({
+  subject: expertTravelSubject(expertName, expertId),
+  html: wrap(`
+    <p>Dear Travel Team,</p>
+    <p>DOFA Office has entered pickup/drop-off details for expert <strong>${expertName}</strong>.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Pickup Location</td>
+          <td style="padding:8px;border:1px solid #ddd">${pickupDetails.pickupLocation || "—"}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Pickup Time</td>
+          <td style="padding:8px;border:1px solid #ddd">${pickupDetails.pickupTime || "—"}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Drop Location</td>
+          <td style="padding:8px;border:1px solid #ddd">${pickupDetails.dropLocation || "—"}</td></tr>
+    </table>
+    <p>Please arrange driver/vehicle and update driver details on the portal.</p>
+    ${btn("Update Driver Details", `${PORTAL_URL}/travel`)}
+    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+  `),
+});
+
+exports.driverDetailsToDofaOffice = ({ expertName, expertId, driverDetails }) => ({
+  subject: expertTravelSubject(expertName, expertId),
+  html: wrap(`
+    <p>Dear DOFA Office Team,</p>
+    <p>Driver/vehicle details have been updated for expert <strong>${expertName}</strong>.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Driver Name</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${driverDetails.driverName || "—"}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Vehicle No.</td>
+          <td style="padding:8px;border:1px solid #ddd">${driverDetails.vehicleNumber || "—"}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Contact</td>
+          <td style="padding:8px;border:1px solid #ddd">${driverDetails.driverContact || "—"}</td></tr>
+    </table>
+    ${btn("View Expert Details", `${PORTAL_URL}/dofa-office/experts`)}
+    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+  `),
+});
+
+/* ══════════════════════════════════════════════
+   11. DOFA Office publishes selection — email to Establishment
+══════════════════════════════════════════════ */
+exports.selectionPublishedToEstablishment = ({ selectedCount, waitlistedCount }) => ({
+  subject: `Faculty Selection Published — Action Required`,
+  html: wrap(`
+    <p>Dear Establishment Team,</p>
+    <p>DOFA Office has published the final selection list for the current recruitment cycle.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Selected Candidates</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold;color:green">${selectedCount}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Waitlisted Candidates</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold;color:orange">${waitlistedCount}</td></tr>
+    </table>
+    <p>Please proceed with issuing offer letters to the selected candidates.</p>
+    ${btn("Go to Establishment Portal", `${PORTAL_URL}/establishment`)}
+    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+  `),
+});
+
+/* ══════════════════════════════════════════════
+   12. Establishment sets joining date
+══════════════════════════════════════════════ */
+exports.joiningDateSetEmail = ({ candidateName, joiningDate, department, recipientName }) => ({
+  subject: `Joining Date Confirmed — ${candidateName}`,
+  html: wrap(`
+    <p>Dear ${recipientName || "Team"},</p>
+    <p>The joining date has been confirmed for <strong>${candidateName}</strong> 
+    (${department || "—"}) by the Establishment Section.</p>
+    <div style="background:#f0fdf4;border:1px solid #86efac;padding:15px;border-radius:6px;margin:15px 0;text-align:center">
+      <p style="margin:0;font-size:20px;font-weight:bold;color:#166534">${joiningDate}</p>
+      <p style="margin:4px 0 0;color:#166534;font-size:13px">Confirmed Joining Date</p>
+    </div>
+    ${btn("View on Portal", `${PORTAL_URL}/establishment`)}
+    <p>Regards,<br><strong>Establishment Section, LNMIIT</strong></p>
+  `),
+});
+
+/* ══════════════════════════════════════════════
+   13. DOFA Office adds room allotment — email to Estate
+══════════════════════════════════════════════ */
+exports.roomAllotmentToEstate = ({ candidateName, roomNumber, building }) => ({
+  subject: `Room Allotment — ${candidateName}`,
+  html: wrap(`
+    <p>Dear Estate Section,</p>
+    <p>A room has been allotted to the following candidate. Please proceed with handing over the keys.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidate Name</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Room Number</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${roomNumber}</td></tr>
+      ${building ? `<tr><td style="padding:8px;border:1px solid #ddd;color:#666">Building</td>
+          <td style="padding:8px;border:1px solid #ddd">${building}</td></tr>` : ""}
+    </table>
+    ${btn("Update Handover Status", `${PORTAL_URL}/estate`)}
+    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+  `),
+});
+
+/* ══════════════════════════════════════════════
+   14. Establishment uploads joining letter — email to LUCS
+══════════════════════════════════════════════ */
+exports.joiningLetterToLucs = ({ candidateName, department, joiningDate }) => ({
+  subject: `Joining Letter Ready — IT Setup Required for ${candidateName}`,
+  html: wrap(`
+    <p>Dear LUCS Team,</p>
+    <p>The joining letter for <strong>${candidateName}</strong> (${department || "—"}) 
+    has been uploaded. Please proceed with IT asset provisioning.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidate</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Department</td>
+          <td style="padding:8px;border:1px solid #ddd">${department || "—"}</td></tr>
+      ${joiningDate ? `<tr><td style="padding:8px;border:1px solid #ddd;color:#666">Joining Date</td>
+          <td style="padding:8px;border:1px solid #ddd">${joiningDate}</td></tr>` : ""}
+    </table>
+    <p>Please set up email account, IT assets, and update the portal accordingly.</p>
+    ${btn("Go to LUCS Portal", `${PORTAL_URL}/lucs`)}
+    <p>Regards,<br><strong>Establishment Section, LNMIIT</strong></p>
+  `),
+});
+
+/* ══════════════════════════════════════════════
+   15. Joining complete — email to HOD + DOFA Office + DOFA
+══════════════════════════════════════════════ */
+exports.joiningCompleteEmail = ({ candidateName, department, joiningDate, recipientName }) => ({
+  subject: `Joining Complete — ${candidateName} Has Joined LNMIIT`,
+  html: wrap(`
+    <p>Dear ${recipientName || "Team"},</p>
+    <p>This is to inform you that <strong>${candidateName}</strong> from the 
+    <strong>${department}</strong> department has successfully completed the joining process.</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidate</td>
+          <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Department</td>
+          <td style="padding:8px;border:1px solid #ddd">${department}</td></tr>
+      ${joiningDate ? `<tr><td style="padding:8px;border:1px solid #ddd;color:#666">Date of Joining</td>
+          <td style="padding:8px;border:1px solid #ddd">${joiningDate}</td></tr>` : ""}
+    </table>
+    <p>All onboarding steps have been completed and the record is now frozen.</p>
+    ${btn("View Onboarding Status", `${PORTAL_URL}/dofa-office`)}
+    <p>Regards,<br><strong>Establishment Section, LNMIIT</strong></p>
   `),
 });

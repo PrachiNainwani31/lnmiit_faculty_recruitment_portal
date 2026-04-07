@@ -20,7 +20,7 @@ const Candidate = sequelize.define(
     // FK → User (the candidate's own user account)
     userId: {
       type:      DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
+      allowNull: true,
     },
     fullName: {
       type:      DataTypes.STRING(200),

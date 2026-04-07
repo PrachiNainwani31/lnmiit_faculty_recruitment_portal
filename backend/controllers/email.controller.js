@@ -1,6 +1,6 @@
 const transporter = require("../config/mailer");
 const { User, Candidate, Expert, CandidateApplication } = require("../models");
-const CYCLE = require("../config/activeCycle");
+const getCurrentCycle = require("../utils/getCurrentCycle");
 
 /* ============================
    Send mail helper
@@ -64,90 +64,74 @@ exports.expertMailTemplate = (name) => `
 exports.emailCandidate = async (req, res) => {
   try {
     const candidate = await Candidate.findByPk(req.params.id);
-
     if (!candidate)
       return res.status(404).json({ message: "Candidate not found" });
 
-    await sendMail(
-      candidate.email,
-      "Recruitment Update",
-      candidateMailTemplate(candidate.fullName)
-    );
+    const recipients = [candidate.email];
+    if (candidate.secondaryEmail) recipients.push(candidate.secondaryEmail);
+
+    for (const email of recipients) {
+      await sendMail(email, "Recruitment Update", candidateMailTemplate(candidate.fullName));
+    }
 
     res.json({ success: true });
-
   } catch (err) {
     res.status(500).json({ message: "Email failed" });
   }
 };
 
-/* ============================
-   SEND ALL CANDIDATES
-============================ */
 exports.emailAllCandidates = async (req, res) => {
   try {
     const department = req.params.dept;
+    const hod = await User.findOne({ where: { role: "HOD", department } });
+    if (!hod) return res.status(404).json({ message: "HOD not found" });
 
-    const hod = await User.findOne({
-      where: { role: "HOD", department }
-    });
-
-    if (!hod)
-      return res.status(404).json({ message: "HOD not found" });
+    // Get hod's current cycle
+    const cycle = await getCurrentCycle(hod.id);
+    if (!cycle) return res.status(404).json({ message: "No active cycle for this department" });
 
     const candidates = await Candidate.findAll({
-      where: {
-        hodId: hod.id,
-        cycle: CYCLE
-      }
+      where: { hodId: hod.id, cycle: cycle.cycle }   // ✅ correct filter
     });
 
     for (const c of candidates) {
-      await sendMail(
-        c.email,
-        "Recruitment Update",
-        candidateMailTemplate(c.fullName)
-      );
+      const recipients = [c.email];
+      if (c.secondaryEmail) recipients.push(c.secondaryEmail);
+      for (const email of recipients) {
+        await sendMail(email, "Recruitment Update", candidateMailTemplate(c.fullName));
+      }
     }
 
     res.json({ success: true, count: candidates.length });
-
   } catch (err) {
     res.status(500).json({ message: "Email failed" });
   }
 };
 
-/* ============================
-   SEND ALL EXPERTS
-============================ */
 exports.emailAllExperts = async (req, res) => {
   try {
     const { hodId } = req.params;
 
+    // ✅ get cycle dynamically:
+    const cycle = await getCurrentCycle(parseInt(hodId));
+    if (!cycle) return res.status(404).json({ message: "No active cycle" });
+
     const experts = await Expert.findAll({
-      where: {
-        uploadedById: hodId,
-        cycle: CYCLE
-      }
+      where: { uploadedById: hodId, cycle: cycle.cycle }   // ✅ fixed
     });
 
-    if (!experts.length)
-      return res.status(404).json({ message: "No experts found" });
+    if (!experts.length) return res.status(404).json({ message: "No experts found" });
 
     for (const e of experts) {
-      await sendMail(
-        e.email,
-        "Interview Invitation",
-        exports.expertMailTemplate(e.fullName)
-      );
+      await sendMail(e.email, "Interview Invitation", exports.expertMailTemplate(e.fullName));
     }
 
     res.json({ success: true, count: experts.length });
-
   } catch (err) {
     res.status(500).json({ message: "Email failed" });
   }
 };
+
 
 /* ============================
    REMINDER

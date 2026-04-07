@@ -1,32 +1,45 @@
 // pages/dofa-office/SelectedCandidates.jsx
-// Fix: blocks "Update Selection" if interview is already marked complete
+// ✅ Added: Selected / Waitlisted status tags prominently on each candidate row
+// ✅ Added: interviewDone lock with clear error message on update attempt
 import { useEffect, useState } from "react";
 import API from "../../api/api";
-import CYCLE from "../../config/activeCycle";
+import { useActiveCycle } from "../../hooks/useActiveCycle";
 
-/* ── 3-state toggle ── */
 function StatusToggle({ status, onChange, disabled }) {
   const states = ["NOT_SELECTED","SELECTED","WAITLISTED"];
   const idx    = Math.max(states.indexOf(status), 0);
-
   const cfg = {
     NOT_SELECTED: { label:"Not Selected", cls:"bg-gray-100 text-gray-500 border-gray-200" },
     SELECTED:     { label:"Selected",     cls:"bg-green-100 text-green-700 border-green-200" },
     WAITLISTED:   { label:"Waitlisted",   cls:"bg-amber-100 text-amber-700 border-amber-200" },
   };
   const current = status || "NOT_SELECTED";
-
   return (
     <button
       onClick={() => !disabled && onChange(states[(idx + 1) % 3])}
       disabled={disabled}
-      title={disabled ? "Interview already completed — selection is locked" : "Click to cycle status"}
+      title={disabled ? "Interview complete — selection locked" : "Click to cycle status"}
       className={`text-xs px-3 py-1.5 rounded-full border font-medium transition ${
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:opacity-80"
       } ${cfg[current].cls}`}
     >
       {cfg[current].label}
     </button>
+  );
+}
+
+/* ── Large readable status tag shown on the candidate card ── */
+function SelectionTag({ status }) {
+  if (!status || status === "NOT_SELECTED") return null;
+  const cfg = {
+    SELECTED:   { label: "✓ Selected",   cls: "bg-green-100 text-green-800 border-green-300" },
+    WAITLISTED: { label: "⟳ Waitlisted", cls: "bg-amber-100 text-amber-800 border-amber-300" },
+  }[status];
+  if (!cfg) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full border ${cfg.cls}`}>
+      {cfg.label}
+    </span>
   );
 }
 
@@ -37,12 +50,14 @@ export default function SelectCandidates() {
   const [loading,       setLoading]       = useState(true);
   const [saving,        setSaving]        = useState(false);
   const [published,     setPublished]     = useState(false);
-  const [interviewDone, setInterviewDone] = useState(false);  // ← KEY flag
+  const [interviewDone, setInterviewDone] = useState(false);
   const [dofaApproved,  setDofaApproved]  = useState(false);
-
+  const [activeCycle, setActiveCycle] = useState(null);
+ 
   useEffect(() => {
-    Promise.all([
-      API.get(`/hod/candidates/${CYCLE}`),
+   //if (cycle === null || cycle === undefined) return;
+  Promise.all([
+      API.get(`/hod/candidates`),
       API.get("/selected-candidates"),
       API.get("/cycle/dofa-dashboard").catch(() => ({ data: { departments: [] } })),
     ]).then(([candRes, selRes, dashRes]) => {
@@ -51,6 +66,9 @@ export default function SelectCandidates() {
         : Array.isArray(candRes.data?.candidates)
         ? candRes.data.candidates
         : [];
+        if (candidates.length > 0 && candidates[0].cycle) {
+    setActiveCycle(candidates[0].cycle);
+  }
       const selected = Array.isArray(selRes.data) ? selRes.data : [];
       const depts    = dashRes.data?.departments || [];
 
@@ -58,7 +76,6 @@ export default function SelectCandidates() {
         ["APPROVED","INTERVIEW_SET","APPEARED_SUBMITTED"].includes(d.status)
       ));
 
-      // ✅ FIX: check if any selected record has interviewComplete = true
       const isDone = selected.some(s => s.interviewComplete);
       setInterviewDone(isDone);
 
@@ -86,7 +103,7 @@ export default function SelectCandidates() {
   }, []);
 
   const setStatus = (candId, status) => {
-    if (interviewDone) return; // guard
+    if (interviewDone) return;
     setSelections(s => ({ ...s, [candId]: status }));
   };
 
@@ -94,28 +111,19 @@ export default function SelectCandidates() {
     setExtraInfo(m => ({ ...m, [candId]: { ...m[candId], [key]: val } }));
 
   const handlePublish = async () => {
-    // ✅ FIX: hard block if interview is complete
     if (interviewDone) {
-      alert("❌ Cannot update selection — interview has already been marked as complete.\n\nThe selection is now locked. Please contact the DOFA if changes are required.");
+      alert("❌ Cannot update — interview already marked complete. Selection is locked.");
       return;
     }
-
     const payload = [];
     Object.entries(grouped).forEach(([dept, { hodId, candidates }]) => {
       candidates.forEach(c => {
         const info   = extraInfo[c.id] || {};
         const status = selections[c.id] || "NOT_SELECTED";
-        payload.push({
-          candidateId:    c.id,
-          status,
-          hodId,
-          department:     dept,
-          designation:    info.designation    || "",
-          employmentType: info.employmentType || "",
-        });
+        payload.push({ candidateId: c.id, status, hodId, department: dept,
+          designation: info.designation || "", employmentType: info.employmentType || "" });
       });
     });
-
     try {
       setSaving(true);
       await API.post("/selected-candidates/publish", { selections: payload });
@@ -131,9 +139,8 @@ export default function SelectCandidates() {
   const handleInterviewComplete = async () => {
     if (!window.confirm("Mark interview as complete? Selection will be locked after this.")) return;
     try {
-      await API.post("/selected-candidates/interview-complete", { cycle: CYCLE });
+      await API.post("/selected-candidates/interview-complete", { cycle:activeCycle });
       setInterviewDone(true);
-      alert("Interview marked complete. Selection is now locked.");
     } catch { alert("Failed"); }
   };
 
@@ -149,19 +156,18 @@ export default function SelectCandidates() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-800">Candidate Selection</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Toggle: <strong>Not Selected → Selected → Waitlisted</strong>
-          </p>
+          <p className="text-sm text-gray-500 mt-1">Toggle: Not Selected → Selected → Waitlisted</p>
         </div>
         <div className="flex gap-3 items-center flex-wrap">
-          <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded-full">
-            {selectedCount} selected
+          {/* ✅ Summary tags */}
+          <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded-full font-semibold">
+            ✓ {selectedCount} selected
           </span>
-          <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full">
-            {waitlistedCount} waitlisted
+          <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full font-semibold">
+            ⟳ {waitlistedCount} waitlisted
           </span>
           {!interviewDone ? (
-            <button onClick={handleInterviewComplete}
+            <button onClick={handleInterviewComplete} disabled={!activeCycle}
               className="text-sm bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition font-medium">
               Mark Interview Complete
             </button>
@@ -173,26 +179,25 @@ export default function SelectCandidates() {
         </div>
       </div>
 
-      {/* ✅ Locked banner */}
+      {/* Locked banner */}
       {interviewDone && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-start gap-3">
           <span className="text-red-500 text-xl shrink-0">🔒</span>
           <div>
             <p className="text-sm font-semibold text-red-800">Selection is locked</p>
             <p className="text-xs text-red-600 mt-0.5">
-              Interview has been marked complete. The selection cannot be changed.
-              Contact DOFA if corrections are needed.
+              Interview complete. Selection cannot be changed. Contact DOFA if corrections needed.
             </p>
           </div>
         </div>
       )}
 
-      {/* Instruction banner */}
+      {/* Instruction */}
       {!interviewDone && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-2">
           <span className="text-blue-500 mt-0.5">ℹ</span>
           <p className="text-xs text-blue-700">
-            Click the status badge on each candidate to cycle:
+            Click status badge to cycle:
             <span className="mx-1 bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">Not Selected</span>→
             <span className="mx-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Selected</span>→
             <span className="mx-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Waitlisted</span>
@@ -212,11 +217,11 @@ export default function SelectCandidates() {
           <div className="bg-indigo-600 px-5 py-3 flex items-center justify-between">
             <p className="text-white font-medium text-sm">{dept}</p>
             <div className="flex gap-3 text-xs">
-              <span className="text-indigo-200">
-                {candidates.filter(c => selections[c.id] === "SELECTED").length} selected
+              <span className="text-green-300 font-semibold">
+                ✓ {candidates.filter(c => selections[c.id] === "SELECTED").length} selected
               </span>
-              <span className="text-amber-300">
-                {candidates.filter(c => selections[c.id] === "WAITLISTED").length} waitlisted
+              <span className="text-amber-300 font-semibold">
+                ⟳ {candidates.filter(c => selections[c.id] === "WAITLISTED").length} waitlisted
               </span>
             </div>
           </div>
@@ -241,6 +246,9 @@ export default function SelectCandidates() {
                       Appeared
                     </span>
                   )}
+                  {/* ✅ Prominent selection tag */}
+                  <SelectionTag status={status} />
+                  {/* Toggle control */}
                   <StatusToggle
                     status={status}
                     onChange={s => dofaApproved && setStatus(c.id, s)}
@@ -252,24 +260,24 @@ export default function SelectCandidates() {
                   <div className={`px-14 pb-4 border-t grid grid-cols-2 gap-3 pt-3 ${
                     isSelected ? "bg-green-50 border-green-100" : "bg-amber-50 border-amber-100"
                   }`}>
+                    {/* ✅ Tag shown in the detail panel too */}
+                    <div className="col-span-2 mb-1">
+                      <SelectionTag status={status} />
+                    </div>
                     <div>
                       <label className={lbl}>Designation / Position Offered</label>
-                      <input
-                        className={`${inputCls} ${interviewDone ? "bg-gray-100" : ""}`}
+                      <input className={`${inputCls} ${interviewDone ? "bg-gray-100" : ""}`}
                         placeholder="e.g. Assistant Professor"
                         readOnly={interviewDone}
                         value={info.designation || ""}
-                        onChange={e => setExtra(c.id, "designation", e.target.value)}
-                      />
+                        onChange={e => setExtra(c.id, "designation", e.target.value)} />
                     </div>
                     <div>
                       <label className={lbl}>Type of Employment</label>
-                      <select
-                        className={`${inputCls} ${interviewDone ? "bg-gray-100" : ""}`}
+                      <select className={`${inputCls} ${interviewDone ? "bg-gray-100" : ""}`}
                         disabled={interviewDone}
                         value={info.employmentType || ""}
-                        onChange={e => setExtra(c.id, "employmentType", e.target.value)}
-                      >
+                        onChange={e => setExtra(c.id, "employmentType", e.target.value)}>
                         <option value="">Select type…</option>
                         <option value="Regular">Regular</option>
                         <option value="Contract">Contract</option>
@@ -285,21 +293,16 @@ export default function SelectCandidates() {
         </div>
       ))}
 
-      {/* Publish / Update button */}
       <div className="flex justify-end gap-3 pb-6">
         {interviewDone ? (
           <button
-            onClick={() => alert("❌ Interview already marked complete. Selection is locked.")}
-            className="bg-gray-400 cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium"
-          >
+            onClick={() => alert("❌ Interview already complete. Selection is locked.")}
+            className="bg-gray-400 cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium">
             🔒 Selection Locked
           </button>
         ) : (
-          <button
-            onClick={handlePublish}
-            disabled={saving || !dofaApproved}
-            className="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition"
-          >
+          <button onClick={handlePublish} disabled={saving || !dofaApproved}
+            className="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
             {saving ? "Publishing…" : published ? "Update Selection" : "Publish Selection"}
           </button>
         )}

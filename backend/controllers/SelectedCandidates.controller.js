@@ -1,14 +1,16 @@
-// controllers/SelectedCandidates.controller.js
-const { SelectedCandidate, OnboardingRecord, Candidate, User, Expert } = require("../models");
-const { sendEmail } = require("../utils/emailSender");
+const { SelectedCandidate, OnboardingRecord, Candidate, User } = require("../models");
+const { sendEmail }          = require("../utils/emailSender");
 const { createNotification } = require("../utils/notify");
-const { Op } = require("sequelize");
-const CYCLE = require("../config/activeCycle");
+const templates              = require("../utils/emailTemplates");
+const { Op }                 = require("sequelize");
+const getCurrentCycle           = require("../utils/getCurrentCycle");
+const { log } = require("../utils/activityLogger");
 
-/* ── Get all selected candidates ── */
+const VALID_STATUSES = ["SELECTED", "WAITLISTED", "NOT_SELECTED", "REJECTED"];
+
 exports.getSelectedCandidates = async (req, res) => {
   try {
-    const where = { cycle: CYCLE };
+    const where = {};
     if (req.user.role === "HOD") where.hodId = req.user.id;
 
     const selected = await SelectedCandidate.findAll({
@@ -18,7 +20,6 @@ exports.getSelectedCandidates = async (req, res) => {
         { model: User, as: "hod", attributes: ["department", "email", "name"] },
       ],
     });
-
     res.json(selected);
   } catch (err) {
     console.error("getSelectedCandidates error:", err);
@@ -26,96 +27,99 @@ exports.getSelectedCandidates = async (req, res) => {
   }
 };
 
-/* ── Publish selection ── */
+/* ── Publish selection (#11) — email to Establishment only ── */
 exports.publishSelection = async (req, res) => {
   try {
     const { selections } = req.body;
-
     if (!Array.isArray(selections) || selections.length === 0)
       return res.status(400).json({ message: "No selections provided" });
 
     for (const s of selections) {
-      // ✅ FIX 1: "selectedBy" → "selectedById" (matches model column name)
-      // ✅ FIX 2: designation + employmentType now exist in the model
-      // ✅ FIX 3: status uses "NOT_SELECTED" which is now in the ENUM
+      const status = VALID_STATUSES.includes(s.status) ? s.status : "NOT_SELECTED";
+      const hodCycle = await getCurrentCycle(s.hodId);
       await SelectedCandidate.upsert({
-        candidateId:  s.candidateId,
-        cycle:        CYCLE,
-        department:   s.department,
-        hodId:        s.hodId,
-        selectedById: req.user.id,
-        status:       s.status === "SELECTED" ? "SELECTED" : "NOT_SELECTED",
-        designation:  s.designation    || "",
+        candidateId:    s.candidateId,
+        cycle:          hodCycle?.cycle || s.cycle,
+        department:     s.department,
+        hodId:          s.hodId,
+        selectedById:   req.user.id,
+        status,
+        designation:    s.designation    || "",
         employmentType: s.employmentType || "",
       });
 
-      // Only create onboarding record for actually selected candidates
-      if (s.status === "SELECTED") {
+      if (status === "SELECTED" || status === "WAITLISTED") {
         await OnboardingRecord.upsert({
           candidateId: s.candidateId,
-          cycle:       CYCLE,
+          cycle:       hodCycle?.cycle || s.cycle,
           department:  s.department,
           hodId:       s.hodId,
         });
       }
     }
 
-    const selectedCount = selections.filter(s => s.status === "SELECTED").length;
+    const selectedCount   = selections.filter(s => s.status === "SELECTED").length;
+    const waitlistedCount = selections.filter(s => s.status === "WAITLISTED").length;
 
-    if (selectedCount === 0) {
-      for (const role of ["DOFA", "HOD", "ESTABLISHMENT", "LUCS", "TRAVEL"]) {
-        await createNotification({
-          cycle:   CYCLE,
-          role,
-          title:   "No Candidates Selected",
-          message: "DOFA Office completed selection — no candidates were selected.",
-          type:    "STATUS",
-        });
+    if (selectedCount > 0 || waitlistedCount > 0) {
+      // Email #11 — Establishment only
+      const estUsers = await User.findAll({ where: { role: "ESTABLISHMENT" } });
+      const tmpl = templates.selectionPublishedToEstablishment({ selectedCount, waitlistedCount });
+      for (const u of estUsers) {
+        await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
       }
+      await createNotification({
+        cycle: selections[0] ? (await getCurrentCycle(selections[0].hodId))?.cycle || "SYSTEM" : "SYSTEM", role: "ESTABLISHMENT",
+        title:   "Selection Published",
+        message: `${selectedCount} selected, ${waitlistedCount} waitlisted. Please issue offer letters.`,
+        type:    "STATUS",
+      });
     } else {
-      for (const role of ["HOD", "ESTABLISHMENT", "LUCS"]) {
-        await createNotification({
-          cycle:   CYCLE,
-          role,
-          title:   "Selection Published",
-          message: `DOFA Office published selection: ${selectedCount} candidate(s) selected.`,
-          type:    "STATUS",
-        });
-      }
+      await createNotification({
+        cycle: selections[0]?.cycle || "SYSTEM", role: "ESTABLISHMENT",
+        title:   "No Candidates Selected",
+        message: "DOFA Office completed selection — no candidates were selected.",
+        type:    "STATUS",
+      });
     }
 
-    res.json({ success: true, selectedCount });
+    await log({
+      user:        req.user,
+      action:      "SELECTION_PUBLISHED",
+      entity:      "SelectedCandidate",
+      entityId:    null,
+      description: `Selection published: ${selectedCount} selected, ${waitlistedCount} waitlisted`,
+      req,
+    });
+
+    res.json({ success: true, selectedCount, waitlistedCount });
   } catch (err) {
     console.error("publishSelection error:", err);
     res.status(500).json({ message: "Failed to publish selection" });
   }
 };
 
-/* ── Mark interview complete ── */
+/* ── Mark interview complete — no email, just DB update ── */
 exports.markInterviewComplete = async (req, res) => {
   try {
     const { cycle } = req.body;
-
+    if (!cycle) return res.status(400).json({ message: "cycle required" });
     await SelectedCandidate.update(
       { interviewComplete: true, interviewCompletedAt: new Date() },
-      { where: { cycle: cycle || CYCLE } }
+      { where: { cycle: cycle } }
     );
 
     const selectedCount = await SelectedCandidate.count({
-      where: { cycle: cycle || CYCLE, status: "SELECTED" },
+      where: { cycle: cycle, status: "SELECTED" },
     });
 
-    const users = await User.findAll({
-      where: { role: { [Op.in]: ["DOFA", "HOD"] } },
+    await log({
+      user:        req.user,
+      action:      "INTERVIEW_COMPLETED_MARKED",
+      entity:      "SelectedCandidate",
+      entityId:    null,
+      description: `Interview marked completed`,req,
     });
-    for (const u of users) {
-      await sendEmail(
-        u.email,
-        `Interview Complete — ${CYCLE}`,
-        `<p>Interview process completed for ${CYCLE}</p>`
-      ).catch(console.error);
-    }
-
     res.json({ success: true, selectedCount });
   } catch (err) {
     console.error("markInterviewComplete error:", err);
@@ -123,19 +127,13 @@ exports.markInterviewComplete = async (req, res) => {
   }
 };
 
-/* ── Add expert manually ── */
 exports.addManualExpert = async (req, res) => {
   try {
-    const {
-      fullName, designation, department,
-      institute, email, phone, specialization,
-    } = req.body;
-
+    const { fullName, designation, department, institute, email, phone, specialization } = req.body;
     if (!fullName || !email)
       return res.status(400).json({ message: "Full name and email are required" });
 
     const dept = (department || "").toUpperCase().trim();
-
     let uploadedById = req.user.id;
     if (dept) {
       const hod = await User.findOne({ where: { role: "HOD", department: dept } });
@@ -143,18 +141,13 @@ exports.addManualExpert = async (req, res) => {
     }
 
     const { Expert } = require("../models");
+    const hod = await User.findOne({ where: { role: "HOD", department: dept } });
+    const hodCycle = hod ? await getCurrentCycle(hod.id) : null;
     const expert = await Expert.create({
-      fullName,
-      designation:    designation    || null,
-      department:     dept           || null,
-      institute:      institute      || null,
-      email,
-      phone:          phone          || null,
-      specialization: specialization || null,
-      cycle:          CYCLE,
-      uploadedById,
+      fullName, designation: designation || null, department: dept || null,
+      institute: institute || null, email, phone: phone || null,
+      specialization: specialization || null, cycle: hodCycle?.cycle || "UNKNOWN", uploadedById,
     });
-
     res.json({ success: true, expert });
   } catch (err) {
     console.error("addManualExpert error:", err);

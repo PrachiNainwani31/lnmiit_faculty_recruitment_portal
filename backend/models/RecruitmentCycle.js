@@ -38,6 +38,19 @@ const RecruitmentCycle = sequelize.define(
       type:      DataTypes.DATEONLY,
       allowNull: true,
     },
+    academicYear: { 
+      type: DataTypes.STRING(10),  // e.g. "2025-26"
+      allowNull: true 
+    },
+    cycleNumber: { 
+      type: DataTypes.INTEGER.UNSIGNED,  // 1, 2, 3
+      allowNull: true,
+      defaultValue: 1
+    },
+    joiningComplete: { type: DataTypes.BOOLEAN, defaultValue: false },
+    isClosed:    { type: DataTypes.BOOLEAN, defaultValue: false },
+    closedAt:    { type: DataTypes.DATE,    allowNull: true },
+    closedById:  { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
   },
   {
     tableName: "recruitment_cycles",

@@ -1,6 +1,6 @@
 const { Candidate, Expert, RecruitmentCycle, User } = require("../models");
 const { createNotification } = require("../utils/notify");
-const CYCLE = require("../config/activeCycle");
+const getCurrentCycle = require("../utils/getCurrentCycle");
 const parseCSV = require("../utils/csvParser");
 const { notifyDofaUpload } = require("./email.controller");
 const { Op } = require("sequelize");
@@ -10,8 +10,10 @@ const { Op } = require("sequelize");
 ========================================================= */
 exports.addExpert = async (req, res) => {
   try {
+    const hodCycle = await getCurrentCycle(req.user.id);
+    if (!hodCycle) return res.status(400).json({ message: "No active cycle. Please initiate a cycle first." });
     const rc = await RecruitmentCycle.findOne({
-      where: { cycle: CYCLE }
+      where: { cycle: hodCycle.cycle }
     });
 
     if (rc?.isFrozen) {
@@ -23,7 +25,7 @@ exports.addExpert = async (req, res) => {
     const expert = await Expert.create({
       ...req.body,
       department: req.body.department.toUpperCase(),
-      cycle: CYCLE,
+      cycle: hodCycle.cycle,
       uploadedById: req.user.id
     });
 
@@ -38,9 +40,11 @@ exports.addExpert = async (req, res) => {
    GET EXPERTS (HOD)
 ========================================================= */
 exports.getExperts = async (req, res) => {
+  const hodCycle = await getCurrentCycle(req.user.id);
+  if (!hodCycle) return res.status(400).json({ message: "No active cycle. Please initiate a cycle first." });
   const experts = await Expert.findAll({
     where: {
-      cycle: CYCLE,
+      cycle: hodCycle.cycle,
       uploadedById: req.user.id
     },
     order: [["createdAt", "ASC"]]
@@ -54,8 +58,10 @@ exports.getExperts = async (req, res) => {
 ========================================================= */
 exports.clearExperts = async (req, res) => {
   try {
+    const hodCycle = await getCurrentCycle(req.user.id);
+    if (!hodCycle) return res.status(400).json({ message: "No active cycle. Please initiate a cycle first." });
     const rc = await RecruitmentCycle.findOne({
-      where: { cycle: CYCLE }
+      where: { cycle: hodCycle.cycle }
     });
 
     if (rc?.isFrozen) {
@@ -65,7 +71,7 @@ exports.clearExperts = async (req, res) => {
     }
 
     await Expert.destroy({
-      where: { cycle: CYCLE }
+      where: { cycle: hodCycle.cycle }
     });
 
     res.json({ message: "All experts deleted successfully" });
@@ -79,16 +85,19 @@ exports.clearExperts = async (req, res) => {
    HOD COUNTS
 ========================================================= */
 exports.getHodCounts = async (req, res) => {
+  const hodCycle = await getCurrentCycle(req.user.id);
+  const cycleStr = hodCycle?.cycle;
+  if (!hodCycle) return res.status(400).json({ message: "No active cycle. Please initiate a cycle first." });
   const candidateCount = await Candidate.count({
     where: {
-      cycle: CYCLE,
+      cycle: cycleStr,
       hodId: req.user.id
     }
   });
 
   const expertCount = await Expert.count({
     where: {
-      cycle: CYCLE,
+      cycle: cycleStr,
       uploadedById: req.user.id
     }
   });
@@ -104,21 +113,43 @@ exports.getHodCounts = async (req, res) => {
 ========================================================= */
 exports.getAllExperts = async (req, res) => {
   try {
-    const experts = await Expert.findAll({
-      where: { cycle: CYCLE },
-      include: [
-        {
-          model: User,
-          as: "uploadedBy",
-          attributes: ["name", "department"]
-        }
-      ],
-      order: [["createdAt", "ASC"]]
+    if (req.user.role !== "DOFA")
+      return res.status(403).json({ message: "Access denied" });
+
+    const hods = await User.findAll({
+      where: { role: "HOD" },
+      attributes: ["id", "department"],
     });
 
-    res.json(experts);
+    let allExperts = [];
+
+    for (const hod of hods) {
+      const latestCycle = await RecruitmentCycle.findOne({
+        where: { hodId: hod.id },   // 🔥 KEY FIX
+        order: [["createdAt", "DESC"]],
+      });
+
+      if (!latestCycle) continue;
+
+      const experts = await Expert.findAll({
+        where: { cycle: latestCycle.cycle },
+        include: [
+          {
+            model: User,
+            as: "uploadedBy",
+            attributes: ["name", "department"],
+          },
+        ],
+        order: [["createdAt", "ASC"]],
+      });
+
+      allExperts.push(...experts);
+    }
+
+    res.json(allExperts);
 
   } catch (err) {
+    console.error("getAllExperts error:", err);
     res.status(500).json({ message: "Failed to fetch experts" });
   }
 };
@@ -137,9 +168,12 @@ exports.uploadExpertsCSV = async (req, res) => {
       return res.status(400).json({ message: "CSV is empty" });
 
     const hodId = req.user.id;
-
+    const hodCycle = await getCurrentCycle(hodId);
+    if (!hodCycle) {
+      return res.status(400).json({ message: "No active cycle found" });
+    }
     const formattedExperts = experts.map(row => ({
-      cycle: CYCLE,
+      cycle: hodCycle.cycle,
       fullName: row["Full Name (with Salutation)"]?.trim(),
       designation: row["Designation"]?.trim(),
       department: row["Department"]?.trim()?.toUpperCase(),
@@ -149,7 +183,7 @@ exports.uploadExpertsCSV = async (req, res) => {
       uploadedById: hodId
     }));
 
-    // ❌ insertMany → ✅ bulkCreate
+    // insertMany → bulkCreate
     await Expert.bulkCreate(formattedExperts);
 
     const hod = await User.findByPk(hodId);

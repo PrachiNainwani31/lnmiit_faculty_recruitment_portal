@@ -12,6 +12,8 @@ const {
   saveMisLibrary,     // ✅ NEW
   uploadRfidCard,     // ✅ NEW
   sendRfidToCandidate,// ✅ NEW
+  markJoiningComplete,
+  closeCycle,
 } = require("../controllers/establishment.controller");
 
 router.get("/records",
@@ -27,5 +29,7 @@ router.post("/allot-room",      auth(["DOFA_OFFICE"]),   allotRoom);
 router.post("/mis-library",     auth(["ESTABLISHMENT"]), saveMisLibrary);
 router.post("/rfid-card",       auth(["ESTABLISHMENT"]), upload.single("pdf"), uploadRfidCard);
 router.post("/rfid-send",       auth(["ESTABLISHMENT"]), sendRfidToCandidate);
+router.post("/joining-complete", auth(["ESTABLISHMENT"]), markJoiningComplete);
+router.post("/close-cycle", auth(["ESTABLISHMENT"]), closeCycle);
 
 module.exports = router;

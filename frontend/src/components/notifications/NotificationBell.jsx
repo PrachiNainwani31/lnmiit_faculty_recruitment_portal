@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { getNotifications, markNotificationRead } from "../../api/candidateApi";
 import NotificationPanel from "./NotificationPanel";
+import { useActiveCycle } from "../../hooks/useActiveCycle";
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const cycle = useActiveCycle();
 
   const fetchNotifications = async () => {
-    const res = await getNotifications("HOD", "2026-27");
+    const { role } = JSON.parse(localStorage.getItem("user") || "{}");
+    const res = await getNotifications(role, cycle || undefined);
     setNotifications(res.data);
   };
 

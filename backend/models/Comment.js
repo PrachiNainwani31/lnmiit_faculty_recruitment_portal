@@ -10,6 +10,15 @@ const Comment = sequelize.define(
     fromRole: { type: DataTypes.STRING(50),  allowNull: false },
     toRole:   { type: DataTypes.STRING(50),  allowNull: false },
     message:  { type: DataTypes.TEXT,        allowNull: false },
+    fromDepartment: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
+    targetUserId: { 
+      type: DataTypes.INTEGER.UNSIGNED, 
+      allowNull: true, 
+      defaultValue: null 
+    },
   },
   { tableName: "comments" }
 );

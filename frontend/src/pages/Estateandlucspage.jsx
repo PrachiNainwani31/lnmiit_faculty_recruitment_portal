@@ -78,7 +78,7 @@ function EstateCard({ record, onRefresh }) {
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputSm} />
         </div>
         <div>
-          <label className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Notes</label>
+          <label className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Assests</label>
           <input value={notes} onChange={e => setNotes(e.target.value)}
             placeholder="Keys handed, inventory checked..." className={inputSm} />
         </div>
@@ -215,12 +215,23 @@ function LucsCard({ record, onRefresh }) {
       ) : (
         <>
           {/* Joining letter reference link */}
-          <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-2 flex items-center justify-between">
-            <p className="text-xs text-blue-700">Joining letter uploaded by Establishment</p>
-            <a href={`${BASE}/${record.joiningLetterPath}`} target="_blank" rel="noreferrer"
-              className="text-xs text-blue-600 hover:underline font-medium">View →</a>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-blue-600 text-lg">📄</span>
+              <div>
+                <p className="text-xs font-semibold text-blue-800">Joining Letter</p>
+                <p className="text-xs text-blue-500">Uploaded by Establishment</p>
+              </div>
+            </div>
+            <a
+              href={`${BASE}/${record.joiningLetterPath}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-2 rounded-lg transition"
+            >
+              View PDF ↗
+            </a>
           </div>
-
           {/* ── Item 1: Institute email ── */}
           <CheckItem checked={form.emailAssigned} onChange={v => set("emailAssigned", v)}
             label="Institute email assigned" savedDone={!!record.lucsEmailAssigned}>

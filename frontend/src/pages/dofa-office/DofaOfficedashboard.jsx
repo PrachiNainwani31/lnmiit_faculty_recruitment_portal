@@ -3,44 +3,62 @@ import { useEffect, useState } from "react";
 import API from "../../api/api";
 import { useNavigate } from "react-router-dom";
 import SelectionStatusPanel from "../../components/Selectionstatuspanel";
-
-import CYCLE from "../../config/activeCycle";
+// ✅ FIX: removed useActiveCycle — DOFA_OFFICE has no HOD cycle record so it always returned null
 
 export default function DofaOfficeDashboard() {
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({
+    totalCandidates:  0,
+    appearedCount:    0,
+    totalExperts:     0,
+    confirmedExperts: 0,
+    offlineExperts:   0,
+    onlineExperts:    0,
+    pendingQuotes:    0,
+  });
+  const [cycleLabel, setCycleLabel] = useState("-");
+  const [loading,    setLoading]    = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     Promise.all([
-      API.get("/expert-travel"),
-      API.get(`/hod/candidates/${CYCLE}`),
-      API.get("/hod/experts/all"),
-    ])
-      .then(([travelRes, candidateRes, expertRes]) => {
-        const travels = Array.isArray(travelRes.data) ? travelRes.data : [];
+      // ✅ FIX: use the dedicated stats endpoint — aggregates across all cycles internally
+      // Previously depended on useActiveCycle which returns null for DOFA_OFFICE users
+      API.get("/cycle/dofa-office-dashboard").catch(() => ({ data: null })),
+      API.get("/expert-travel").catch(() => ({ data: [] })),
+    ]).then(([statsRes, travelRes]) => {
+      const stats   = statsRes.data;
+      const travels = Array.isArray(travelRes.data) ? travelRes.data : [];
 
-        // ✅ API now returns { candidates, interviewDate } — handle both shapes
-        const raw        = candidateRes.data;
-        const candidates = Array.isArray(raw)
-          ? raw
-          : Array.isArray(raw?.candidates)
-          ? raw.candidates
-          : [];
+      const confirmedExperts = travels.filter(t => t.travel?.confirmed).length;
+      const offlineExperts   = travels.filter(t => t.travel?.presenceStatus === "Offline" && t.travel?.confirmed).length;
+      const onlineExperts    = travels.filter(t => t.travel?.presenceStatus === "Online"  && t.travel?.confirmed).length;
+      const pendingQuotes    = travels.filter(t => t.travel?.quote?.status  === "PENDING").length;
 
-        const experts = Array.isArray(expertRes.data) ? expertRes.data : [];
-
+      if (stats) {
         setData({
-          totalCandidates:  candidates.length,
-          appearedCount:    candidates.filter(c => c.appearedInInterview).length,
-          totalExperts:     experts.length,
-          confirmedExperts: travels.filter(t => t.travel?.confirmed).length,
-          offlineExperts:   travels.filter(t => t.travel?.presenceStatus === "Offline" && t.travel?.confirmed).length,
-          onlineExperts:    travels.filter(t => t.travel?.presenceStatus === "Online"  && t.travel?.confirmed).length,
-          pendingQuotes:    travels.filter(t => t.travel?.quote?.status  === "PENDING").length,
+          totalCandidates:  stats.totalCandidates ?? 0,
+          appearedCount:    stats.appearedCount    ?? 0,
+          totalExperts:     stats.totalExperts     ?? 0,
+          confirmedExperts: stats.confirmedExperts ?? confirmedExperts,
+          offlineExperts:   stats.attendingOffline ?? offlineExperts,
+          onlineExperts:    stats.attendingOnline  ?? onlineExperts,
+          pendingQuotes:    stats.quotesPending    ?? pendingQuotes,
         });
-      })
-      .catch(() => setData({}))
+      } else {
+        // Fallback: compute what we can from travel data alone
+        setData(d => ({ ...d, confirmedExperts, offlineExperts, onlineExperts, pendingQuotes }));
+      }
+
+      // Derive a cycle label for display only — non-critical
+      API.get("/cycle/dofa-dashboard")
+        .then(r => {
+          const depts = r.data?.departments || [];
+          const years = [...new Set(depts.map(d => d.academicYear).filter(Boolean))];
+          if (years.length) setCycleLabel(years[0]);
+          else if (depts.length) setCycleLabel(depts[0].status !== "DRAFT" ? "Active" : "-");
+        }).catch(() => {});
+
+    }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
@@ -64,10 +82,9 @@ export default function DofaOfficeDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Overview for recruitment cycle {CYCLE}</p>
+        <p className="text-sm text-gray-500 mt-1">Overview for recruitment cycle {cycleLabel}</p>
       </div>
 
-      {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {cards.map(c => (
           <div key={c.label} className={`rounded-xl border p-5 ${c.color}`}>
@@ -78,13 +95,12 @@ export default function DofaOfficeDashboard() {
         ))}
       </div>
 
-      {/* Quick nav */}
       <div className="grid grid-cols-2 gap-4">
         {[
-          { label: "External Experts",   sub: "Mark attendance, enter travel",      path: "/dofa-office/experts"            },
-          { label: "Pickup / Drop-off",  sub: "Station / airport pickup details",   path: "/dofa-office/pickup"             },
-          { label: "Select Candidates",  sub: "Publish final selection list",       path: "/dofa-office/select-candidates"  },
-          { label: "Room Allotment",     sub: "Allot rooms to selected candidates", path: "/dofa-office/room-allotment"    },
+          { label: "External Experts",  sub: "Mark attendance, enter travel",      path: "/dofa-office/experts"           },
+          { label: "Pickup / Drop-off", sub: "Station / airport pickup details",   path: "/dofa-office/pickup"            },
+          { label: "Select Candidates", sub: "Publish final selection list",       path: "/dofa-office/select-candidates" },
+          { label: "Room Allotment",    sub: "Allot rooms to selected candidates", path: "/dofa-office/room-allotment"    },
         ].map(({ label, sub, path }) => (
           <button key={path} onClick={() => navigate(path)}
             className="bg-white border border-gray-200 rounded-xl p-5 text-left hover:shadow-md transition">

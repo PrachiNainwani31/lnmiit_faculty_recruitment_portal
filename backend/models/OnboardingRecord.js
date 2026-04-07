@@ -1,83 +1,74 @@
-// models/OnboardingRecord.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
-const OnboardingRecord = sequelize.define(
-  "OnboardingRecord",
-  {
-    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+const OnboardingRecord = sequelize.define("OnboardingRecord", {
+  id:          { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+  candidateId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+  cycle:       { type: DataTypes.STRING(20),        allowNull: false },
+  department:  { type: DataTypes.STRING(100),       allowNull: true  },
+  hodId:       { type: DataTypes.INTEGER.UNSIGNED,  allowNull: true  },
 
-    candidateId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
-    cycle:       { type: DataTypes.STRING(20), allowNull: false },
-    department:  { type: DataTypes.STRING(150) },
-    hodId:       { type: DataTypes.INTEGER.UNSIGNED },
+  // Offer letter
+  offerLetterPath:       { type: DataTypes.STRING(500), allowNull: true },
+  offerLetterUploadedAt: { type: DataTypes.DATE,        allowNull: true },
 
-    // ── Offer Letter ────────────────────────────────────────
-    offerLetterPath:            { type: DataTypes.STRING(500) },
-    offerLetterUploadedAt:      { type: DataTypes.DATE },
-    offerLetterSentToCandidate: { type: DataTypes.BOOLEAN, defaultValue: false },
+  // Joining letter (internal — not sent to candidate)
+  joiningLetterPath: { type: DataTypes.STRING(500), allowNull: true },
 
-    // ── Joining ──────────────────────────────────────────────
-    joiningDate:             { type: DataTypes.DATEONLY },
-    joiningLetterPath:       { type: DataTypes.STRING(500) },
-    joiningLetterUploadedAt: { type: DataTypes.DATE },
+  // Joining date — establishment sets joiningDate only
+  joiningDate:                    { type: DataTypes.DATEONLY, allowNull: true  },
+  candidatePreferredJoiningDate:  { type: DataTypes.DATEONLY, allowNull: true  },
+  joiningDateProposedByCandidate: { type: DataTypes.BOOLEAN,  defaultValue: false },
+  joiningDateConfirmedByEst:      { type: DataTypes.BOOLEAN,  defaultValue: false },
 
-    // ── MIS Login ─────────────────────────────────────────────
-    // ✅ NEW: establishment assigns MIS login after joining letter
-    misLoginDone: { type: DataTypes.BOOLEAN, defaultValue: false },
-    misLoginNote: { type: DataTypes.TEXT,    allowNull: true },   // e.g. login URL / username
+  // Room
+  roomNumber:      { type: DataTypes.STRING(50),         allowNull: true  },
+  roomAllottedAt:  { type: DataTypes.DATE,               allowNull: true  },
+  roomAllottedById:{ type: DataTypes.INTEGER.UNSIGNED,   allowNull: true  },
+  roomHandedOver:  { type: DataTypes.BOOLEAN,            defaultValue: false },
+  roomHandoverDate:{ type: DataTypes.DATE,               allowNull: true  },
 
-    // ── Library Card ──────────────────────────────────────────
-    // ✅ NEW: establishment provides library membership details
-    libraryDone:    { type: DataTypes.BOOLEAN, defaultValue: false },
-    libraryDetails: { type: DataTypes.TEXT,    allowNull: true },  // membership ID / instructions
+  // MIS
+  misUsername:   { type: DataTypes.STRING(200), allowNull: true },
+  misPassword:   { type: DataTypes.STRING(200), allowNull: true },
+  misProvidedAt: { type: DataTypes.DATE,        allowNull: true },
 
-    // ── RFID Card ─────────────────────────────────────────────
-    // ✅ NEW: establishment uploads RFID card PDF and sends to candidate
-    rfidDone:            { type: DataTypes.BOOLEAN, defaultValue: false },
-    rfidPath:            { type: DataTypes.STRING(500), allowNull: true },
-    rfidSentToCandidate: { type: DataTypes.BOOLEAN, defaultValue: false },
-    rfidSentAt:          { type: DataTypes.DATE,    allowNull: true },
+  // Library
+  libraryMemberId: { type: DataTypes.STRING(100), allowNull: true },
+  libraryDoneAt:   { type: DataTypes.DATE,        allowNull: true },
 
-    // ── Room Allocation ───────────────────────────────────────
-    roomBuilding:     { type: DataTypes.STRING(200) },
-    roomNumber:       { type: DataTypes.STRING(50) },
-    roomNotes:        { type: DataTypes.TEXT },
-    roomAllottedAt:   { type: DataTypes.DATE },
-    roomAllottedById: { type: DataTypes.INTEGER.UNSIGNED },
+  // RFID
+  rfidPath:            { type: DataTypes.STRING(500), allowNull: true  },
+  rfidCardNumber:      { type: DataTypes.STRING(100), allowNull: true  },
+  rfidSentToCandidate: { type: DataTypes.BOOLEAN,     defaultValue: false },
+  rfidDoneAt:          { type: DataTypes.DATE,        allowNull: true  },
 
-    // ── Room Handover ─────────────────────────────────────────
-    roomHandedOver:    { type: DataTypes.BOOLEAN, defaultValue: false },
-    roomHandoverDate:  { type: DataTypes.DATE },
-    roomHandoverNotes: { type: DataTypes.TEXT },
+  // LUCS
+  lucsConfirmedById: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+  lucsEmailAssigned:    { type: DataTypes.BOOLEAN,      defaultValue: false },
+lucsEmailId:          { type: DataTypes.STRING(200),  allowNull: true },
+lucsItAssetsIssued:   { type: DataTypes.BOOLEAN,      defaultValue: false },
+lucsItAssetsNote:     { type: DataTypes.TEXT,          allowNull: true },
+lucsWifiProvided:     { type: DataTypes.BOOLEAN,      defaultValue: false },
+lucsWebsiteLogin:     { type: DataTypes.BOOLEAN,      defaultValue: false },
+lucsWebsiteLoginNote: { type: DataTypes.TEXT,          allowNull: true },
+lucsOtherDone:        { type: DataTypes.BOOLEAN,      defaultValue: false },
+lucsOtherNote:        { type: DataTypes.TEXT,          allowNull: true },
+lucsConfirmedAt:      { type: DataTypes.DATE,          allowNull: true },
+lucsConfirmedById:    { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+onboardingComplete:   { type: DataTypes.BOOLEAN,      defaultValue: false },
+onboardingCompletedAt:{ type: DataTypes.DATE,          allowNull: true },
+// also missing from model:
+roomBuilding:         { type: DataTypes.STRING(100),  allowNull: true },
+roomNotes:            { type: DataTypes.TEXT,          allowNull: true },
+roomHandoverNotes:    { type: DataTypes.TEXT,          allowNull: true },
+  // Resignation
+  resignationRequired: { type: DataTypes.BOOLEAN, defaultValue: false },
+  resignationDoneAt:   { type: DataTypes.DATE,    allowNull: true     },
 
-    // ── LUCS ──────────────────────────────────────────────────
-    lucsEmailAssigned:    { type: DataTypes.BOOLEAN, defaultValue: false },
-    lucsEmailId:          { type: DataTypes.STRING(255) },
-    lucsItAssetsIssued:   { type: DataTypes.BOOLEAN, defaultValue: false },
-    lucsItAssetsNote:     { type: DataTypes.TEXT,    allowNull: true },
-    lucsWifiProvided:     { type: DataTypes.BOOLEAN, defaultValue: false },
-    lucsWebsiteLogin:     { type: DataTypes.BOOLEAN, defaultValue: false },
-    lucsWebsiteLoginNote: { type: DataTypes.TEXT,    allowNull: true },
-    lucsOtherDone:        { type: DataTypes.BOOLEAN, defaultValue: false },
-    lucsOtherNote:        { type: DataTypes.TEXT,    allowNull: true },
-    lucsConfirmedAt:      { type: DataTypes.DATE },
-    lucsConfirmedById:    { type: DataTypes.INTEGER.UNSIGNED },
-
-    // ── Overall ──────────────────────────────────────────────
-    onboardingComplete:    { type: DataTypes.BOOLEAN, defaultValue: false },
-    onboardingCompletedAt: { type: DataTypes.DATE },
-  },
-  {
-    tableName: "onboarding_records",
-    indexes: [
-      {
-        unique: true,
-        fields: ["candidateId", "cycle"],
-        name:   "uq_onboarding_candidate_cycle",
-      },
-    ],
-  }
-);
+  // Joining complete (freezes record)
+  joiningComplete:    { type: DataTypes.BOOLEAN, defaultValue: false },
+  joiningCompletedAt: { type: DataTypes.DATE,    allowNull: true     },
+}, { tableName: "onboarding_records" });
 
 module.exports = OnboardingRecord;

@@ -19,20 +19,21 @@ app.use("/api/email", require("./routes/email.routes"));
 app.use("/api/candidate", require("./routes/candidate.routes"));
 app.use("/api/referee", require("./routes/referee.routes"));
 app.use("/api/expert-travel", require("./routes/Experttravel.routes"));
-app.use("/api/director",            require("./routes/director.routes"));
 app.use("/api/selected-candidates", require("./routes/selectedCandidates.routes"));
 app.use("/api/establishment",       require("./routes/establishment.routes"));
 app.use("/api/onboarding",          require("./routes/estate_lucs.routes"));
 app.use("/api/interview-logs", require("./routes/interviewLog.routes"));
-
+app.use("/api/registration", require("./routes/registration.routes"));
+app.use("/api/activity-logs", require("./routes/activityLog.routes"));
 async function startServer() {
   try {
-    // ✅ Connect MySQL
+    // Connect MySQL
     await db.sequelize.authenticate();
     console.log("✅ MySQL Connected");
 
-    // ✅ Sync DB (DEV ONLY)
-    await db.sequelize.sync({ alter: true });
+    //  Sync DB (DEV ONLY)
+    //await db.sequelize.sync({ alter: true });
+    await db.sequelize.sync();
     console.log("✅ Tables Synced");
 
     app.listen(5000, () => {

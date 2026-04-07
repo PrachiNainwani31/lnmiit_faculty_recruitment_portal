@@ -1,3 +1,4 @@
+// routes/hod.routes.js
 const express = require("express");
 const router = express.Router();
 
@@ -31,7 +32,7 @@ const {
   uploadResumes,
   getCandidatesByDepartment,
   getUploadedResumes,
-  markAppeared,           // ← NEW
+  markAppeared,
 } = require("../controllers/candidateController");
 
 const { unfreezeCycle } = require("../controllers/cycle.controller");
@@ -40,13 +41,13 @@ const { unfreezeCycle } = require("../controllers/cycle.controller");
    CANDIDATES
 ========================= */
 
-// CSV template (KEEP FIRST — exact path match before :cycle param)
-router.get("/candidates/template/:cycle", downloadTemplate);
+// CSV template — must be before :cycle param route
+router.get("/candidates/template/:cycle", auth(["HOD"]), downloadTemplate);
 
 // Stats & status
-router.post("/candidates/stats",   auth(["HOD"]), saveCandidateStats);
-router.get("/candidates/stats/",   auth(["HOD"]), getCandidateStats);
-router.get("/candidates/status/",  auth(["HOD"]), getCandidateStatus);
+router.post("/candidates/stats",  auth(["HOD"]), saveCandidateStats);
+router.get("/candidates/stats/",  auth(["HOD"]), getCandidateStats);
+router.get("/candidates/status/", auth(["HOD"]), getCandidateStatus);
 
 // Upload CSV
 router.post(
@@ -57,7 +58,8 @@ router.post(
   uploadCandidates
 );
 
-// Upload ALL resumes (ZIP)
+// ✅ FIX: /resumes routes MUST come BEFORE /candidates/:cycle
+// Otherwise Express matches :cycle="resumes" and calls getCandidatesByCycle instead
 router.post(
   "/candidates/resumes",
   auth(["HOD"]),
@@ -66,69 +68,76 @@ router.post(
   uploadResumes
 );
 
-// ── NEW: Mark / unmark a candidate as appeared ──────────────────────
-// HOD calls PATCH /hod/candidates/appeared/:id  { appeared: true/false }
-// Result is visible on DOFA page and DOFA Office page
+router.get("/candidates/resumes", auth(["HOD"]), getUploadedResumes);
+
+// Delete resume ZIP
+router.delete(
+  "/candidates/resumes/:filename",
+  auth(["HOD"]),
+  freezeGuard,
+  async (req, res) => {
+    try {
+      const getCurrentCycle = require("../utils/getCurrentCycle");
+      const { User } = require("../models");
+
+      const cycle = await getCurrentCycle(req.user.id);
+      if (!cycle) return res.status(404).json({ message: "No active cycle" });
+
+      const hod  = await User.findByPk(req.user.id);
+      const dept = (hod?.department || "UNKNOWN").toUpperCase().replace(/\s+/g, "_");
+      const filePath = path.join(
+        __dirname, "../uploads/resumes", cycle.cycle, dept, req.params.filename
+      );
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Delete failed" });
+    }
+  }
+);
+
+// Mark appeared
 router.patch(
   "/candidates/appeared/:id",
   auth(["HOD"]),
   markAppeared
 );
 
-// Delete / clear
-router.delete("/candidates/clear/:cycle", auth(["HOD"]), freezeGuard, clearCandidateStats);
-router.delete("/candidates/:id",          auth(["HOD"]), freezeGuard, deleteCandidate);
-
-// By department (DOFA)
+// By department (DOFA) — specific route before :cycle
 router.get(
   "/candidates/department/:department",
   auth(["DOFA"]),
   getCandidatesByDepartment
 );
 
-// By cycle (HOD, DOFA, DOFA_OFFICE)
+// Delete / clear
+router.delete("/candidates/clear/:cycle", auth(["HOD"]), freezeGuard, clearCandidateStats);
+router.delete("/candidates/:id",          auth(["HOD"]), freezeGuard, deleteCandidate);
+
+router.get(
+  "/candidates",
+  auth(["DOFA", "DOFA_OFFICE"]),
+  getCandidatesByCycle   // controller ignores cycle param for DOFA roles
+);
+
+// By cycle — MUST be LAST among /candidates/* routes
 router.get("/candidates/:cycle", auth(["HOD", "DOFA", "DOFA_OFFICE"]), getCandidatesByCycle);
 
 /* =========================
    EXPERTS
 ========================= */
-router.get("/experts/all", auth(["DOFA", "DOFA_OFFICE"]), getAllExperts);
-router.get("/experts",     auth(["HOD", "DOFA", "DOFA_OFFICE"]), getExperts);
-router.delete("/experts/clear", auth(["HOD"]), freezeGuard, clearExperts);
+router.get("/experts/all",     auth(["DOFA", "DOFA_OFFICE"]), getAllExperts);
+router.get("/experts",         auth(["HOD", "DOFA", "DOFA_OFFICE"]), getExperts);
+router.delete("/experts/clear",auth(["HOD"]), freezeGuard, clearExperts);
 
 /* =========================
    DASHBOARD / SUBMIT
 ========================= */
-router.get("/counts",   auth(["HOD"]), getHodCounts);
-router.post("/submit",  auth(["HOD"]), freezeGuard, submitToDofa);
+router.get("/counts",  auth(["HOD"]), getHodCounts);
+router.post("/submit", auth(["HOD"]), freezeGuard, submitToDofa);
 
 // DEV ONLY
 router.post("/unfreeze", unfreezeCycle);
-
-/* =========================
-   RESUMES (per file delete)
-========================= */
-router.delete(
-  "/candidates/resumes/:filename",
-  auth(["HOD"]),
-  freezeGuard,
-  async (req, res) => {
-    const filePath = path.join(
-      __dirname,
-      "../uploads/resumes",
-      req.user.id.toString(),
-      req.params.filename
-    );
-
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-
-    res.json({ success: true });
-  }
-);
-
-router.get("/candidates/resumes", auth(["HOD"]), getUploadedResumes);
 
 /* =========================
    EXPERTS CSV UPLOAD

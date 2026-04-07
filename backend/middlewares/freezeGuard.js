@@ -1,15 +1,20 @@
 const RecruitmentCycle = require("../models/RecruitmentCycle");
-const CYCLE = require("../config/activeCycle");
+const getCurrentCycle = require("../utils/getCurrentCycle");
 
 module.exports = async function freezeGuard(req, res, next) {
   try {
-    const rc = await RecruitmentCycle.findOne({
-      where: { cycle: CYCLE, hodId: req.user.id }  // ← fixed
-    });
-
-    if (rc?.isFrozen) {
+      const cycle = await getCurrentCycle(req.user.id);
+        if (cycle?.isClosed) {
+          return res.status(403).json({ message: "No active cycle is found." });
+        }
+    if (cycle?.isFrozen) {
       return res.status(403).json({
         message: "Session is frozen. Editing is not allowed.",
+      });
+    }
+    if (cycle.isClosed) {
+      return res.status(403).json({
+        message: "This cycle is closed. No further edits are allowed.",
       });
     }
 

@@ -22,6 +22,7 @@ const MULTI_DOCS = [
   { key: "researchExpCerts", label: "Research Experience Certs"     },
   { key: "teachingExpCerts", label: "Teaching Experience Certs"     },
   { key: "industryExpCerts", label: "Industry Experience Certs"     },
+  { key: "otherDocs",        label: "Other Documents"           },
 ];
 // Referee fields shown in the tracking table
 const REFEREE_FIELDS = ["name", "designation", "department", "institute", "email"];
@@ -65,6 +66,27 @@ function ReminderModal({ candidate, onClose, onSend }) {
     day: "numeric", month: "long", year: "numeric",
   });
 
+  const [emailBody, setEmailBody] = useState(
+`Date: ${dateStr}
+
+To,
+${candidate.name}
+
+Subject: Action Required — Document Submission / Correction
+
+Dear ${candidate.name?.split(" ")[0]},
+
+We noticed that the following document(s) require your attention:
+
+${issues.map(d => `• ${d.label} — ${candidate.verdicts?.[d.key]?.status}`).join("\n")}
+
+Please rectify the above at the earliest on the LNMIIT Recruitment Portal.
+
+Best regards,
+DOFA Office
+LNMIIT`
+  );
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-2xl w-[560px] max-h-[90vh] overflow-y-auto">
@@ -107,35 +129,21 @@ function ReminderModal({ candidate, onClose, onSend }) {
         </div>
 
         <div className="px-6 mt-5">
-          <p className="text-sm font-semibold text-gray-600 mb-2">📋 Reminder letter preview:</p>
-          <div className="bg-gray-50 border rounded-xl p-4 text-sm text-gray-700 leading-relaxed max-h-52 overflow-y-auto font-mono whitespace-pre-wrap">
-{`Date: ${dateStr}
-
-To,
-${candidate.name}
-
-Subject: Action Required — Document Submission / Correction
-
-Dear ${candidate.name?.split(" ")[0]},
-
-We noticed that the following document(s) require your attention:
-
-${issues.map(d => `• ${d.label} — ${candidate.verdicts?.[d.key]?.status}`).join("\n")}
-
-Please rectify the above at the earliest on the LNMIIT Recruitment Portal.
-
-Best regards,
-DOFA Office
-LNMIIT`}
-          </div>
-        </div>
+      <p className="text-sm font-semibold text-gray-600 mb-2">📋 Reminder letter (editable):</p>
+      <textarea
+        rows={12}
+        value={emailBody}
+        onChange={e => setEmailBody(e.target.value)}
+        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed font-mono focus:outline-none focus:ring-1 focus:ring-indigo-300 resize-none"
+      />
+    </div>
 
         <div className="flex justify-end gap-3 p-6">
           <button onClick={onClose}
             className="px-5 py-2 rounded-lg border text-sm font-medium text-gray-600 hover:bg-gray-50">
             Cancel
           </button>
-          <button onClick={() => onSend(candidate.id)}
+          <button onClick={() => onSend(candidate.id,emailBody)}
             className="px-5 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium flex items-center gap-2">
             📨 Send Reminder
           </button>
@@ -153,6 +161,7 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
   const [localRemarks, setLocalRemarks] = useState({});
   const [toast, setToast]         = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [overallRemark, setOverallRemark] = useState(candidate.verdicts?.["_overall"]?.remark || "");
 
   const handleDownloadZip = async (e) => {
     e.stopPropagation(); // don't toggle open
@@ -317,14 +326,20 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                   {doc.label} ({files.length} files)
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {files.map((f, i) => (
-                    <a key={i}
-                      href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/${f}`}
-                      target="_blank" rel="noreferrer"
-                      className="text-xs text-blue-600 hover:underline border border-blue-200 bg-blue-50 px-2 py-1 rounded">
-                      📄 File {i + 1}
-                    </a>
-                  ))}
+                  {files.map((f, i) => {
+                    // ✅ handle both string paths and {file, name} objects
+                    const filePath = typeof f === "string" ? f : f?.file;
+                    const fileName = typeof f === "object" && f?.name ? f.name : `File ${i + 1}`;
+                    if (!filePath) return null;
+                    return (
+                      <a key={i}
+                        href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/${filePath}`}
+                        target="_blank" rel="noreferrer"
+                        className="text-xs text-blue-600 hover:underline border border-blue-200 bg-blue-50 px-2 py-1 rounded">
+                        📄 {fileName}
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -343,7 +358,14 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                     <span><span className="text-gray-400">Org: </span>{exp.organization || "—"}</span>
                     <span><span className="text-gray-400">Designation: </span>{exp.designation || "—"}</span>
                     <span><span className="text-gray-400">From: </span>{exp.fromDate ? new Date(exp.fromDate).toLocaleDateString("en-GB") : "—"}</span>
-                    <span><span className="text-gray-400">To: </span>{exp.toDate ? new Date(exp.toDate).toLocaleDateString("en-GB") : "—"}</span>
+                    <span>
+                      <span className="text-gray-400">To: </span>
+                      {exp.toDate 
+                        ? new Date(exp.toDate).toLocaleDateString("en-GB")
+                        : candidate.submittedAt
+                          ? new Date(candidate.submittedAt).toLocaleDateString("en-GB")
+                          : "—"}
+                    </span>
                     <span><span className="text-gray-400">Nature: </span>{exp.natureOfWork || "—"}</span>
                   </div>
                 ))}
@@ -421,10 +443,13 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                 Overall Remark for {candidate.name?.split(" ")[0]}
               </label>
               <textarea
-                rows={2}
-                placeholder="Overall observation..."
-                className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-300 bg-white resize-none"
-              />
+                    rows={2}
+                    value={overallRemark}
+                    placeholder="Overall observation..."
+                    className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-300 bg-white resize-none"
+                    onChange={e => setOverallRemark(e.target.value)}
+                    onBlur={e => onVerdictChange(candidate.id, "_overall", "Note", e.target.value)}
+                  />
             </div>
 
             <button
@@ -468,9 +493,9 @@ export default function DocumentTracking() {
     }
   };
 
-  const handleSendReminder = async (candidateId) => {
+  const handleSendReminder = async (candidateId,emailBody) => {
     try {
-      await API.post("/dofa/document-reminder", { candidateId });
+      await API.post("/dofa/document-reminder", { candidateId,emailBody });
       setReminderCandidate(null);
       alert("Reminder sent successfully.");
     } catch {
@@ -527,8 +552,8 @@ export default function DocumentTracking() {
           {/* Candidate rows */}
           {(dept.candidates || []).map((c, ci) => (
             <CandidateRow
-              key={c.id || c.id}
-              candidate={{ ...c, id: c.id || c.id, srNo: ci + 1 }}
+              key={c.id}
+              candidate={{ ...c, srNo: ci + 1 }}
               onVerdictChange={handleVerdictChange}
               onReminderClick={setReminderCandidate}
             />

@@ -1,27 +1,28 @@
 // controllers/establishment.controller.js
-const { OnboardingRecord, SelectedCandidate, Candidate, User } = require("../models");
+const { RecruitmentCycle,OnboardingRecord, Candidate, User } = require("../models");
 const { sendEmail } = require("../utils/emailSender");
-const CYCLE = require("../config/activeCycle");
+const templates = require("../utils/emailTemplates");
+const getCurrentCycle = require("../utils/getCurrentCycle");
+const { log } = require("../utils/activityLogger");
 const BASE_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-/* ── Get all onboarding records grouped by department ──
-   ✅ Includes interviewComplete from SelectedCandidate so
-   Establishment can gate the offer letter upload.
-── */
+/* ── Get all onboarding records grouped by department ──Includes interviewComplete from SelectedCandidate so Establishment can gate the offer letter upload.── */
 exports.getOnboardingRecords = async (req, res) => {
   try {
     const { SelectedCandidate } = require("../models");
-
+    const activeCycles = await RecruitmentCycle.findAll({
+      attributes: ["cycle"],
+      order: [["createdAt", "DESC"]],
+    });
+    const cycleStrings = activeCycles.map(c => c.cycle);
     const records = await OnboardingRecord.findAll({
-      where: { cycle: CYCLE },
+      where: { cycle: cycleStrings },
       include: [
         { model: Candidate, as: "candidate" },
-        { model: User, as: "hod", attributes: ["department", "name", "email"] },
+        { model: User,      as: "hod", attributes: ["department", "name", "email"] },
       ],
     });
-
-    // Build a map of candidateId → interviewComplete from SelectedCandidate
-    const selRecords = await SelectedCandidate.findAll({ where: { cycle: CYCLE } });
+    const selRecords = await SelectedCandidate.findAll({ where: { cycle: cycleStrings } });
     const selMap = {};
     selRecords.forEach(s => { selMap[s.candidateId] = s; });
 
@@ -32,8 +33,8 @@ exports.getOnboardingRecords = async (req, res) => {
       const sel = selMap[r.candidateId];
       deptMap[dept].push({
         ...r.toJSON(),
-        // ✅ Gate field: offer letter only uploadable after interview marked complete
         interviewComplete: sel?.interviewComplete || false,
+        selectionStatus:   sel?.status            || "SELECTED",
         designation:       sel?.designation       || "",
         employmentType:    sel?.employmentType     || "",
       });
@@ -56,30 +57,26 @@ exports.uploadOfferLetter = async (req, res) => {
 
     await OnboardingRecord.update(
       {
-        offerLetterPath:            req.file.path,
-        offerLetterUploadedAt:      new Date(),
-        offerLetterSentToCandidate: true,
+        offerLetterPath:       req.file.path,
+        offerLetterUploadedAt: new Date(),
       },
-      { where: { candidateId, cycle: CYCLE } }
+      { where: { candidateId } }
     );
 
+    // ✅ Candidate sees offer letter on portal — no separate email needed per requirements
     const record = await OnboardingRecord.findOne({
-      where:   { candidateId, cycle: CYCLE },
+      where:   { candidateId },
       include: [{ model: Candidate, as: "candidate" }],
     });
 
-    // ✅ Notify candidate: "You have been selected"
-    if (record?.candidate?.email) {
-      await sendEmail(
-        record.candidate.email,
-        "Congratulations! You have been selected — LNMIIT",
-        `<p>Dear ${record.candidate.fullName},</p>
-         <p>Congratulations! You have been selected for the position at LNMIIT.</p>
-         <p>Your offer letter is now available. Please log in to your candidate portal to view and download it:</p>
-         <p><a href="${BASE_URL}">${BASE_URL}</a></p>
-         <p>Regards,<br/>Establishment Section, LNMIIT</p>`
-      ).catch(console.error);
-    }
+    await log({
+      user:        req.user,
+      action:      "OFFER_LETTER_UPLOADED",
+      entity:      "OnboardingRecord",
+      entityId:    candidateId,
+      description: `Offer letter uploaded for candidate ${candidateId}`,
+      req,
+    });
 
     res.json({ success: true, record });
   } catch (err) {
@@ -88,97 +85,131 @@ exports.uploadOfferLetter = async (req, res) => {
   }
 };
 
-/* ── Set joining date ── */
+/* ── Set joining date (#12) — email to DOFA, DOFA Office, HOD ── */
 exports.setJoiningDate = async (req, res) => {
   try {
     const { candidateId, joiningDate } = req.body;
-
-    await OnboardingRecord.update(
-      { joiningDate: new Date(joiningDate) },
-      { where: { candidateId, cycle: CYCLE } }
-    );
-
-    const record = await OnboardingRecord.findOne({
-      where:   { candidateId, cycle: CYCLE },
-      include: [{ model: Candidate, as: "candidate" }],
-    });
-
-    // Notify candidate of joining date
-    if (record?.candidate?.email) {
-      await sendEmail(
-        record.candidate.email,
-        "Your Joining Date — LNMIIT",
-        `<p>Dear ${record.candidate.fullName},</p>
-         <p>Your joining date has been confirmed: <strong>${new Date(joiningDate).toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" })}</strong></p>
-         <p>Please log in to your portal for further details: <a href="${BASE_URL}">${BASE_URL}</a></p>
-         <p>Regards,<br/>Establishment Section, LNMIIT</p>`
-      ).catch(console.error);
-    }
-
-    res.json({ success: true, record });
-  } catch (err) {
-    console.error("setJoiningDate error:", err);
-    res.status(500).json({ message: "Failed" });
-  }
-};
-
-/* ── Upload joining letter ──
-   NOTE: Joining letter is NOT sent to candidate portal.
-   It is visible to Establishment, HOD, DOFA, DOFA Office only.
-── */
-exports.uploadJoiningLetter = async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: "PDF required" });
-    const { candidateId } = req.body;
+    if (!joiningDate) return res.status(400).json({ message: "Joining date required" });
 
     await OnboardingRecord.update(
       {
-        joiningLetterPath:       req.file.path,
-        joiningLetterUploadedAt: new Date(),
+        joiningDate:               new Date(joiningDate),
+        joiningDateConfirmedByEst: true,
       },
-      { where: { candidateId, cycle: CYCLE } }
+      { where: { candidateId } }
     );
 
-    const record = await OnboardingRecord.findOne({
-      where:   { candidateId, cycle: CYCLE },
-      include: [{ model: Candidate, as: "candidate" }],
+    const record    = await OnboardingRecord.findOne({ where: { candidateId } });
+    const candidate = await Candidate.findByPk(candidateId);
+    const fmtDate   = new Date(joiningDate).toLocaleDateString("en-GB", {
+      day: "numeric", month: "long", year: "numeric",
     });
 
-    // Internal notification only — NOT sent to candidate
-    res.json({ success: true, record });
+    // Email DOFA + DOFA_OFFICE + this department's HOD
+    const recipients = await User.findAll({
+      where: { role: ["DOFA", "DOFA_OFFICE"] },
+    });
+    if (record?.hodId) {
+      const hod = await User.findByPk(record.hodId);
+      if (hod) recipients.push(hod);
+    }
+
+    for (const u of recipients) {
+      const tmpl = templates.joiningDateSetEmail({
+        candidateName: candidate?.fullName || "—",
+        joiningDate:   fmtDate,
+        department:    record?.department  || "—",
+        recipientName: u.name || u.role,
+      });
+      await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
+    }
+
+    await log({
+      user:        req.user,
+      action:      "JOINING_DATE_SET",
+      entity:      "OnboardingRecord",
+      entityId:    candidateId,
+      description: `Joining date set for candidate ${candidateId}`,
+      req,
+    });
+
+    res.json({ success: true });
   } catch (err) {
-    console.error("uploadJoiningLetter error:", err);
-    res.status(500).json({ message: "Upload failed" });
+    console.error("setJoiningDate error:", err.message);
+    res.status(500).json({ message: "Failed to save joining date" });
   }
 };
 
+/* ── Upload joining letter (#14) — visible to LUCS, email sent to LUCS ── */
+exports.uploadJoiningLetter = async (req, res) => {
+  try {
+    const { candidateId } = req.body;
+    if (!req.file) return res.status(400).json({ message: "File required" });
+
+    await OnboardingRecord.update(
+      { joiningLetterPath: req.file.path },
+      { where: { candidateId } }
+    );
+
+    const record    = await OnboardingRecord.findOne({ where: { candidateId } });
+    const candidate = await Candidate.findByPk(candidateId);
+    const fmtDate   = record?.joiningDate
+      ? new Date(record.joiningDate).toLocaleDateString("en-GB")
+      : null;
+
+    const lucsUsers = await User.findAll({ where: { role: "LUCS" } });
+    const tmpl = templates.joiningLetterToLucs({
+      candidateName: candidate?.fullName || "—",
+      department:    record?.department  || "—",
+      joiningDate:   fmtDate,
+    });
+    for (const u of lucsUsers) {
+      await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
+    }
+
+    await log({
+      user:        req.user,
+      action:      "JOINING_LETTER_UPLOADED",
+      entity:      "OnboardingRecord",
+      entityId:    candidateId,
+      description: `Joining letter uploaded for candidate ${candidateId}`,
+      req,
+    });
+
+    res.json({ success: true, path: req.file.path });
+  } catch (err) {
+    console.error("uploadJoiningLetter error:", err.message);
+    res.status(500).json({ message: "Failed to upload" });
+  }
+};
 /* ── Allot room ── */
 exports.allotRoom = async (req, res) => {
   try {
-    const { candidateId, roomBuilding, roomNumber, roomNotes } = req.body;
+    const { candidateId, roomNumber } = req.body;
+    if (!roomNumber) return res.status(400).json({ message: "Room number required" });
 
     await OnboardingRecord.update(
       {
-        roomBuilding,
         roomNumber,
-        roomNotes,
         roomAllottedAt:   new Date(),
         roomAllottedById: req.user.id,
       },
-      { where: { candidateId, cycle: CYCLE } }
+      { where: { candidateId } }
     );
 
-    const record = await OnboardingRecord.findOne({
-      where:   { candidateId, cycle: CYCLE },
-      include: [{ model: Candidate, as: "candidate" }],
-    });
+    const record    = await OnboardingRecord.findOne({ where: { candidateId },
+      include: [{ model: Candidate, as: "candidate" }] });
+    const candidate = record?.candidate;
 
-    if (record?.candidate?.email) {
-      await sendEmail(
-        record.candidate.email,
-        "Room Allotted — LNMIIT",
-        `<p>Room ${roomNumber} in ${roomBuilding} has been allotted to you.</p>`
-      ).catch(console.error);
+    // Email #13 — Estate only
+    const estateUsers = await User.findAll({ where: { role: "ESTATE" } });
+    const tmpl = templates.roomAllotmentToEstate({
+      candidateName: candidate?.fullName || "—",
+      roomNumber,
+      building: null,
+    });
+    for (const u of estateUsers) {
+      await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
     }
 
     res.json({ success: true, record });
@@ -188,45 +219,24 @@ exports.allotRoom = async (req, res) => {
   }
 };
 
-/* ── Save MIS login + Library details ──
-   Called after joining letter is uploaded.
-   Updates misLoginDone/Note and libraryDone/Details.
-── */
+/* ── Save MIS + Library ── */
 exports.saveMisLibrary = async (req, res) => {
   try {
-    const {
-      candidateId,
-      misLoginDone, misLoginNote,
-      libraryDone,  libraryDetails,
-    } = req.body;
+    const { candidateId, misLoginDone, misLoginNote, libraryDone, libraryDetails } = req.body;
 
-    // Gate: joining letter must exist
-    const record = await OnboardingRecord.findOne({
-      where: { candidateId, cycle: CYCLE },
-    });
-    if (!record)
-      return res.status(404).json({ message: "Record not found" });
-    if (!record.joiningLetterPath)
-      return res.status(403).json({ message: "Joining letter must be uploaded first", gated: true });
+    if (!candidateId) return res.status(400).json({ message: "candidateId required" });
 
-    await OnboardingRecord.update(
-      {
-        misLoginDone:   !!misLoginDone,
-        misLoginNote:   misLoginNote   || null,
-        libraryDone:    !!libraryDone,
-        libraryDetails: libraryDetails || null,
-      },
-      { where: { candidateId, cycle: CYCLE } }
-    );
+    const updateData = {
+      misUsername:       misLoginDone ? (misLoginNote || null) : null,
+      misProvidedAt:     misLoginDone ? new Date() : null,
+      libraryMemberId:   libraryDone  ? (libraryDetails || null) : null,
+      libraryDoneAt:     libraryDone  ? new Date() : null,
+    };
 
-    const updated = await OnboardingRecord.findOne({
-      where:   { candidateId, cycle: CYCLE },
-      include: [{ model: Candidate, as: "candidate" }],
-    });
-
-    res.json({ success: true, record: updated });
+    await OnboardingRecord.update(updateData, { where: { candidateId } });
+    res.json({ success: true });
   } catch (err) {
-    console.error("saveMisLibrary error:", err);
+    console.error("saveMisLibrary error:", err.message);
     res.status(500).json({ message: "Failed to save" });
   }
 };
@@ -237,20 +247,29 @@ exports.uploadRfidCard = async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "PDF required" });
     const { candidateId } = req.body;
 
-    const record = await OnboardingRecord.findOne({ where: { candidateId, cycle: CYCLE } });
+    // Gate: joining letter must exist first
+    const record = await OnboardingRecord.findOne({ where: { candidateId } });
     if (!record?.joiningLetterPath)
       return res.status(403).json({ message: "Joining letter must be uploaded first", gated: true });
 
     await OnboardingRecord.update(
-      { rfidDone: true, rfidPath: req.file.path },
-      { where: { candidateId, cycle: CYCLE } }
+      { rfidPath: req.file.path },
+      { where: { candidateId } }
     );
 
     const updated = await OnboardingRecord.findOne({
-      where:   { candidateId, cycle: CYCLE },
+      where:   { candidateId },
       include: [{ model: Candidate, as: "candidate" }],
     });
 
+    await log({
+      user:        req.user,
+      action:      "RFID_SENT",
+      entity:      "OnboardingRecord",
+      entityId:    candidateId,
+      description: `RFID card sent for candidate ${candidateId}`,
+      req,
+    });
     res.json({ success: true, record: updated });
   } catch (err) {
     console.error("uploadRfidCard error:", err);
@@ -258,41 +277,101 @@ exports.uploadRfidCard = async (req, res) => {
   }
 };
 
-/* ── Send RFID card to candidate ──
-   Emails the candidate with a link to their RFID card PDF.
-   Marks rfidSentToCandidate = true.
-── */
+/* ── Send RFID to candidate — candidate sees on portal, no extra email per requirements ── */
 exports.sendRfidToCandidate = async (req, res) => {
   try {
     const { candidateId } = req.body;
 
-    const record = await OnboardingRecord.findOne({
-      where:   { candidateId, cycle: CYCLE },
-      include: [{ model: Candidate, as: "candidate" }],
-    });
-
+    const record = await OnboardingRecord.findOne({ where: { candidateId } });
     if (!record?.rfidPath)
       return res.status(400).json({ message: "RFID card not uploaded yet" });
 
-    if (record?.candidate?.email) {
-      await sendEmail(
-        record.candidate.email,
-        "Your RFID Card — LNMIIT",
-        `<p>Dear ${record.candidate.fullName},</p>
-         <p>Your RFID access card details are ready. Please log in to your portal to download it:</p>
-         <p><a href="${BASE_URL}">${BASE_URL}</a></p>
-         <p>Regards,<br/>Establishment Section, LNMIIT</p>`
-      );
-    }
-
     await OnboardingRecord.update(
-      { rfidSentToCandidate: true, rfidSentAt: new Date() },
-      { where: { candidateId, cycle: CYCLE } }
+      { rfidSentToCandidate: true, rfidDoneAt: new Date() },
+      { where: { candidateId } }
     );
 
     res.json({ success: true });
   } catch (err) {
     console.error("sendRfidToCandidate error:", err);
-    res.status(500).json({ message: "Failed to send" });
+    res.status(500).json({ message: "Failed" });
+  }
+};
+
+/* ── Mark joining complete (#15) — email to HOD + DOFA + DOFA Office, freeze record ── */
+exports.markJoiningComplete = async (req, res) => {
+  try {
+    const { candidateId } = req.body;
+
+    await OnboardingRecord.update(
+      { joiningComplete: true, joiningCompletedAt: new Date() },
+      { where: { candidateId } }
+    );
+
+    const record    = await OnboardingRecord.findOne({ where: { candidateId } });
+    const candidate = await Candidate.findByPk(candidateId);
+    const fmtDate   = record?.joiningDate
+      ? new Date(record.joiningDate).toLocaleDateString("en-GB")
+      : null;
+
+    const recipients = await User.findAll({
+      where: { role: ["DOFA", "DOFA_OFFICE"] },
+    });
+    if (record?.hodId) {
+      const hod = await User.findByPk(record.hodId);
+      if (hod) recipients.push(hod);
+    }
+
+    for (const u of recipients) {
+      const tmpl = templates.joiningCompleteEmail({
+        candidateName: candidate?.fullName || "—",
+        department:    record?.department  || "—",
+        joiningDate:   fmtDate,
+        recipientName: u.name || u.role,
+      });
+      await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
+    }
+    if (record?.hodId) {
+      await RecruitmentCycle.update(
+        { joiningComplete: true },
+        { where: { hodId: record.hodId, cycle: record.cycle } }
+      );
+    }
+
+    await log({
+      user:        req.user,
+      action:      "JOINING_COMPLETE",
+      entity:      "OnboardingRecord",
+      entityId:    candidateId,
+      description: `Joining complete for candidate ${candidateId}`,
+      req,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("markJoiningComplete error:", err.message);
+    res.status(500).json({ message: "Failed" });
+  }
+};
+
+exports.closeCycle = async (req, res) => {
+  try {
+    const { hodId } = req.body;
+    if (!hodId) return res.status(400).json({ message: "hodId required" });
+
+    const cycle = await RecruitmentCycle.findOne({
+      where: { hodId },
+      order: [["createdAt", "DESC"]],
+    });
+    if (!cycle) return res.status(404).json({ message: "Cycle not found" });
+
+    await RecruitmentCycle.update(
+      { isClosed: true, closedAt: new Date(), closedById: req.user.id, isFrozen: true },
+      { where: { id: cycle.id } }
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to close cycle" });
   }
 };

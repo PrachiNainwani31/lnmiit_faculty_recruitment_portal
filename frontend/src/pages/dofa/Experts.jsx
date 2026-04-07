@@ -22,6 +22,16 @@ With Regards,
 Webmaster LNMIIT
 webmaster@lnmiit.ac.in`;
 
+const DEPT_OPTIONS = [
+  { label: "Communication and Computer Engineering",  code: "CCE"       },
+  { label: "Computer Science and Engineering",        code: "CSE"       },
+  { label: "Electronics and Communication Engineering", code: "ECE"     },
+  { label: "Mechanical-Mechatronics Engineering",     code: "MME"       },
+  { label: "Physics",                                 code: "PHYSICS"   },
+  { label: "Mathematics",                             code: "MATHEMATICS"},
+  { label: "Humanities and Social Sciences",          code: "HSS"       },
+];
+
 const loadTemplate = () => {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
@@ -149,41 +159,31 @@ function AddExpertPanel({ onAdded }) {
     institute:"", email:"", phone:"", specialization:""
   });
   const [saving, setSaving] = useState(false);
-
+ 
   const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-300";
   const lbl      = "text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1";
-
-  const FIELDS = [
-    { k:"fullName",       l:"Full Name (with Salutation)", cols: 2 },
-    { k:"designation",    l:"Designation" },
-    { k:"department",     l:"Department"  },
-    { k:"institute",      l:"Institute"   },
-    { k:"email",          l:"Email"       },
-    { k:"phone",          l:"Phone"       },
-    { k:"specialization", l:"Specialization" },
-  ];
-
+ 
   const handleAdd = async () => {
     if (!form.fullName || !form.email) return alert("Full name and email are required");
+    if (!form.department) return alert("Please select a department");
     try {
       setSaving(true);
+      // ✅ department code (e.g. "CSE") is sent — backend maps to HOD by exact match
       await API.post("/selected-candidates/manual-expert", form);
-      alert(`Expert ${form.fullName} added`);
+      alert(`Expert ${form.fullName} added under ${form.department}`);
       setForm({ fullName:"", designation:"", department:"", institute:"", email:"", phone:"", specialization:"" });
       setOpen(false);
       onAdded();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to add expert");
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false); }
   };
-
+ 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      {/* Toggle row */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left"
-      >
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left">
         <div className="flex items-center gap-3">
           <span className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700 font-bold text-base">+</span>
           <div>
@@ -193,22 +193,60 @@ function AddExpertPanel({ onAdded }) {
         </div>
         <span className="text-gray-400 text-sm">{open ? "▲" : "▼"}</span>
       </button>
-
-      {/* Form */}
+ 
       {open && (
         <div className="border-t border-gray-100 px-5 py-5 bg-gray-50">
           <div className="grid grid-cols-2 gap-3">
-            {FIELDS.map(({ k, l, cols }) => (
-              <div key={k} className={cols === 2 ? "col-span-2" : ""}>
-                <label className={lbl}>{l}</label>
-                <input
-                  className={inputCls}
-                  placeholder={l}
-                  value={form[k]}
-                  onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
-                />
-              </div>
-            ))}
+            {/* Full Name — full width */}
+            <div className="col-span-2">
+              <label className={lbl}>Full Name (with Salutation)</label>
+              <input className={inputCls} placeholder="e.g. Prof. Rajesh Kumar"
+                value={form.fullName}
+                onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} />
+            </div>
+            <div>
+              <label className={lbl}>Designation</label>
+              <input className={inputCls} placeholder="e.g. Professor"
+                value={form.designation}
+                onChange={e => setForm(f => ({ ...f, designation: e.target.value }))} />
+            </div>
+            {/* ✅ FIX: Department is now a dropdown with code mapping */}
+            <div>
+              <label className={lbl}>Department</label>
+              <select className={inputCls} value={form.department}
+                onChange={e => setForm(f => ({ ...f, department: e.target.value }))}>
+                <option value="">-- Select Department --</option>
+                {DEPT_OPTIONS.map(d => (
+                  <option key={d.code} value={d.code}>
+                    {d.label} ({d.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={lbl}>Institute</label>
+              <input className={inputCls} placeholder="e.g. IIT Delhi"
+                value={form.institute}
+                onChange={e => setForm(f => ({ ...f, institute: e.target.value }))} />
+            </div>
+            <div>
+              <label className={lbl}>Email</label>
+              <input className={inputCls} type="email" placeholder="expert@iit.ac.in"
+                value={form.email}
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+            </div>
+            <div>
+              <label className={lbl}>Phone</label>
+              <input className={inputCls} placeholder="Contact number"
+                value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            </div>
+            <div>
+              <label className={lbl}>Specialization</label>
+              <input className={inputCls} placeholder="e.g. Artificial Intelligence"
+                value={form.specialization}
+                onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))} />
+            </div>
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setOpen(false)}

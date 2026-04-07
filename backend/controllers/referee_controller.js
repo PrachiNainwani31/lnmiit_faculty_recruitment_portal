@@ -1,35 +1,35 @@
+// controllers/referee_controller.js
 const { CandidateApplication, CandidateReferee } = require("../models");
+const templates     = require("../utils/emailTemplates");
 const { sendEmail } = require("../utils/emailSender");
+const { User }      = require("../models");
 
-/* =====================================================
-   GET REFEREE INFO
-   Public route — referee opens their portal link
-   /referee/:refereeId  (no auth required)
-===================================================== */
+/* ── helper: resolve signedName safely ──────────────────────────────
+   Drawn signatures arrive as base64 data URLs (20,000+ chars).
+   Storing them in VARCHAR/TEXT(200) causes "Data too long" 500 errors.
+   Solution: detect base64, store "<name> (drawn)" instead.
+   The visual drawing is only needed on-screen during submission.
+──────────────────────────────────────────────────────────────────── */
+const resolveSignedName = (signedName, fallbackName) => {
+  if (!signedName) return fallbackName || null;
+  if (signedName.startsWith("data:")) return `${fallbackName || "Referee"} (drawn signature)`;
+  return signedName.slice(0, 400); // hard cap for typed names
+};
+
 exports.getRefereeInfo = async (req, res) => {
   try {
-    const { refereeId } = req.params;
-
-    // ✅ Direct DB lookup — no more scanning all applications
-    const referee = await CandidateReferee.findByPk(refereeId);
-
-    if (!referee)
-      return res.status(404).json({ message: "Invalid or expired link" });
-
+    const referee = await CandidateReferee.findByPk(req.params.refereeId);
+    if (!referee) return res.status(404).json({ message: "Invalid or expired link" });
     const app = await CandidateApplication.findByPk(referee.applicationId);
-
-    if (!app)
-      return res.status(404).json({ message: "Application not found" });
-
+    if (!app)  return res.status(404).json({ message: "Application not found" });
     res.json({
-      refereeId: referee.id,
-      candidateName: app.name,
-      refereeName: referee.name,
-      refereeEmail: referee.email,
-      status: referee.status,
+      refereeId:        referee.id,
+      candidateName:    app.name,
+      refereeName:      referee.name,
+      refereeEmail:     referee.email,
+      status:           referee.status,
       alreadySubmitted: referee.status === "SUBMITTED",
     });
-
   } catch (err) {
     console.error("getRefereeInfo error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -38,130 +38,94 @@ exports.getRefereeInfo = async (req, res) => {
 
 /* =====================================================
    UPLOAD REFERENCE LETTER
-   Public route — referee submits their letter
+   ✅ FIX: base64 drawn signatures no longer stored raw —
+   causes "Data too long for column 'signedName'" 500.
 ===================================================== */
 exports.uploadReferenceLetter = async (req, res) => {
   try {
     const { refereeId } = req.params;
-    const { signedName } = req.body;
+    const { signedName, guestEmail, designation, department, institute } = req.body;
 
-    if (!req.file)
-      return res.status(400).json({ message: "PDF file required" });
+    if (!req.file) return res.status(400).json({ message: "PDF file required" });
 
     const referee = await CandidateReferee.findByPk(refereeId);
+    if (!referee)                       return res.status(404).json({ message: "Invalid link" });
+    if (referee.status === "SUBMITTED") return res.status(400).json({ message: "Reference already submitted" });
 
-    if (!referee)
-      return res.status(404).json({ message: "Invalid link" });
+    // ✅ FIX: strip base64 drawing, store readable name
+    const safeSignedName = resolveSignedName(signedName, referee.name || guestEmail);
 
-    if (referee.status === "SUBMITTED")
-      return res.status(400).json({ message: "Reference already submitted" });
+    const updateData = {
+      letter:      req.file.path,
+      signedName:  safeSignedName,
+      status:      "SUBMITTED",
+      submittedAt: new Date(),
+    };
 
-    // ✅ Update the child row directly
-    await CandidateReferee.update(
-      {
-        letter:      req.file.path,
-        signedName,
-        status:      "SUBMITTED",
-        submittedAt: new Date(),
-      },
-      { where: { id: refereeId } }
-    );
+    if (designation) updateData.designation = designation;
+    if (department)  updateData.department  = department;
+    if (institute)   updateData.institute   = institute;
+    if (guestEmail && !referee.email) updateData.email = guestEmail;
 
-    // Notify candidate
+    await CandidateReferee.update(updateData, { where: { id: refereeId } });
+
     const app = await CandidateApplication.findByPk(referee.applicationId);
-
-    if (app?.email) {
-      await sendEmail(
-        app.email,
-        "Reference Letter Submitted",
-        `<p>Dear ${app.name || "Candidate"},</p>
-         <p><strong>${referee.name}</strong> has submitted your reference letter.</p>
-         <p>Regards,<br>LNMIIT Recruitment Portal</p>`
-      ).catch(err => console.error("Referee notify email failed:", err.message));
+    const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
+    const tmpl = templates.refereeSubmitted({
+      refereeName:   referee.name,
+      candidateName: app?.name       || "—",
+      department:    app?.department || "—",
+    });
+    for (const u of dofaOfficeUsers) {
+      await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
     }
 
     res.json({ success: true });
-
   } catch (err) {
     console.error("uploadReferenceLetter error:", err.message);
     res.status(500).json({ message: "Upload failed" });
   }
 };
 
-/* =====================================================
-   GET REFEREE STATUS
-   Candidate checks status of their own referees
-===================================================== */
 exports.getRefereeStatus = async (req, res) => {
   try {
-    const app = await CandidateApplication.findOne({
-      where: { candidateUserId: req.user.id },
-    });
-
-    if (!app)
-      return res.status(404).json({ message: "Application not found" });
-
-    // ✅ Query child table
+    const app = await CandidateApplication.findOne({ where: { candidateUserId: req.user.id } });
+    if (!app) return res.status(404).json({ message: "Application not found" });
     const referees = await CandidateReferee.findAll({
       where: { applicationId: app.id },
       order: [["id", "ASC"]],
     });
-
-    const statuses = referees.map(r => ({
-      id:          r.id,
-      salutation:  r.salutation,
-      name:        r.name,
-      designation: r.designation,
-      department:  r.department,
-      institute:   r.institute,
-      email:       r.email,
-      status:      r.status || "PENDING",
+    res.json(referees.map(r => ({
+      id: r.id, salutation: r.salutation, name: r.name,
+      designation: r.designation, department: r.department,
+      institute: r.institute, email: r.email,
+      status: r.status || "PENDING",
       submittedAt: r.submittedAt || null,
-      letterPath:  r.letter || null,
-    }));
-
-    res.json(statuses);
-
+      letterPath: r.letter || null,
+    })));
   } catch (err) {
     console.error("getRefereeStatus error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-/* =====================================================
-   SEND REFEREE REMINDER
-   Candidate sends reminder to a specific referee
-===================================================== */
 exports.sendRefereeReminder = async (req, res) => {
   try {
     const { refereeId } = req.params;
-
     const referee = await CandidateReferee.findByPk(refereeId);
+    if (!referee)                       return res.status(404).json({ message: "Referee not found" });
+    if (referee.status === "SUBMITTED") return res.status(400).json({ message: "Already submitted" });
 
-    if (!referee)
-      return res.status(404).json({ message: "Referee not found" });
-
-    if (referee.status === "SUBMITTED")
-      return res.status(400).json({ message: "Reference already submitted" });
-
-    const portalLink = `${process.env.FRONTEND_URL}/referee/${refereeId}`;
-
-    // Get candidate name for the email
-    const app = await CandidateApplication.findByPk(referee.applicationId);
-
-    await sendEmail(
-      referee.email,
-      `Reminder — Reference Letter for ${app?.name || "a candidate"}`,
-      `<p>Dear ${referee.name},</p>
-       <p>This is a gentle reminder that your reference letter for
-       <strong>${app?.name || "the candidate"}</strong> is still pending.</p>
-       <p>Please submit it at your earliest convenience:
-       <a href="${portalLink}">Submit Reference Letter</a></p>
-       <p>Regards,<br>LNMIIT Recruitment Portal</p>`
-    );
-
+    const app      = await CandidateApplication.findByPk(referee.applicationId);
+    const baseUrl  = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
+    const portalLink = `${baseUrl}/referee/${refereeId}`;
+    const tmpl = templates.refereeReminder({
+      refereeName:   referee.name,
+      candidateName: app?.name || "the candidate",
+      portalLink,
+    });
+    await sendEmail(referee.email, tmpl.subject, tmpl.html);
     res.json({ success: true });
-
   } catch (err) {
     console.error("sendRefereeReminder error:", err.message);
     res.status(500).json({ message: "Failed to send reminder" });

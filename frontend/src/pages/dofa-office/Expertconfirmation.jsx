@@ -1,10 +1,12 @@
 // pages/dofa-office/Expertconfirmation.jsx
+// ✅ FIX: TravelStatusPanel only shows quote section for Offline experts
+// ✅ FIX: Quote badges only show for Offline experts
 import { useEffect, useState } from "react";
 import API from "../../api/api";
 
-const BASE       = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const inputCls   = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-300";
-const selectCls  = inputCls;
+const BASE      = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const inputCls  = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-300";
+const selectCls = inputCls;
 
 function Field({ label, children }) {
   return (
@@ -15,13 +17,15 @@ function Field({ label, children }) {
   );
 }
 
-/* ── Status panel: shows ticket / quote / driver info from Travel portal ── */
+/* ── Live status panel — only shows quote section for Offline experts ── */
 function TravelStatusPanel({ travel }) {
-  const t  = travel || {};
-  const pd = t.pickupDrop || {};
-  const q  = t.quote;
+  const t          = travel || {};
+  const pd         = t.pickupDrop || {};
+  const q          = t.quote;
+  const isOffline  = t.presenceStatus === "Offline";
 
-  const hasAny = q || t.ticketPath || t.invoicePath || pd.driverName || pd.pickupLocation;
+  // ✅ FIX: quote only shown when expert is Offline
+  const hasAny = (isOffline && q) || t.ticketPath || t.invoicePath || pd.driverName || pd.pickupLocation;
   if (!hasAny) return null;
 
   const qColor = {
@@ -36,8 +40,9 @@ function TravelStatusPanel({ travel }) {
         📋 Live Status from Travel Portal
       </p>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-        {/* Quote */}
-        {q && (
+
+        {/* ✅ Quote — only for Offline */}
+        {isOffline && q && (
           <div className={`rounded-lg border px-3 py-2 ${qColor}`}>
             <p className="font-semibold uppercase tracking-wide opacity-70">Quote</p>
             <p className="font-bold text-sm mt-0.5">₹{q.amount}</p>
@@ -182,9 +187,10 @@ function ExpertCard({ item, onSaved }) {
     Pending: "bg-amber-100 text-amber-700 border-amber-200",
   }[travel?.presenceStatus || "Pending"];
 
-  const initials = expert.fullName?.split(" ").filter(Boolean).slice(0,2).map(w => w[0]).join("").toUpperCase() || "EX";
-  const jt  = form.traveller.journeyType;
-  const isAir = form.modeOfTravel === "Air";
+  const initials  = expert.fullName?.split(" ").filter(Boolean).slice(0,2).map(w => w[0]).join("").toUpperCase() || "EX";
+  const jt        = form.traveller.journeyType;
+  const isAir     = form.modeOfTravel === "Air";
+  const isOffline = travel?.presenceStatus === "Offline"; // ✅ used to gate quote badges
 
   return (
     <div className="border-b last:border-0">
@@ -207,21 +213,19 @@ function ExpertCard({ item, onSaved }) {
           {travel?.traveller?.age && (
             <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Age: {travel.traveller.age}</span>
           )}
-          {/* Show driver badge if assigned */}
           {travel?.pickupDrop?.driverName && (
             <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
               🚗 {travel.pickupDrop.driverName}
             </span>
           )}
-          {/* Ticket badge */}
           {travel?.ticketPath && (
             <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">🎫 Ticket</span>
           )}
-          {/* Quote badge */}
-          {travel?.quote?.status === "APPROVED" && (
+          {/* ✅ FIX: quote badges ONLY for Offline experts */}
+          {isOffline && travel?.quote?.status === "APPROVED" && (
             <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">✓ Quote</span>
           )}
-          {travel?.quote?.status === "PENDING" && (
+          {isOffline && travel?.quote?.amount && travel?.quote?.status === "PENDING" && (
             <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">Quote Pending</span>
           )}
         </div>
@@ -232,14 +236,12 @@ function ExpertCard({ item, onSaved }) {
         <div className="border-t border-gray-100 px-5 py-5 bg-gray-50 space-y-4">
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg">
-              ✅ Saved! {form.presenceStatus === "Offline" ? "Ramswaroop has been notified." : ""}
+              ✅ Saved! {form.presenceStatus === "Offline" ? "Registrar Office has been notified." : ""}
             </div>
           )}
 
-          {/* ── Live status panel from Travel portal ── */}
           <TravelStatusPanel travel={travel} />
 
-          {/* ── Confirmation form ── */}
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.confirmed}
               onChange={e => set("confirmed", e.target.checked)}
@@ -312,8 +314,7 @@ function ExpertCard({ item, onSaved }) {
                     <Field label="Age">
                       <input className={inputCls} type="number" min="1" max="120"
                         value={form.traveller.age}
-                        onChange={e => setT("age", e.target.value)}
-                        placeholder="e.g. 52" />
+                        onChange={e => setT("age", e.target.value)} placeholder="e.g. 52" />
                     </Field>
                     <Field label="Meal Preference">
                       <select className={selectCls} value={form.traveller.mealPreference}
@@ -360,15 +361,13 @@ function ExpertCard({ item, onSaved }) {
                     <div className="space-y-3">
                       <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Onward Journey</p>
                       <div className="grid grid-cols-2 gap-3">
-                        <Field label="From (City / Station / Airport)">
+                        <Field label="From">
                           <input className={inputCls} value={form.traveller.onwardFromCity}
-                            onChange={e => setT("onwardFromCity", e.target.value)}
-                            placeholder="e.g. Delhi (DEL)" />
+                            onChange={e => setT("onwardFromCity", e.target.value)} placeholder="e.g. Delhi (DEL)" />
                         </Field>
-                        <Field label="To (City / Station / Airport)">
+                        <Field label="To">
                           <input className={inputCls} value={form.traveller.onwardToCity}
-                            onChange={e => setT("onwardToCity", e.target.value)}
-                            placeholder="e.g. Jaipur (JAI)" />
+                            onChange={e => setT("onwardToCity", e.target.value)} placeholder="e.g. Jaipur (JAI)" />
                         </Field>
                         <Field label="Date">
                           <input className={inputCls} type="date" value={form.traveller.onwardFrom}
@@ -379,25 +378,23 @@ function ExpertCard({ item, onSaved }) {
                             onChange={e => setT("onwardTime", e.target.value)} />
                         </Field>
                         {(isAir || form.modeOfTravel === "Rail") && (
-                          <Field label={isAir ? "Flight No. (e.g. 6E 5033)" : "Train No."}>
+                          <Field label={isAir ? "Flight No." : "Train No."}>
                             <input className={inputCls} value={form.traveller.onwardFlightNo}
                               onChange={e => setT("onwardFlightNo", e.target.value)}
-                              placeholder={isAir ? "e.g. 6E 5033 (A321)" : "e.g. 12956 Jaipur SF"} />
+                              placeholder={isAir ? "e.g. 6E 5033 (A321)" : "e.g. 12956"} />
                           </Field>
                         )}
                       </div>
 
                       <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mt-2">Return Journey</p>
                       <div className="grid grid-cols-2 gap-3">
-                        <Field label="From (City / Station / Airport)">
+                        <Field label="From">
                           <input className={inputCls} value={form.traveller.returnFromCity}
-                            onChange={e => setT("returnFromCity", e.target.value)}
-                            placeholder="e.g. Jaipur (JAI)" />
+                            onChange={e => setT("returnFromCity", e.target.value)} placeholder="e.g. Jaipur (JAI)" />
                         </Field>
-                        <Field label="To (City / Station / Airport)">
+                        <Field label="To">
                           <input className={inputCls} value={form.traveller.returnToCity}
-                            onChange={e => setT("returnToCity", e.target.value)}
-                            placeholder="e.g. Delhi (DEL)" />
+                            onChange={e => setT("returnToCity", e.target.value)} placeholder="e.g. Delhi (DEL)" />
                         </Field>
                         <Field label="Date">
                           <input className={inputCls} type="date" value={form.traveller.returnFrom}
@@ -411,7 +408,7 @@ function ExpertCard({ item, onSaved }) {
                           <Field label={isAir ? "Return Flight No." : "Return Train No."}>
                             <input className={inputCls} value={form.traveller.returnFlightNo}
                               onChange={e => setT("returnFlightNo", e.target.value)}
-                              placeholder={isAir ? "e.g. 6E 2376 (A321)" : "e.g. 12955 Jaipur SF"} />
+                              placeholder={isAir ? "e.g. 6E 2376" : "e.g. 12955"} />
                           </Field>
                         )}
                       </div>
@@ -423,14 +420,14 @@ function ExpertCard({ item, onSaved }) {
                       {["onward","return"].map(type => (
                         <div key={type}>
                           <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-2">
-                            {type === "onward" ? "Onward" : "Return"} Journey Legs
+                            {type === "onward" ? "Onward" : "Return"} Legs
                           </p>
                           {form.traveller[type === "onward" ? "connections" : "returnConnections"].map((leg, i) => (
-                            <div key={i} className="grid grid-cols-3 gap-2 mb-2 items-end bg-gray-50 border border-gray-100 rounded-lg p-3">
+                            <div key={i} className="grid grid-cols-3 gap-2 mb-2 bg-gray-50 border border-gray-100 rounded-lg p-3">
                               {["from","to"].map(f => (
                                 <div key={f} className="flex flex-col gap-1">
                                   <label className="text-xs text-gray-400 capitalize">{f}</label>
-                                  <input className={inputCls} placeholder="City / Station"
+                                  <input className={inputCls} placeholder="City"
                                     value={leg[f]} onChange={e => updateConn(type, i, f, e.target.value)} />
                                 </div>
                               ))}
@@ -471,7 +468,7 @@ function ExpertCard({ item, onSaved }) {
           <div className="flex justify-end">
             <button onClick={handleSave} disabled={saving}
               className="bg-[#6b0f1a] hover:bg-rose-800 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60">
-              {saving ? "Saving..." : form.presenceStatus === "Offline" ? "Save & Notify Ramswaroop" : "Save"}
+              {saving ? "Saving..." : form.presenceStatus === "Offline" ? "Save & Notify Registrar Office" : "Save"}
             </button>
           </div>
         </div>
@@ -515,7 +512,7 @@ export default function ExpertConfirmation() {
         <div>
           <h1 className="text-xl font-semibold text-gray-800">External Expert Confirmation</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Mark attendance and enter travel details. Ticket, quote, and driver status are shown live.
+            Mark attendance and enter travel details. Live status from Travel Portal shown below.
           </p>
         </div>
         <div className="flex gap-3">

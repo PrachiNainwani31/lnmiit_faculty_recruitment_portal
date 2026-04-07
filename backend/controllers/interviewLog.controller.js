@@ -4,7 +4,7 @@ const {
   Candidate, Expert, SelectedCandidate, User,
   CandidateApplication, CandidateExperience,
 } = require("../models");
-const CYCLE = require("../config/activeCycle");
+const getCurrentCycle = require("../utils/getCurrentCycle");
 
 /* ════════════════════════════════════════════════════════
    HELPER: build candidateExperiences array for one HOD
@@ -12,7 +12,7 @@ const CYCLE = require("../config/activeCycle");
    - For each, finds their CandidateApplication → CandidateExperience rows
    - Merges with any DOFA-edited toDate already saved in the log
 ════════════════════════════════════════════════════════ */
-async function buildCandidateExperiences(hodId, savedExperiences = []) {
+async function buildCandidateExperiences(hodId,cycleString ,savedExperiences = []) {
   // Build a lookup of previously saved editedToDate values
   // keyed by `${candidateId}__${expIndex}`
   const savedMap = {};
@@ -24,7 +24,7 @@ async function buildCandidateExperiences(hodId, savedExperiences = []) {
   });
 
   const selected = await SelectedCandidate.findAll({
-    where:   { cycle: CYCLE, hodId, status: ["SELECTED","WAITLISTED"] },
+    where:   { cycle: cycleString, hodId, status: ["SELECTED","WAITLISTED"] },
     include: [{ model: Candidate, as: "candidate" }],
   });
 
@@ -71,14 +71,14 @@ async function buildCandidateExperiences(hodId, savedExperiences = []) {
 /* ════════════════════════════════════════════════════════
    HELPER: prefill non-experience fields for one HOD
 ════════════════════════════════════════════════════════ */
-async function getPrefill(hodId) {
+async function getPrefill(hodId,cycleString) {
   const [cycle, stats, appearedCount, experts, selected] = await Promise.all([
-    RecruitmentCycle.findOne({ where: { cycle: CYCLE, hodId } }),
-    CandidateStats.findOne({ where: { cycle: CYCLE, hodId } }),
-    Candidate.count({ where: { cycle: CYCLE, hodId, appearedInInterview: true } }),
-    Expert.findAll({ where: { cycle: CYCLE, uploadedById: hodId }, limit: 3, order: [["id","ASC"]] }),
+    RecruitmentCycle.findOne({ where: { hodId, cycle: cycleString } }),
+    CandidateStats.findOne({ where: { cycle: cycleString, hodId } }),
+    Candidate.count({ where: { cycle: cycleString, hodId, appearedInInterview: true } }),
+    Expert.findAll({ where: { cycle: cycleString, uploadedById: hodId }, limit: 3, order: [["id","ASC"]] }),
     SelectedCandidate.findAll({
-      where:   { cycle: CYCLE, hodId },
+      where:   { cycle: cycleString, hodId },
       include: [{ model: Candidate, as: "candidate" }],
     }),
   ]);
@@ -94,7 +94,8 @@ async function getPrefill(hodId) {
     department:              hod?.department            || "",
     forThePostOf:            "Assistant Professor",
     noOfApplications:        stats?.totalApplications  || 0,
-    noOfEligibleShortlisted: stats?.ilscShortlisted     || 0,
+    noOfIlscShortlisted: stats?.ilscShortlisted     || 0,
+    noOfDlscShortlisted: stats?.dlscShortlisted     || 0,
     noForPersonalInterview:  appearedCount,
     expert1Name:   experts[0]?.fullName    || "",
     expert1Detail: experts[0] ? `${experts[0].designation}, ${experts[0].institute}` : "",
@@ -113,34 +114,36 @@ async function getPrefill(hodId) {
 exports.getLogs = async (req, res) => {
   try {
     const cycles = await RecruitmentCycle.findAll({
-      where:   { cycle: CYCLE },
+      order: [["createdAt", "DESC"]],
       include: [{ model: User, as: "hod", attributes: ["id","department","name","email"] }],
     });
 
-    const logs = await InterviewLog.findAll({ where: { cycle: CYCLE } });
+    const logs = await InterviewLog.findAll();
     const logMap = {};
-    logs.forEach(l => { logMap[l.hodId] = l.toJSON(); });
+    logs.forEach(l => { logMap[`${l.hodId}__${l.cycle}`] = l.toJSON(); });
 
     const result = [];
     for (const rc of cycles) {
       if (!rc.hodId) continue;
 
-      const saved   = logMap[rc.hodId] || {};
-      const prefill = await getPrefill(rc.hodId);
+      const saved   = logMap[`${rc.hodId}__${rc.cycle}`] || {};
+      const prefill = await getPrefill(rc.hodId, rc.cycle);
 
       // Build candidateExperiences: prefill from DB, merge with any saved editedToDate
       const candidateExperiences = await buildCandidateExperiences(
-        rc.hodId,
+        rc.hodId,rc.cycle,
         saved.candidateExperiences || []
       );
 
       result.push({
         ...prefill,
         ...saved,
+        cycleLabel:rc.cycle,
         // Always use fresh prefill for read-only portal data
         interviewDate:           prefill.interviewDate,
         noOfApplications:        saved.noOfApplications        ?? prefill.noOfApplications,
-        noOfEligibleShortlisted: saved.noOfEligibleShortlisted ?? prefill.noOfEligibleShortlisted,
+        noOfIlscShortlisted: saved.noOfIlscShortlisted ?? prefill.noOfIlscShortlisted,
+        noOfDlscShortlisted: saved.noOfDlscShortlisted ?? prefill.noOfDlscShortlisted,
         noForPersonalInterview:  saved.noForPersonalInterview  ?? prefill.noForPersonalInterview,
         selectedCandidateName:   saved.selectedCandidateName   ?? prefill.selectedCandidateName,
         waitlistedCandidateName: saved.waitlistedCandidateName ?? prefill.waitlistedCandidateName,
@@ -152,7 +155,7 @@ exports.getLogs = async (req, res) => {
         expert3Detail: saved.expert3Detail || prefill.expert3Detail,
         // Always fresh experience data with saved editedToDate merged in
         candidateExperiences,
-        isSaved: !!logMap[rc.hodId],
+        isSaved: !!logMap[`${rc.hodId}__${rc.cycle}`],
       });
     }
 
@@ -170,19 +173,20 @@ exports.getLogs = async (req, res) => {
 ════════════════════════════════════ */
 exports.saveLog = async (req, res) => {
   try {
-    const body = { ...req.body, cycle: CYCLE };
-    const { hodId } = body;
+    const body = req.body;
+    const { hodId, cycleLabel } = body;
     if (!hodId) return res.status(400).json({ message: "hodId required" });
-
+    if (!cycleLabel) return res.status(400).json({ message: "cycle required" });
     // Persist only the fields the model knows about
     const savePayload = {
-      cycle:                     CYCLE,
+      cycle:                     cycleLabel,
       hodId,
       interviewDate:             body.interviewDate             || null,
       department:                body.department                || null,
       forThePostOf:              body.forThePostOf              || null,
       noOfApplications:          body.noOfApplications          ?? null,
-      noOfEligibleShortlisted:   body.noOfEligibleShortlisted   ?? null,
+      noOfIlscShortlisted:   body.noOfIlscShortlisted   ?? null,
+      noOfDlscShortlisted:   body.noOfDlscShortlisted   ?? null,
       noForTeachingPresentation: body.noForTeachingPresentation ?? null,
       noShortlistedForInterview: body.noShortlistedForInterview ?? null,
       noForPersonalInterview:    body.noForPersonalInterview    ?? null,
@@ -216,17 +220,16 @@ exports.saveLog = async (req, res) => {
 ════════════════════════════════════ */
 exports.exportLogs = async (req, res) => {
   try {
-    const cycles = await RecruitmentCycle.findAll({ where: { cycle: CYCLE } });
-    const logs   = await InterviewLog.findAll({ where: { cycle: CYCLE } });
-    const logMap = {};
-    logs.forEach(l => { logMap[l.hodId] = l.toJSON(); });
+    const cycles = await RecruitmentCycle.findAll({ order: [["createdAt", "DESC"]] });
+    const logs   = await InterviewLog.findAll();    const logMap = {};
+    logs.forEach(l => { logMap[`${l.hodId}__${l.cycle}`] = l.toJSON(); });
 
     const rows = [];
 
     for (const rc of cycles) {
       if (!rc.hodId) continue;
-      const prefill = await getPrefill(rc.hodId);
-      const saved   = logMap[rc.hodId] || {};
+      const prefill = await getPrefill(rc.hodId,rc.cycle);
+      const saved   = logMap[`${rc.hodId}__${rc.cycle}`] || {};
       const merged  = { ...prefill, ...saved };
 
       // Flatten candidateExperiences for Excel — one row per candidate+type
@@ -246,7 +249,8 @@ exports.exportLogs = async (req, res) => {
         "Department":                merged.department    || "",
         "For the Post of":           merged.forThePostOf  || "",
         "No. of Applications":       merged.noOfApplications || 0,
-        "Eligible / Shortlisted":    merged.noOfEligibleShortlisted || 0,
+        "Ilsc Shortlisted":    merged.noOfIlscShortlisted || 0,
+        "Dlsc Shortlisted":          merged.noOfDlscShortlisted || 0,
         "Present for Teaching":      merged.noForTeachingPresentation || 0,
         "Shortlisted for Interview": merged.noShortlistedForInterview || 0,
         "Present for Personal Interview": merged.noForPersonalInterview || 0,

@@ -53,11 +53,16 @@ function EmailModal({ candidate, allCandidates, onClose }) {
     try {
       setSending(true);
       for (const c of targets) {
-        await API.post("/email/send-interview-invite", {
+        const res=await API.post("/email/send-interview-invite", {
           candidateId: c.id,
           subject:     applyVariables(template.subject, c),
           body:        applyVariables(template.body, c),
         });
+        if (res.data.portalCreated) {
+          alert(`Email sent. A portal account was also created for ${res.data.sentTo} — credentials included in the email.`);
+        } else {
+          alert("Email sent successfully.");
+        }
       }
       alert(`Email sent to ${targets.length} candidate(s)`);
       onClose();

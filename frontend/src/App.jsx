@@ -10,7 +10,7 @@ import HodLayout    from "./components/layouts/HodLayout";
 import HodDashboard from "./pages/hod/Dashboard";
 import Candidates   from "./pages/hod/Candidates";
 import Experts      from "./pages/hod/Experts";
-import Comments     from "./pages/dofa/Comments";
+import Comments     from "./pages/hod/Comments";
 
 import DofaLayout            from "./components/layouts/DofaLayout";
 import DofaDashboard         from "./pages/dofa/Dashboard";
@@ -28,6 +28,7 @@ import PickupDropManager    from "./pages/dofa-office/Pickupdropmanager";
 import SelectCandidates     from "./pages/dofa-office/SelectedCandidates";
 import RoomAllotmentPage    from "./pages/dofa-office/RoomAllotmentPage";
 import InterviewLogs from "./pages/dofa-office/InterviewLogs";
+import Registration  from "./pages/dofa-office/Registration";
 
 import TravelPortalLayout from "./components/layouts/Travelportallayout";
 import ExpertTravelPage   from "./pages/travel/Experttravelpage";
@@ -36,8 +37,7 @@ import TravelTickets      from "./pages/travel/TravelTickets";
 import TravelInvoices     from "./pages/travel/TravelInvoices";
 import TravelPickup       from "./pages/travel/TravelPickup";
 
-import { DirectorLayout, EstablishmentLayout, EstateLayout, LucsLayout } from "./components/layouts/NewLayouts";
-import DirectorPage      from "./pages/Directorpage";
+import { EstablishmentLayout, EstateLayout, LucsLayout } from "./components/layouts/NewLayouts";
 import EstablishmentPage from "./pages/Establishmentpage";
 import { EstatePage }    from "./pages/Estateandlucspage";
 import { LucsPage }      from "./pages/Estateandlucspage";
@@ -93,28 +93,25 @@ export default function App() {
       }>
         <Route index                     element={<DofaOfficeDashboard />} />
         <Route path="candidates"         element={<DofaOfficeCandidates />} />
+        <Route path="document-tracking"  element={<DocumentTracking />} />
         <Route path="experts"            element={<ExpertConfirmation />} />
         <Route path="pickup"             element={<PickupDropManager />} />
         <Route path="select-candidates"  element={<SelectCandidates />} />
         <Route path="room-allotment"     element={<RoomAllotmentPage />} />
         <Route path="comments"           element={<DofaComments />} />
         <Route path="logs"       element={<InterviewLogs/>}/>
+        <Route path="registration" element={<Registration />} />
       </Route>
 
       {/* Travel */}
       <Route path="/travel" element={
-        <ProtectedRoute role="TRAVEL"><TravelPortalLayout /></ProtectedRoute>
+        <ProtectedRoute role="REGISTRAR_OFFICE"><TravelPortalLayout /></ProtectedRoute>
       }>
         <Route index           element={<ExpertTravelPage />} />
         <Route path="quotes"   element={<TravelQuotes />} />
         <Route path="tickets"  element={<TravelTickets />} />
         <Route path="invoices" element={<TravelInvoices />} />
         <Route path="pickup"   element={<TravelPickup />} />
-      </Route>
-
-      {/* Director */}
-      <Route path="/director" element={<ProtectedRoute role="DIRECTOR"><DirectorLayout /></ProtectedRoute>}>
-        <Route index element={<DirectorPage />} />
       </Route>
 
       {/* Establishment */}

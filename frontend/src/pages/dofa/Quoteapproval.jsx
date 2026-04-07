@@ -34,7 +34,7 @@ export default function QuoteApproval() {
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold text-gray-800">Travel Quote Approval</h1>
-        <p className="text-sm text-gray-500 mt-1">Review quotes submitted by Mr. Ramswaroop Sharma.</p>
+        <p className="text-sm text-gray-500 mt-1">Review quotes submitted by Registrar Office.</p>
       </div>
 
       {items.length === 0 && (

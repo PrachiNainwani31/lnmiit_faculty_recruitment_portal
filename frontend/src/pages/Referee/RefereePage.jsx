@@ -255,26 +255,33 @@ function RegisterStep({ onBack, onSuccess }) {
   const change = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleRegister = async (e) => {
-    e.preventDefault();
-    setError("");
-    if (form.password !== form.confirm) return setError("Passwords do not match");
-    setLoading(true);
-    try {
-      await axios.post(`${BASE}/auth/register`, {
-        name: `${form.salutation} ${form.name}`,
-        email: form.email,
-        password: form.password,
-        role: "REFEREE",
-      });
-      const res = await axios.post(`${BASE}/auth/login`, { email: form.email, password: form.password });
-      localStorage.setItem("token", res.data.token);
-      onSuccess();
-    } catch (err) {
-      setError(err.response?.data?.msg || "Registration failed");
-    } finally {
-      setLoading(false);
+  e.preventDefault();
+  setError("");
+  if (form.password !== form.confirm) return setError("Passwords do not match");
+  setLoading(true);
+  try {
+    await axios.post(`${BASE}/auth/register`, {
+      name: `${form.salutation} ${form.name}`,
+      email: form.email,
+      password: form.password,
+      role: "REFEREE",
+    });
+    const res = await axios.post(`${BASE}/auth/login`, { email: form.email, password: form.password });
+    localStorage.setItem("token", res.data.token);
+    onSuccess();
+  } catch (err) {
+    const msg = err.response?.data?.msg || err.response?.data?.message || "";
+    // ✅ If already registered, try logging in directly
+    if (err.response?.status === 400 && (msg.toLowerCase().includes("exist") || msg.toLowerCase().includes("already"))) {
+      setError("This email is already registered. Please use the Login tab instead.");
+      setTab("login");  // ← auto-switch to login tab
+    } else {
+      setError(msg || "Registration failed");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -360,6 +367,71 @@ function RegisterStep({ onBack, onSuccess }) {
         </form>
       )}
     </div>
+  );
+}
+
+function AuthenticatedSubmitStep({ refereeId, candidateName, onDone }) {
+  const [file,      setFile]      = useState(null);
+  const [signature, setSignature] = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file)      return setError("Please upload your reference letter (PDF).");
+    if (!signature) return setError("Please provide your signature.");
+
+    const formData = new FormData();
+    formData.append("letter",     file);
+    formData.append("signedName", typeof signature === "string" && signature.startsWith("data:")
+      ? signature : signature);
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      await axios.post(`${BASE}/referee/upload/${refereeId}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      onDone();
+    } catch (err) {
+      setError(err.response?.data?.message || "Upload failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <h2 className="text-2xl font-bold text-gray-800">Submit Reference Letter</h2>
+      <p className="text-sm text-gray-500">For candidate: <strong>{candidateName}</strong></p>
+
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
+
+      <Field label="Upload Reference Letter (PDF)" required>
+        {!file ? (
+          <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl py-8 cursor-pointer hover:border-rose-400 transition">
+            <input type="file" accept=".pdf" className="hidden" onChange={e => setFile(e.target.files[0])} />
+            <span className="text-sm text-gray-500">Click to upload PDF</span>
+          </label>
+        ) : (
+          <div className="flex items-center justify-between border border-green-200 bg-green-50 rounded-xl px-4 py-3">
+            <span className="text-sm text-green-700">📄 {file.name}</span>
+            <button type="button" onClick={() => setFile(null)} className="text-red-500 text-xs">Remove</button>
+          </div>
+        )}
+      </Field>
+
+      <p className="text-xs font-bold text-rose-700 uppercase tracking-widest">Signature</p>
+      <SignatureInput onSignatureReady={setSignature} />
+
+      <button disabled={loading}
+        className="w-full bg-rose-700 hover:bg-rose-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-60">
+        {loading ? "Submitting..." : "Submit Reference Letter"}
+      </button>
+    </form>
   );
 }
 
@@ -522,6 +594,9 @@ export default function RefereePage() {
   const [step,    setStep]    = useState("landing");
 
   useEffect(() => {
+    localStorage.removeItem("token");
+  }, []);
+  useEffect(() => {
     axios
       .get(`${BASE}/referee/info/${refereeId}`)
       .then((res) => {
@@ -591,7 +666,8 @@ export default function RefereePage() {
   return (
     <Wrapper>
       {step === "landing"  && <LandingStep onChoose={setStep} />}
-      {step === "register" && <RegisterStep onBack={() => setStep("landing")} onSuccess={() => setStep("done")} />}
+      {step === "register" && <RegisterStep onBack={() => setStep("landing")} onSuccess={() => setStep("submit")} />}
+      {step === "submit" && (<AuthenticatedSubmitStep refereeId={refereeId} candidateName={info?.candidateName} onDone={() => setStep("done")}/>)}
       {step === "guest"    && (
         <GuestStep
           refereeId={refereeId}

@@ -99,18 +99,6 @@ export default function RefereeStatus() {
                       })}
                     </p>
                   )}
-
-                  {/* Letter view link — visible to candidate once submitted */}
-                  {r.status === "SUBMITTED" && r.letterPath && (
-                    <a
-                      href={`${BASE_URL}/${r.letterPath}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1"
-                    >
-                      📄 View Reference Letter
-                    </a>
-                  )}
                 </div>
               </div>
 

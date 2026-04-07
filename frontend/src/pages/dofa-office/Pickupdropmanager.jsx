@@ -38,7 +38,7 @@ export default function PickupDropManager() {
     setSaving(expertId);
     try {
       await API.post(`/expert-travel/pickup/${expertId}`, forms[expertId]);
-      alert("Pickup/drop details saved. Ramswaroop has been notified.");
+      alert("Pickup/drop details saved. Registrar Office has been notified.");
       load();
     } catch (err) {
       alert("Failed to save");
@@ -53,7 +53,7 @@ export default function PickupDropManager() {
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold text-gray-800">Pickup / Drop-off Management</h1>
-        <p className="text-sm text-gray-500 mt-1">Enter station/airport pickup details for offline experts. Ramswaroop will be notified to arrange cabs.</p>
+        <p className="text-sm text-gray-500 mt-1">Enter station/airport pickup details for offline experts. Registrar Office will be notified to arrange cabs.</p>
       </div>
 
       {items.length === 0 && (
@@ -109,7 +109,7 @@ export default function PickupDropManager() {
               <div className="flex justify-end">
                 <button onClick={() => handleSave(expert.id)} disabled={saving === expert.id}
                   className="bg-[#6b0f1a] hover:bg-rose-800 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
-                  {saving === expert.id ? "Saving..." : "Save & Notify Ramswaroop"}
+                  {saving === expert.id ? "Saving..." : "Save & Notify Registrar Office"}
                 </button>
               </div>
             </div>

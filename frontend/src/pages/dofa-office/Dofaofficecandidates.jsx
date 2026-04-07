@@ -1,34 +1,33 @@
 import { useEffect, useState } from "react";
 import API from "../../api/api";
-import CYCLE from "../../config/activeCycle";
+import { useActiveCycle } from "../../hooks/useActiveCycle";
 import { downloadAsCSV } from "../../components/DownloadCSVButton";
 
 export default function DofaOfficeCandidates() {
   const [grouped,  setGrouped]  = useState({});
   const [search,   setSearch]   = useState("");
+  const cycle = useActiveCycle();
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
-    API.get(`/hod/candidates/${CYCLE}`)
-      .then(res => {
-        // ✅ Handle both old (array) and new ({ candidates, interviewDate }) shapes
-        const data = Array.isArray(res.data)
-          ? res.data
-          : Array.isArray(res.data?.candidates)
-          ? res.data.candidates
-          : [];
-
-        const map = {};
-        data.forEach(c => {
-          const dept = c.department || "Unknown";
-          if (!map[dept]) map[dept] = [];
-          map[dept].push(c);
-        });
-        setGrouped(map);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  API.get("/hod/candidates")
+    .then(res => {
+      const data = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.candidates)
+        ? res.data.candidates
+        : [];
+      const map = {};
+      data.forEach(c => {
+        const dept = c.department || "Unknown";
+        if (!map[dept]) map[dept] = [];
+        map[dept].push(c);
+      });
+      setGrouped(map);
+    })
+    .catch(console.error)
+    .finally(() => setLoading(false));
+}, []);
 
   const filterCandidates = (candidates) => {
     if (!search.trim()) return candidates;
@@ -54,8 +53,7 @@ export default function DofaOfficeCandidates() {
           <h2 className="text-xl font-semibold text-gray-800">Candidates</h2>
           <p className="text-sm text-gray-500 mt-0.5">
             {totalCount} candidate(s) ·{" "}
-            <span className="text-green-600 font-medium">{appearedCount} appeared</span>{" "}
-            — cycle {CYCLE}
+            {totalCount} candidate(s) · <span className="text-green-600 font-medium">{appearedCount} appeared</span>
           </p>
         </div>
         <input
@@ -116,7 +114,7 @@ export default function DofaOfficeCandidates() {
       {totalCount === 0 && (
         <div className="bg-white rounded-xl shadow p-12 text-center text-gray-400">
           <p className="text-4xl mb-3">🎓</p>
-          <p>No candidates found for cycle {CYCLE}</p>
+          <p>No candidates found for cycle {cycle || "-"}</p>
         </div>
       )}
     </div>

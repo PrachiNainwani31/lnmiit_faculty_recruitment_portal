@@ -1,68 +1,78 @@
-// routes/candidate.routes.js
 const express = require("express");
 const router  = express.Router();
 const auth    = require("../middlewares/auth");
-const controller = require("../controllers/candidatePortal.controller");
-const upload  = require("../middlewares/upload");
+const controller      = require("../controllers/candidatePortal.controller");
+const documentUpload  = require("../middlewares/documentUpload");
 const SelectedCandidate = require("../models/SelectedCandidate");
 const OnboardingRecord  = require("../models/OnboardingRecord");
-
-router.get("/me",     auth(["CANDIDATE"]), controller.getMyApplication);
-router.post("/save",  auth(["CANDIDATE"]), controller.saveDraft);
-router.post("/submit",auth(["CANDIDATE"]), controller.submitApplication);
+console.log("✅ candidate routes loaded");
+router.get("/me",      auth(["CANDIDATE"]), controller.getMyApplication);
+router.post("/save",   auth(["CANDIDATE"]), controller.saveDraft);
+router.post("/submit", auth(["CANDIDATE"]), controller.submitApplication);
 
 router.post("/referee/reminder/:id", auth(["CANDIDATE"]), controller.remindReferee);
-router.post("/upload", auth(["CANDIDATE"]), upload.single("file"), controller.uploadDocument);
 
-/* ── Onboarding status for candidate portal ──
-   ✅ FIX: joiningLetterPath is STRIPPED — not visible to candidate.
-   ✅ FIX: designation + employmentType added from SelectedCandidate.
-   ✅ FIX: correct Sequelize where clause (candidateId not candidate).
-   ✅ NEW: rfidPath + rfidSentToCandidate included for candidate download.
-── */
+router.post("/upload",       auth(["CANDIDATE"]), documentUpload.single("file"), controller.uploadDocument);
+router.post("/upload-multi", auth(["CANDIDATE"]), documentUpload.single("file"), controller.uploadMultiDocument);
+
+// ✅ NEW: candidate submits their preferred joining date (shown after offer letter)
+router.post("/joining-date", auth(["CANDIDATE"]), controller.submitJoiningDate);
+
+/* ── Onboarding status for candidate portal ── */
 router.get("/onboarding", auth(["CANDIDATE"]), async (req, res) => {
   try {
     const Candidate = require("../models/Candidate");
-    const candidateDoc = await Candidate.findOne({ where: { email: req.user.email } });
+    const { CandidateApplication } = require("../models");
 
+    const candidateDoc = await Candidate.findOne({ where: { email: req.user.email } });
     if (!candidateDoc) return res.json({ selected: false, record: null });
 
-    // ✅ FIX: use candidateId (Sequelize FK column), not candidate
-    const selected = await SelectedCandidate.findOne({
-      where: { candidateId: candidateDoc.id },
-    });
+    const selected = await SelectedCandidate.findOne({ where: { candidateId: candidateDoc.id } });
+    const record   = await OnboardingRecord.findOne({ where: { candidateId: candidateDoc.id } });
 
-    const record = await OnboardingRecord.findOne({
-      where: { candidateId: candidateDoc.id },
-    });
-
-    if (!selected || selected.status !== "SELECTED") {
-      return res.json({ selected: false, record: null });
+    // Also return WAITLISTED status so the candidate portal can show it
+    if (!selected || !["SELECTED","WAITLISTED"].includes(selected.status)) {
+      // Check if application is in QUERY state even for non-selected
+      const app = await CandidateApplication.findOne({ where: { candidateUserId: req.user.id } });
+      return res.json({
+        selected:        false,
+        selectionStatus: selected?.status || null,
+        applicationStatus: app?.status || "DRAFT",
+        record: null,
+      });
     }
 
-    // ✅ Build safe record — strip joiningLetterPath entirely
     let safeRecord = null;
     if (record) {
       const raw = record.toJSON();
-      // Remove joining letter — internal document, not for candidate view
       delete raw.joiningLetterPath;
       delete raw.joiningLetterUploadedAt;
       safeRecord = raw;
     }
 
-    res.json({
-      selected:        true,
-      selectionStatus: selected.status,
-      designation:     selected.designation     || null,
-      employmentType:  selected.employmentType  || null,
-      department:      record?.department       || selected.department || null,
-      record:          safeRecord,
-    });
+    // Get application status (to detect QUERY)
+    const app = await CandidateApplication.findOne({ where: { candidateUserId: req.user.id } });
 
+    res.json({
+      selected:            true,
+      selectionStatus:     selected.status,           // SELECTED or WAITLISTED
+      applicationStatus:   app?.status || "SUBMITTED",
+      designation:         selected.designation    || null,
+      employmentType:      selected.employmentType || null,
+      department:          record?.department      || selected.department || null,
+      record:              safeRecord,
+    });
   } catch (err) {
     console.error("ONBOARDING ERROR:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
+
+router.post(
+  "/experience/:id/certificate",
+  auth(["CANDIDATE"]),
+  documentUpload.single("file"),
+  controller.uploadExperienceCertificate
+);
 
 module.exports = router;

@@ -17,8 +17,8 @@ export default function NotificationPanel({ open, notifications, onClose, onRead
 
         {notifications.map(n => (
           <div
-            key={n._id}
-            onClick={() => onRead(n._id)}
+            key={n.id}
+            onClick={() => onRead(n.id)}
             className={`p-4 border-b cursor-pointer ${
               n.read ? "bg-white" : "bg-blue-50"
             }`}

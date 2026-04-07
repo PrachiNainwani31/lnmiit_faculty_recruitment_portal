@@ -15,10 +15,3 @@ router.post("/",      auth(DOFA_OFFICE_ROLES), saveLog);
 router.get("/export", auth(DOFA_OFFICE_ROLES), exportLogs);
 
 module.exports = router;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ADD THIS LINE TO server.js (after the other app.use lines):
-//
-//   app.use("/api/interview-logs", require("./routes/interviewLog.routes"));
-//
-// ─────────────────────────────────────────────────────────────────────────────

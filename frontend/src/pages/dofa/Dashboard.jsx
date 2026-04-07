@@ -273,8 +273,14 @@ export default function Dashboard() {
               {/* ── Info grid ── */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 mt-5 text-sm">
                 <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Position</p>
-                  <p className="font-medium text-gray-700">{d.position}</p>
+                  <p className="text-xs text-gray-400 mb-0.5">Academic Year</p>
+                  <p className="font-medium text-gray-700">{d.academicYear || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Cycle</p>
+                  <p className="font-medium text-gray-700">
+                    {d.cycleNumber ? `Cycle ${d.cycleNumber}` : "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Candidates</p>
@@ -367,7 +373,6 @@ export default function Dashboard() {
           );
         })}
       </div>
-
       <SelectionStatusPanel role="DOFA" />
 
       {/* Comment modal */}

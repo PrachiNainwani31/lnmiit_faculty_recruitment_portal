@@ -11,8 +11,25 @@ const fmtDate = (d) =>
 
 const calcExp = (from, to) => {
   if (!from || !to) return null;
-  const diff = (new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24 * 365.25);
-  return diff > 0 ? `${diff.toFixed(1)} yr${diff >= 2 ? "s" : ""}` : null;
+  const f = new Date(from);
+  const t = new Date(to);
+  if (t <= f) return null;
+
+  let years  = t.getFullYear() - f.getFullYear();
+  let months = t.getMonth()    - f.getMonth();
+  let days   = t.getDate()     - f.getDate();
+
+  if (days < 0) {
+    months--;
+    days += new Date(t.getFullYear(), t.getMonth(), 0).getDate();
+  }
+  if (months < 0) { years--; months += 12; }
+
+  const parts = [];
+  if (years  > 0) parts.push(`${years}y`);
+  if (months > 0) parts.push(`${months}m`);
+  if (days   > 0) parts.push(`${days}d`);
+  return parts.length ? parts.join(" ") : null;
 };
 
 const TYPE_COLORS = {
@@ -87,7 +104,7 @@ function ExperienceCell({ candidateExperiences, onUpdate }) {
             {!hasExps && (
               <p className="text-xs text-gray-400 italic pl-2 mb-1">No experience entries in application</p>
             )}
-
+            
             {hasExps && (
               <table className="w-full text-xs border-collapse">
                 <thead>
@@ -161,11 +178,12 @@ const COLUMNS = [
   ["interviewDate",              "Date of Faculty Interview",       "date",   true,  "140px"],
   ["department",                 "Department",                      "text",   true,  "100px"],
   ["forThePostOf",               "For the Post of",                "text",   false, "140px"],
-  ["noOfApplications",           "No. of Applications Received",   "number", true,  "120px"],
-  ["noOfEligibleShortlisted",    "No. of Eligible / Shortlisted",  "number", true,  "130px"],
-  ["noForTeachingPresentation",  "No. Present for Teaching Presentation", "number", false, "130px"],
+  ["noOfApplications",           "Total Applications Received",   "number", true,  "120px"],
+  ["noOfIlscShortlisted",    "Shortlisted in ILSC",  "number", true,  "130px"],
+  ["noOfDlscShortlisted",    "Shortlisted in DLSC",  "number", true,  "130px"],
+  ["noForTeachingPresentation",  "No. Present for Teaching Interaction", "number", false, "130px"],
   ["noShortlistedForInterview",  "No. Shortlisted for Interview",  "number", false, "120px"],
-  ["noForPersonalInterview",     "No. Present for Personal Interview","number", true,"120px"],
+  ["noForPersonalInterview",     "No. Present for Personal Interaction","number", true,"120px"],
   ["expert1Name",                "Name of Expert 1",               "text",   false, "160px"],
   ["expert1Detail",              "Detail 1",                       "text",   false, "200px"],
   ["expert2Name",                "Name of Expert 2",               "text",   false, "160px"],
@@ -177,8 +195,8 @@ const COLUMNS = [
   // ← Experience column is inserted here as a special cell (not in this array)
   ["evaluationSheetLink",        "Evaluation Sheet Link",          "url",    false, "200px"],
   ["advCopyDate",                "Adv. Copy Date",                 "date",   false, "130px"],
-  ["advCopyLink",                "Adv. Copy Link",                 "url",    false, "200px"],
-  ["committeeLink",              "Committee Link",                 "url",    false, "200px"],
+  ["advCopyLink",                "Advertisement Copy Link",        "url",    false, "200px"],
+  ["committeeLink",              "Committee Office Order Link",                 "url",    false, "200px"],
   ["remark",                     "Remark",                        "text",   false, "200px"],
 ];
 

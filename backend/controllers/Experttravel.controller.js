@@ -1,32 +1,30 @@
-// controllers/Experttravel.controller.js
 const { ExpertTravel, Expert, User } = require("../models");
 const { sendEmail } = require("../utils/emailSender");
-const { Op } = require("sequelize");
-const CYCLE = require("../config/activeCycle");
+const templates     = require("../utils/emailTemplates");
+const { Op }        = require("sequelize");
+const getCurrentCycle = require("../utils/getCurrentCycle");
 
-const RAMSWAROOP_EMAIL = process.env.RAMSWAROOP_EMAIL || "ramsharma@lnmiit.ac.in";
+// ✅ No TRAVEL_EMAIL env var — query travel users from DB
+async function emailTravelUsers(tmpl) {
+  const travelUsers = await User.findAll({ where: { role: "REGISTRAR_OFFICE" } });
+  for (const u of travelUsers) {
+    await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
+  }
+}
 
-/* ─────────────────────────────────────────
-   Helper: get or create travel record
-───────────────────────────────────────── */
 async function getOrCreate(expertId) {
-  let doc = await ExpertTravel.findOne({ where: { expertId, cycle: CYCLE } });
-  if (!doc) doc = await ExpertTravel.create({ expertId, cycle: CYCLE });
+  const expert = await Expert.findByPk(expertId);
+  const cycle  = expert?.cycle || "UNKNOWN";
+  let doc = await ExpertTravel.findOne({ where: { expertId, cycle } });
+  if (!doc) doc = await ExpertTravel.create({ expertId, cycle });
   return doc;
 }
 
-/* ─────────────────────────────────────────
-   Helper: reconstruct nested objects from flat columns
-   so frontend components that expect { traveller:{}, quote:{}, pickupDrop:{} }
-   continue to work without changes.
-───────────────────────────────────────── */
 function toNestedShape(t) {
   if (!t) return null;
   const raw = t.toJSON ? t.toJSON() : { ...t };
-
   return {
     ...raw,
-    // Reconstruct traveller
     traveller: {
       name:              raw.travellerName,
       gender:            raw.travellerGender,
@@ -47,8 +45,7 @@ function toNestedShape(t) {
       connections:       raw.travellerConnections       || [],
       returnConnections: raw.travellerReturnConnections || [],
     },
-    // Reconstruct quote (null if no quote submitted yet)
-    quote: raw.quoteAmount != null || raw.quoteStatus ? {
+    quote: raw.quoteAmount != null ? {
       amount:        raw.quoteAmount,
       vendor:        raw.quoteVendor,
       remarks:       raw.quoteRemarks,
@@ -58,7 +55,6 @@ function toNestedShape(t) {
       approvedBy:    raw.quoteApprovedBy,
       rejectionNote: raw.quoteRejectionNote,
     } : null,
-    // Reconstruct pickupDrop
     pickupDrop: {
       pickupLocation: raw.pickupLocation,
       pickupTime:     raw.pickupTime,
@@ -71,18 +67,12 @@ function toNestedShape(t) {
   };
 }
 
-/* ─────────────────────────────────────────
-   GET ALL EXPERT TRAVEL
-   Returns nested shape for frontend compatibility
-───────────────────────────────────────── */
 exports.getAllExpertTravel = async (req, res) => {
   try {
     const experts = await Expert.findAll({
       include: [{ model: User, as: "uploadedBy", attributes: ["name", "department", "role"] }],
     });
-
-    const travels = await ExpertTravel.findAll({ where: { cycle: CYCLE } });
-
+    const travels  = await ExpertTravel.findAll();
     const travelMap = {};
     travels.forEach(t => { travelMap[t.expertId] = t; });
 
@@ -90,7 +80,6 @@ exports.getAllExpertTravel = async (req, res) => {
       expert: e,
       travel: toNestedShape(travelMap[e.id]) || null,
     }));
-
     res.json(result);
   } catch (err) {
     console.error("getAllExpertTravel error:", err.message);
@@ -98,11 +87,7 @@ exports.getAllExpertTravel = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   SAVE CONFIRMATION
-   Accepts nested { traveller: {...} } from frontend,
-   saves to flat columns.
-───────────────────────────────────────── */
+/* ── Save confirmation + travel details (#10a) ── */
 exports.saveConfirmation = async (req, res) => {
   try {
     const { expertId } = req.params;
@@ -110,55 +95,53 @@ exports.saveConfirmation = async (req, res) => {
     const tr   = data.traveller || {};
 
     await getOrCreate(expertId);
-
+    const expert = await Expert.findByPk(expertId);
+    const cycle  = expert?.cycle;
     await ExpertTravel.update(
       {
         confirmed:      data.confirmed,
         contactNumber:  data.contactNumber,
         presenceStatus: data.presenceStatus,
-        onlineLink:     data.onlineLink || null,
+        onlineLink:     data.onlineLink  || null,
         modeOfTravel:   data.modeOfTravel || null,
-
-        // Flat traveller columns
-        travellerName:           tr.name            || null,
-        travellerGender:         tr.gender           || null,
+        travellerName:           tr.name              || null,
+        travellerGender:         tr.gender             || null,
         travellerAge:            tr.age ? Number(tr.age) : null,
-        travellerMealPreference: tr.mealPreference   || null,
-        travellerPreferredSeat:  tr.preferredSeat    || null,
-        travellerJourneyType:    tr.journeyType      || "Direct",
-        // Onward
+        travellerMealPreference: tr.mealPreference     || null,
+        travellerPreferredSeat:  tr.preferredSeat      || null,
+        travellerJourneyType:    tr.journeyType        || "Direct",
         travellerOnwardFrom:     tr.onwardFrom ? new Date(tr.onwardFrom) : null,
-        travellerOnwardTime:     tr.onwardTime       || null,
-        travellerOnwardFromCity: tr.onwardFromCity   || null,
-        travellerOnwardToCity:   tr.onwardToCity     || null,
-        travellerOnwardFlightNo: tr.onwardFlightNo   || null,
-        // Return
+        travellerOnwardTime:     tr.onwardTime         || null,
+        travellerOnwardFromCity: tr.onwardFromCity     || null,
+        travellerOnwardToCity:   tr.onwardToCity       || null,
+        travellerOnwardFlightNo: tr.onwardFlightNo     || null,
         travellerReturnFrom:     tr.returnFrom ? new Date(tr.returnFrom) : null,
-        travellerReturnTime:     tr.returnTime       || null,
-        travellerReturnFromCity: tr.returnFromCity   || null,
-        travellerReturnToCity:   tr.returnToCity     || null,
-        travellerReturnFlightNo: tr.returnFlightNo   || null,
-        // Connecting legs
+        travellerReturnTime:     tr.returnTime         || null,
+        travellerReturnFromCity: tr.returnFromCity     || null,
+        travellerReturnToCity:   tr.returnToCity       || null,
+        travellerReturnFlightNo: tr.returnFlightNo     || null,
         travellerConnections:       tr.connections       || [],
         travellerReturnConnections: tr.returnConnections || [],
       },
-      { where: { expertId, cycle: CYCLE } }
+      { where: { expertId, cycle } }
     );
 
     const doc    = await getOrCreate(expertId);
-    const expert = await Expert.findByPk(expertId);
 
+    // Email #10a — send travel details to Travel portal users (Offline only)
     if (data.presenceStatus === "Offline" && data.confirmed) {
-      await sendEmail(
-        RAMSWAROOP_EMAIL,
-        `Travel Required: ${expert.fullName}`,
-        `<p>Please arrange travel for <strong>${expert.fullName}</strong>.</p>
-         <p>Contact: ${data.contactNumber || "—"}</p>
-         ${tr.age ? `<p>Age: ${tr.age}</p>` : ""}
-         <p>Mode: ${data.modeOfTravel || "—"}</p>
-         ${tr.onwardFrom ? `<p>Arrival: ${new Date(tr.onwardFrom).toLocaleDateString("en-GB")} ${tr.onwardTime || ""}</p>` : ""}
-         ${tr.onwardFlightNo ? `<p>Flight/Train: ${tr.onwardFlightNo}</p>` : ""}`
-      ).catch(console.error);
+      const tmpl = templates.travelDetailsToTravel({
+        expertName:    expert.fullName,
+        expertId:      expert.id,
+        department:    expert.department,
+        travelDetails: {
+          mode:           data.modeOfTravel    || "—",
+          from:           tr.onwardFromCity    || "—",
+          interviewDate:  tr.onwardFrom        || "—",
+          presenceStatus: data.presenceStatus,
+        },
+      });
+      await emailTravelUsers(tmpl);
     }
 
     res.json({ success: true, doc: toNestedShape(doc) });
@@ -168,45 +151,39 @@ exports.saveConfirmation = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   SUBMIT QUOTE
-───────────────────────────────────────── */
+/* ── Submit quote (#10b) — email to DOFA ── */
 exports.submitQuote = async (req, res) => {
   try {
     const { expertId } = req.params;
     const { amount, vendor, remarks } = req.body;
-
+    const expert = await Expert.findByPk(expertId);
+    const cycle  = expert?.cycle;
     await getOrCreate(expertId);
-
     await ExpertTravel.update(
       {
-        quoteAmount:      Number(amount),
-        quoteVendor:      vendor   || null,
-        quoteRemarks:     remarks  || null,
-        quoteStatus:      "PENDING",
-        quoteSubmittedAt: new Date(),
-        // Reset approval fields on resubmit
+        quoteAmount:        Number(amount),
+        quoteVendor:        vendor  || null,
+        quoteRemarks:       remarks || null,
+        quoteStatus:        "PENDING",
+        quoteSubmittedAt:   new Date(),
         quoteApprovedAt:    null,
         quoteApprovedBy:    null,
         quoteRejectionNote: null,
       },
-      { where: { expertId, cycle: CYCLE } }
+      { where: { expertId, cycle } }
     );
 
-    const expert    = await Expert.findByPk(expertId);
     const dofaUsers = await User.findAll({
       where: { role: { [Op.in]: ["DOFA", "ADOFA"] } },
     });
-
-    const emails = dofaUsers.map(u => u.email).join(",");
-    if (emails) {
-      await sendEmail(
-        emails,
-        `Quote Submitted: ${expert.fullName}`,
-        `<p>Quote submitted for <strong>${expert.fullName}</strong> — ₹${amount}</p>
-         <p>Vendor: ${vendor || "—"}</p>
-         ${remarks ? `<p>Remarks: ${remarks}</p>` : ""}`
-      ).catch(console.error);
+    const tmpl = templates.travelQuoteToDofa({
+      expertName:   expert.fullName,
+      expertId:     expert.id,
+      quoteAmount:  Number(amount),
+      quoteDetails: remarks || vendor || "—",
+    });
+    for (const u of dofaUsers) {
+      await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
     }
 
     res.json({ success: true });
@@ -216,13 +193,16 @@ exports.submitQuote = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   APPROVE QUOTE
-───────────────────────────────────────── */
+/* ── Approve quote (#10c) — email to Travel users ── */
 exports.approveQuote = async (req, res) => {
   try {
     const { expertId } = req.params;
     const { status, rejectionNote } = req.body;
+
+    const expert = await Expert.findByPk(expertId);  // ← move up
+    const cycle  = expert?.cycle;                     // ← move up
+
+    const existing = await ExpertTravel.findOne({ where: { expertId, cycle } }); // ← now valid
 
     await ExpertTravel.update(
       {
@@ -231,16 +211,17 @@ exports.approveQuote = async (req, res) => {
         quoteApprovedBy:    req.user.role,
         quoteRejectionNote: rejectionNote || null,
       },
-      { where: { expertId, cycle: CYCLE } }
+      { where: { expertId, cycle } }
     );
 
-    const expert = await Expert.findByPk(expertId);
-    await sendEmail(
-      RAMSWAROOP_EMAIL,
-      `Quote ${status}: ${expert.fullName}`,
-      `<p>Quote for <strong>${expert.fullName}</strong> has been <strong>${status}</strong>.</p>
-       ${rejectionNote ? `<p>Note: ${rejectionNote}</p>` : ""}`
-    ).catch(console.error);
+    if (status === "APPROVED") {
+      const tmpl = templates.quoteApprovedToTravel({
+        expertName:  expert.fullName,
+        expertId:    expert.id,
+        quoteAmount: existing?.quoteAmount || "—",
+      });
+      await emailTravelUsers(tmpl);
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -249,29 +230,26 @@ exports.approveQuote = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   UPLOAD TICKET
-───────────────────────────────────────── */
+/* ── Upload ticket (#10d) — email to DOFA Office ── */
 exports.uploadTicket = async (req, res) => {
   try {
     const { expertId } = req.params;
     if (!req.file) return res.status(400).json({ message: "File required" });
-
+    const expert = await Expert.findByPk(expertId);
+    const cycle  = expert?.cycle;
     await ExpertTravel.update(
       { ticketPath: req.file.path, ticketUploadedAt: new Date() },
-      { where: { expertId, cycle: CYCLE } }
+      { where: { expertId, cycle} }
     );
 
-    const expert = await Expert.findByPk(expertId);
-    const users  = await User.findAll({
-      where: { role: { [Op.in]: ["DOFA", "ADOFA", "DOFA_OFFICE"] } },
+    const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
+    const tmpl = templates.ticketUpdatedToDofaOffice({
+      expertName:    expert.fullName,
+      expertId:      expert.id,
+      ticketDetails: "Ticket has been booked. Please check the portal for full details.",
     });
-
-    const emails = users.map(u => u.email).join(",");
-    if (emails) {
-      await sendEmail(emails, `Ticket Uploaded: ${expert.fullName}`,
-        `<p>Ticket uploaded for <strong>${expert.fullName}</strong>.</p>`
-      ).catch(console.error);
+    for (const u of dofaOfficeUsers) {
+      await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
     }
 
     res.json({ success: true });
@@ -281,30 +259,17 @@ exports.uploadTicket = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   UPLOAD INVOICE
-───────────────────────────────────────── */
+/* ── Upload invoice — no email required per list ── */
 exports.uploadInvoice = async (req, res) => {
   try {
     const { expertId } = req.params;
     if (!req.file) return res.status(400).json({ message: "File required" });
-
+    const expert = await Expert.findByPk(expertId);
+    const cycle  = expert?.cycle;
     await ExpertTravel.update(
       { invoicePath: req.file.path, invoiceUploadedAt: new Date() },
-      { where: { expertId, cycle: CYCLE } }
+      { where: { expertId, cycle } }
     );
-
-    const expert = await Expert.findByPk(expertId);
-    const users  = await User.findAll({
-      where: { role: { [Op.in]: ["DOFA", "ADOFA", "DOFA_OFFICE"] } },
-    });
-
-    const emails = users.map(u => u.email).join(",");
-    if (emails) {
-      await sendEmail(emails, `Invoice Uploaded: ${expert.fullName}`,
-        `<p>Invoice uploaded for <strong>${expert.fullName}</strong>.</p>`
-      ).catch(console.error);
-    }
 
     res.json({ success: true });
   } catch (err) {
@@ -313,28 +278,25 @@ exports.uploadInvoice = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   SAVE PICKUP / DROP
-   Writes to flat columns.
-───────────────────────────────────────── */
+/* ── Save pickup/drop (#10e) — email to Travel users ── */
 exports.savePickupDrop = async (req, res) => {
   try {
     const { expertId } = req.params;
     const { pickupLocation, pickupTime, dropLocation, dropTime } = req.body;
-
+    const expert = await Expert.findByPk(expertId);
+    const cycle  = expert?.cycle;
     await getOrCreate(expertId);
-
     await ExpertTravel.update(
       { pickupLocation, pickupTime, dropLocation, dropTime, enteredByDofa: true },
-      { where: { expertId, cycle: CYCLE } }
+      { where: { expertId, cycle } }
     );
 
-    await sendEmail(
-      RAMSWAROOP_EMAIL,
-      "Pickup / Drop Details Updated",
-      `<p>Pickup from: <strong>${pickupLocation}</strong> at ${pickupTime}</p>
-       <p>Drop to: <strong>${dropLocation}</strong> at ${dropTime}</p>`
-    ).catch(console.error);
+    const tmpl = templates.pickupDetailsToTravel({
+      expertName: expert.fullName,
+      expertId:   expert.id,
+      pickupDetails: { pickupLocation, pickupTime, dropLocation },
+    });
+    await emailTravelUsers(tmpl);
 
     res.json({ success: true });
   } catch (err) {
@@ -343,30 +305,26 @@ exports.savePickupDrop = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────────
-   SAVE DRIVER INFO
-   Writes to flat columns.
-───────────────────────────────────────── */
+/* ── Save driver info (#10f) — email to DOFA Office ── */
 exports.saveDriverInfo = async (req, res) => {
   try {
     const { expertId } = req.params;
     const { driverName, driverContact } = req.body;
-
+    const expert = await Expert.findByPk(expertId);
+    const cycle  = expert?.cycle;
     await ExpertTravel.update(
       { driverName, driverContact },
-      { where: { expertId, cycle: CYCLE } }
+      { where: { expertId, cycle } }
     );
 
-    const expert = await Expert.findByPk(expertId);
-    const users  = await User.findAll({
-      where: { role: { [Op.in]: ["DOFA", "ADOFA", "DOFA_OFFICE"] } },
+    const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
+    const tmpl = templates.driverDetailsToDofaOffice({
+      expertName: expert.fullName,
+      expertId:   expert.id,
+      driverDetails: { driverName, driverContact, vehicleNumber: "—" },
     });
-
-    const emails = users.map(u => u.email).join(",");
-    if (emails) {
-      await sendEmail(emails, `Driver Assigned: ${expert.fullName}`,
-        `<p>Driver <strong>${driverName}</strong> (${driverContact}) assigned for ${expert.fullName}.</p>`
-      ).catch(console.error);
+    for (const u of dofaOfficeUsers) {
+      await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
     }
 
     res.json({ success: true });

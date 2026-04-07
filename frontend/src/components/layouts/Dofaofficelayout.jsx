@@ -18,15 +18,15 @@ export default function DofaOfficeLayout() {
           <p className="text-white/50 text-xs mt-0.5">Faculty Recruitment Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5 overflow-y-auto">
-          <NavLink to="/dofa-office"               end className={navStyle}>📊 Dashboard</NavLink>
-          <NavLink to="/dofa-office/candidates"        className={navStyle}>🎓 Candidates</NavLink>
-          <NavLink to="/dofa-office/experts"           className={navStyle}>🧑 External Experts</NavLink>
-          <NavLink to="/dofa-office/pickup"            className={navStyle}>🚗 Pickup / Drop-off</NavLink>
-          <NavLink to="/dofa-office/comments"          className={navStyle}>💬 Comments</NavLink>
-          <NavLink to="/dofa-office/select-candidates" className={navStyle}>☑ Select Candidates</NavLink>
-          <NavLink to="/dofa-office/room-allotment"    className={navStyle}>🏠 Room Allotment</NavLink>
-          {/* ✅ NEW: Interview Logs */}
-          <NavLink to="/dofa-office/logs"              className={navStyle}>📋 Interview Logs</NavLink>
+          <NavLink to="/dofa-office"               end className={navStyle}>Dashboard</NavLink>
+          <NavLink to="/dofa-office/candidates"        className={navStyle}>Candidates</NavLink>
+          <NavLink to="/dofa-office/document-tracking"  className={navStyle}>Document Tracking</NavLink>
+          <NavLink to="/dofa-office/experts"           className={navStyle}>External Experts</NavLink>
+          <NavLink to="/dofa-office/pickup"            className={navStyle}>Pickup / Drop-off</NavLink>
+          <NavLink to="/dofa-office/select-candidates" className={navStyle}>Select Candidates</NavLink>
+          <NavLink to="/dofa-office/room-allotment"    className={navStyle}>Room Allotment</NavLink>
+          <NavLink to="/dofa-office/logs"              className={navStyle}>Interview Logs</NavLink>
+          <NavLink to="/dofa-office/registration" className={navStyle}>Registration</NavLink>
         </nav>
         <button
           onClick={() => { localStorage.clear(); navigate("/login"); }}

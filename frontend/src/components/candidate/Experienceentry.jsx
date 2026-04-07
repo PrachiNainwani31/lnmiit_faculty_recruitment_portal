@@ -4,21 +4,10 @@ import API from "../../api/api";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-export default function Experienceentry({ exp, index, onChange, onRemove, isReadOnly, total }) {
+export default function Experienceentry({ exp, index, onChange, onRemove, isReadOnly, total, onCertUpload }) {
   const certRef = useRef();
 
-  const uploadCert = async (file) => {
-    if (!file) return;
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("type", `expCert_${index}`);
-    try {
-      const res = await API.post("/candidate/upload", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      onChange(index, "certificate", res.data.path);
-    } catch { alert("Certificate upload failed"); }
-  };
+  const uploadCert = (file)=>onCertUpload?.(file);
 
   const inputCls = `border p-2 rounded w-full text-sm focus:outline-none focus:ring-1 focus:ring-red-300 ${isReadOnly ? "bg-gray-50 text-gray-500" : ""}`;
   const labelCls = "block text-sm font-medium text-gray-700 mb-1";
