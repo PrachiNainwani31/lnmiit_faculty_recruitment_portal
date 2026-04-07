@@ -113,12 +113,43 @@ exports.markInterviewComplete = async (req, res) => {
       where: { cycle: cycle, status: "SELECTED" },
     });
 
+    const notifyRoles = ["HOD", "DOFA", "LUCS", "ESTABLISHMENT"];
+    const message = selectedCount > 0
+      ? `Interview process complete. ${selectedCount} candidate(s) selected.`
+      : `Interview process complete. No candidates were selected in this cycle.`;
+
+    for (const role of notifyRoles) {
+      await createNotification({
+        cycle,
+        role,
+        title:   "Interview Process Complete",
+        message,
+        type:    "STATUS",
+      });
+    }
+
+    if (selectedCount === 0) {
+      const { User } = require("../models");
+      const { sendEmail } = require("../utils/emailSender");
+      const estUsers = await User.findAll({ where: { role: "ESTABLISHMENT" } });
+      for (const u of estUsers) {
+        await sendEmail(
+          u.email,
+          "Recruitment Cycle Complete — No Candidates Selected",
+          `<p>Dear ${u.name || "Team"},</p>
+           <p>The interview process for cycle <strong>${cycle}</strong> is complete. 
+           No candidates were selected in this cycle. No further action is required.</p>
+           <p>Regards,<br>DOFA Office, LNMIIT</p>`
+        ).catch(console.error);
+      }
+    }
+
     await log({
       user:        req.user,
       action:      "INTERVIEW_COMPLETED_MARKED",
       entity:      "SelectedCandidate",
       entityId:    null,
-      description: `Interview marked completed`,req,
+      description: `Interview marked completed. Selected:${selectedCount}`,req,
     });
     res.json({ success: true, selectedCount });
   } catch (err) {

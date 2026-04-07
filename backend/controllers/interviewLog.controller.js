@@ -61,6 +61,7 @@ async function buildCandidateExperiences(hodId,cycleString ,savedExperiences = [
       candidateId:   cand.id,
       candidateName: cand.fullName || cand.email || `Candidate ${cand.id}`,
       status:        sc.status,
+      designation:   sc.designation || "",
       experiences,
     });
   }
@@ -92,7 +93,6 @@ async function getPrefill(hodId,cycleString) {
     hodId,
     interviewDate:           cycle?.interviewDate      || null,
     department:              hod?.department            || "",
-    forThePostOf:            "Assistant Professor",
     noOfApplications:        stats?.totalApplications  || 0,
     noOfIlscShortlisted: stats?.ilscShortlisted     || 0,
     noOfDlscShortlisted: stats?.dlscShortlisted     || 0,

@@ -449,14 +449,17 @@ function CandidateRecord({ record, onRefresh }) {
 export default function EstablishmentPage() {
   const [depts,   setDepts]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [interviewDone, setInterviewDone] = useState(false);
 
   const load = () => {
-    // ✅ Fetch both records and selection status together
+    // Fetch both records and selection status together
     Promise.all([
       API.get("/establishment/records"),
       API.get("/selected-candidates"),
     ])
       .then(([recRes, selRes]) => {
+        const selData = Array.isArray(selRes.data) ? selRes.data : [];
+        setInterviewDone(selData.some(s => s.interviewComplete));
         // Build a map: candidateId → selectionStatus
         const selMap = {};
         (Array.isArray(selRes.data) ? selRes.data : []).forEach(s => {
@@ -521,7 +524,16 @@ export default function EstablishmentPage() {
       {depts.length === 0 && (
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
           <p className="text-4xl mb-3">📋</p>
-          <p>No selected candidates yet. DOFA Office needs to publish the selection first.</p>
+          {interviewDone ? (
+            <>
+              <p className="text-gray-600 font-medium">Interview process is complete</p>
+              <p className="text-sm text-gray-400 mt-2">
+                No candidates were selected in this cycle. The recruitment cycle has concluded.
+              </p>
+            </>
+          ) : (
+            <p>No selected candidates yet. DOFA Office needs to publish the selection first.</p>
+          )}
         </div>
       )}
 

@@ -1,8 +1,5 @@
 // pages/dofa-office/InterviewLogs.jsx
-// Per-candidate, per-experience-type breakdown in the Total Experience columns.
-// From Date = pre-filled from application (read-only).
-// To Date   = editable by DOFA Office, persisted on Save.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import API from "../../api/api";
 import * as XLSX from "xlsx";
 
@@ -14,17 +11,11 @@ const calcExp = (from, to) => {
   const f = new Date(from);
   const t = new Date(to);
   if (t <= f) return null;
-
-  let years  = t.getFullYear() - f.getFullYear();
-  let months = t.getMonth()    - f.getMonth();
-  let days   = t.getDate()     - f.getDate();
-
-  if (days < 0) {
-    months--;
-    days += new Date(t.getFullYear(), t.getMonth(), 0).getDate();
-  }
+  let years = t.getFullYear() - f.getFullYear();
+  let months = t.getMonth() - f.getMonth();
+  let days = t.getDate() - f.getDate();
+  if (days   < 0) { months--; days += new Date(t.getFullYear(), t.getMonth(), 0).getDate(); }
   if (months < 0) { years--; months += 12; }
-
   const parts = [];
   if (years  > 0) parts.push(`${years}y`);
   if (months > 0) parts.push(`${months}m`);
@@ -39,13 +30,10 @@ const TYPE_COLORS = {
   Other:    "bg-gray-50 text-gray-600 border-gray-200",
 };
 
-/* ── Inline editable cell ── */
+/* ── Inline cells ── */
 function Cell({ value, onChange, type = "text", readOnly = false, placeholder = "", minWidth = "120px" }) {
   return (
-    <input
-      type={type}
-      value={value || ""}
-      readOnly={readOnly}
+    <input type={type} value={value || ""} readOnly={readOnly}
       placeholder={placeholder || (readOnly ? "—" : "")}
       onChange={e => !readOnly && onChange(e.target.value)}
       style={{ minWidth }}
@@ -58,11 +46,7 @@ function Cell({ value, onChange, type = "text", readOnly = false, placeholder = 
 
 function TextCell({ value, onChange, readOnly = false, placeholder = "", minWidth = "150px" }) {
   return (
-    <textarea
-      value={value || ""}
-      readOnly={readOnly}
-      placeholder={placeholder}
-      rows={2}
+    <textarea value={value || ""} readOnly={readOnly} placeholder={placeholder} rows={2}
       onChange={e => !readOnly && onChange(e.target.value)}
       style={{ minWidth }}
       className={`w-full px-2 py-1.5 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-indigo-300 rounded resize-none ${
@@ -72,145 +56,113 @@ function TextCell({ value, onChange, readOnly = false, placeholder = "", minWidt
   );
 }
 
-/* ────────────────────────────────────────────────────────
-   Experience cell — shows per-candidate per-type rows
-   Only "To Date" is editable.
-──────────────────────────────────────────────────────── */
-function ExperienceCell({ candidateExperiences, onUpdate }) {
-  if (!candidateExperiences || candidateExperiences.length === 0) {
-    return (
-      <div className="px-2 py-2 text-xs text-gray-400 italic min-w-[500px]">
-        No experience data available
-      </div>
-    );
+/* ── Experience table for a single candidate ── */
+function ExperienceCell({ cand, onUpdateToDate }) {
+  if (!cand) return <div className="px-2 py-2 text-xs text-gray-400 italic min-w-[500px]">—</div>;
+
+  const exps = cand.experiences || [];
+  if (exps.length === 0) {
+    return <div className="px-2 py-2 text-xs text-gray-400 italic min-w-[500px]">No experience entries</div>;
   }
 
   return (
-    <div className="min-w-[560px] divide-y divide-gray-100">
-      {candidateExperiences.map((sc, sci) => {
-        const hasExps = sc.experiences && sc.experiences.length > 0;
-        const statusColor = sc.status === "SELECTED" ? "text-green-700" : "text-amber-700";
-
-        return (
-          <div key={sci} className="pt-2 pb-1 px-2">
-            {/* Candidate name + status */}
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-semibold text-gray-800">{sc.candidateName}</span>
-              <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full bg-gray-100 border border-gray-200 ${statusColor}`}>
-                {sc.status}
-              </span>
-            </div>
-
-            {!hasExps && (
-              <p className="text-xs text-gray-400 italic pl-2 mb-1">No experience entries in application</p>
-            )}
-            
-            {hasExps && (
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-2 py-1 text-left text-gray-400 font-medium w-24">Type</th>
-                    <th className="px-2 py-1 text-left text-gray-400 font-medium w-40">Organisation</th>
-                    <th className="px-2 py-1 text-left text-gray-400 font-medium w-28">From Date</th>
-                    <th className="px-2 py-1 text-left text-gray-500 font-semibold w-32">
-                      To Date <span className="text-indigo-500">(edit)</span>
-                    </th>
-                    <th className="px-2 py-1 text-left text-gray-400 font-medium w-20">Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sc.experiences.map((exp, ei) => {
-                    const effectiveTo = exp.editedToDate || exp.toDate || "";
-                    const duration    = calcExp(exp.fromDate, effectiveTo);
-                    const typeColor   = TYPE_COLORS[exp.type] || TYPE_COLORS.Other;
-
-                    return (
-                      <tr key={ei} className="border-t border-gray-100 hover:bg-gray-50/50">
-                        <td className="px-2 py-1.5">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${typeColor}`}>
-                            {exp.type || "Other"}
-                          </span>
-                        </td>
-                        <td className="px-2 py-1.5 text-gray-700 max-w-[150px] truncate" title={exp.organization}>
-                          {exp.organization || "—"}
-                        </td>
-                        {/* From Date — read-only, pre-filled from application */}
-                        <td className="px-2 py-1.5">
-                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono">
-                            {exp.fromDate ? fmtDate(exp.fromDate) : "—"}
-                          </span>
-                        </td>
-                        {/* To Date — DOFA-editable */}
-                        <td className="px-1 py-1">
-                          <input
-                            type="date"
-                            value={exp.editedToDate || exp.toDate || ""}
-                            onChange={e => onUpdate(sci, ei, e.target.value)}
-                            title="Edit To Date"
-                            className="w-full px-2 py-1 text-xs border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white text-gray-800"
-                          />
-                        </td>
-                        {/* Computed duration */}
-                        <td className="px-2 py-1.5">
-                          {duration ? (
-                            <span className="bg-violet-100 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full text-xs font-semibold">
-                              {duration}
-                            </span>
-                          ) : (
-                            <span className="text-gray-300 text-xs">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <table className="w-full text-xs border-collapse min-w-[500px]">
+      <thead>
+        <tr className="bg-gray-50">
+          <th className="px-2 py-1 text-left text-gray-400 font-medium w-24">Type</th>
+          <th className="px-2 py-1 text-left text-gray-400 font-medium w-40">Organisation</th>
+          <th className="px-2 py-1 text-left text-gray-400 font-medium w-28">From</th>
+          <th className="px-2 py-1 text-left text-gray-500 font-semibold w-32">
+            To <span className="text-indigo-500">(edit)</span>
+          </th>
+          <th className="px-2 py-1 text-left text-gray-400 font-medium w-20">Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {exps.map((exp, ei) => {
+          const effectiveTo = exp.editedToDate || exp.toDate || "";
+          const duration    = calcExp(exp.fromDate, effectiveTo);
+          const typeColor   = TYPE_COLORS[exp.type] || TYPE_COLORS.Other;
+          return (
+            <tr key={ei} className="border-t border-gray-100 hover:bg-gray-50/50">
+              <td className="px-2 py-1.5">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${typeColor}`}>
+                  {exp.type || "Other"}
+                </span>
+              </td>
+              <td className="px-2 py-1.5 text-gray-700 max-w-[150px] truncate" title={exp.organization}>
+                {exp.organization || "—"}
+              </td>
+              <td className="px-2 py-1.5">
+                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono">
+                  {exp.fromDate ? fmtDate(exp.fromDate) : "—"}
+                </span>
+              </td>
+              <td className="px-1 py-1">
+                <input type="date"
+                  value={exp.editedToDate || exp.toDate || ""}
+                  onChange={e => onUpdateToDate(ei, e.target.value)}
+                  className="w-full px-2 py-1 text-xs border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white text-gray-800"
+                />
+              </td>
+              <td className="px-2 py-1.5">
+                {duration ? (
+                  <span className="bg-violet-100 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full text-xs font-semibold">
+                    {duration}
+                  </span>
+                ) : <span className="text-gray-300 text-xs">—</span>}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
-/* ── Non-experience column definitions ── */
-const COLUMNS = [
-  ["interviewDate",              "Date of Faculty Interview",       "date",   true,  "140px"],
-  ["department",                 "Department",                      "text",   true,  "100px"],
-  ["forThePostOf",               "For the Post of",                "text",   false, "140px"],
-  ["noOfApplications",           "Total Applications Received",   "number", true,  "120px"],
-  ["noOfIlscShortlisted",    "Shortlisted in ILSC",  "number", true,  "130px"],
-  ["noOfDlscShortlisted",    "Shortlisted in DLSC",  "number", true,  "130px"],
-  ["noForTeachingPresentation",  "No. Present for Teaching Interaction", "number", false, "130px"],
-  ["noShortlistedForInterview",  "No. Shortlisted for Interview",  "number", false, "120px"],
-  ["noForPersonalInterview",     "No. Present for Personal Interaction","number", true,"120px"],
-  ["expert1Name",                "Name of Expert 1",               "text",   false, "160px"],
-  ["expert1Detail",              "Detail 1",                       "text",   false, "200px"],
-  ["expert2Name",                "Name of Expert 2",               "text",   false, "160px"],
-  ["expert2Detail",              "Detail 2",                       "text",   false, "200px"],
-  ["expert3Name",                "Name of Expert 3",               "text",   false, "160px"],
-  ["expert3Detail",              "Detail 3",                       "text",   false, "200px"],
-  ["selectedCandidateName",      "Name of Selected Candidate",     "text",   false, "180px"],
-  ["waitlistedCandidateName",    "Name of Waitlisted Candidate",   "text",   false, "180px"],
-  // ← Experience column is inserted here as a special cell (not in this array)
-  ["evaluationSheetLink",        "Evaluation Sheet Link",          "url",    false, "200px"],
-  ["advCopyDate",                "Adv. Copy Date",                 "date",   false, "130px"],
-  ["advCopyLink",                "Advertisement Copy Link",        "url",    false, "200px"],
-  ["committeeLink",              "Committee Office Order Link",                 "url",    false, "200px"],
-  ["remark",                     "Remark",                        "text",   false, "200px"],
+/* ── Column definitions ── */
+// Shared columns (span all candidate rows for a department)
+const SHARED_COLS = [
+  ["interviewDate",            "Date of Faculty Interview",           "date",   true,  "140px"],
+  ["department",               "Department",                          "text",   true,  "100px"],
+  ["noOfApplications",         "Total Applications Received",        "number", true,  "130px"],
+  ["noOfIlscShortlisted",      "Shortlisted in ILSC",                "number", true,  "130px"],
+  ["noOfDlscShortlisted",      "Shortlisted in DLSC",                "number", true,  "130px"],
+  ["noForTeachingPresentation","No. Present for Teaching",           "number", false, "130px"],
+  ["noShortlistedForInterview","No. Shortlisted for Interview",      "number", false, "130px"],
+  ["noForPersonalInterview",   "No. Present for Personal Interview", "number", true,  "130px"],
+  ["expert1Name",              "Name of Expert 1",                   "text",   false, "160px"],
+  ["expert1Detail",            "Detail 1",                           "text",   false, "200px"],
+  ["expert2Name",              "Name of Expert 2",                   "text",   false, "160px"],
+  ["expert2Detail",            "Detail 2",                           "text",   false, "200px"],
 ];
 
-// Columns that come BEFORE the experience column
-const COLS_BEFORE_EXP = COLUMNS.slice(0, 16);  // up to waitlistedCandidateName
-// Columns that come AFTER the experience column
-const COLS_AFTER_EXP  = COLUMNS.slice(16);     // evaluationSheetLink onwards
+const EXPERT3_COLS = [
+  ["expert3Name",   "Name of Expert 3", "text", false, "160px"],
+  ["expert3Detail", "Detail 3",         "text", false, "200px"],
+];
+
+const AFTER_COLS = [
+  ["evaluationSheetLink", "Evaluation Sheet Link",       "url",  false, "200px"],
+  ["advCopyDate",         "Adv. Copy Date",              "date", false, "130px"],
+  ["advCopyLink",         "Advertisement Copy Link",     "url",  false, "200px"],
+  ["committeeLink",       "Committee Office Order Link", "url",  false, "200px"],
+  ["remark",              "Remark",                      "text", false, "200px"],
+];
 
 export default function InterviewLogs() {
-  const [rows,      setRows]      = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [saving,    setSaving]    = useState(null);
-  const [exporting, setExporting] = useState(false);
-  const [dateFilter,setDateFilter]= useState("");
+  const [rows,        setRows]        = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [saving,      setSaving]      = useState(null);
+  const [exporting,   setExporting]   = useState(false);
+  const [dateFilter,  setDateFilter]  = useState("");
+  // ✅ Track expert count per department row (default 2, expandable)
+  const [expertCounts, setExpertCounts] = useState({});
+
+  const getExpertCount = (hodId) => expertCounts[hodId] || 2;
+  const addExpert      = (hodId) => setExpertCounts(p => ({
+    ...p, [hodId]: Math.min((p[hodId] || 2) + 1, 10),
+  }));
 
   const load = () => {
     setLoading(true);
@@ -222,32 +174,38 @@ export default function InterviewLogs() {
 
   useEffect(() => { load(); }, []);
 
+  /* ── Cell update helpers ── */
   const updateCell = (hodId, key, value) =>
     setRows(prev => prev.map(r => r.hodId === hodId ? { ...r, [key]: value } : r));
 
-  /* Update a single experience toDate */
-  const updateExpToDate = (hodId, scIdx, expIdx, value) => {
+  const updateCandDesignation = (hodId, candIdx, value) =>
     setRows(prev => prev.map(r => {
       if (r.hodId !== hodId) return r;
-      const exps = (r.candidateExperiences || []).map((sc, si) => {
-        if (si !== scIdx) return sc;
+      const updated = (r.candidateExperiences || []).map((c, i) =>
+        i === candIdx ? { ...c, designation: value } : c
+      );
+      return { ...r, candidateExperiences: updated };
+    }));
+
+  const updateExpToDate = (hodId, candIdx, expIdx, value) =>
+    setRows(prev => prev.map(r => {
+      if (r.hodId !== hodId) return r;
+      const updated = (r.candidateExperiences || []).map((sc, si) => {
+        if (si !== candIdx) return sc;
         return {
           ...sc,
-          experiences: (sc.experiences || []).map((e, ei) => {
-            if (ei !== expIdx) return e;
-            return { ...e, editedToDate: value };
-          }),
+          experiences: (sc.experiences || []).map((e, ei) =>
+            ei === expIdx ? { ...e, editedToDate: value } : e
+          ),
         };
       });
-      return { ...r, candidateExperiences: exps };
+      return { ...r, candidateExperiences: updated };
     }));
-  };
 
   const handleSave = async (row) => {
     try {
       setSaving(row.hodId);
       await API.post("/interview-logs", row);
-      // Reload to confirm persistence
       load();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to save");
@@ -275,6 +233,9 @@ export default function InterviewLogs() {
   const uniqueDates = [...new Set(rows.map(r => r.interviewDate).filter(Boolean))].sort();
   const filtered    = dateFilter ? rows.filter(r => r.interviewDate === dateFilter) : rows;
 
+  // ✅ Determine if ANY row has expert 3 — drives thead rendering
+  const anyExpert3 = filtered.some(r => getExpertCount(r.hodId) >= 3);
+
   if (loading) return <p className="text-gray-400 text-sm p-6">Loading interview logs…</p>;
 
   return (
@@ -285,7 +246,7 @@ export default function InterviewLogs() {
         <div>
           <h1 className="text-xl font-semibold text-gray-800">Faculty Interview Records</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Scroll horizontally. Grey = auto-filled. White = editable. Experience "To Date" is editable per row.
+            One row per candidate (selected / waitlisted). Shared columns span all rows per department.
           </p>
         </div>
         <div className="flex gap-3 items-center flex-wrap">
@@ -297,7 +258,7 @@ export default function InterviewLogs() {
             </select>
           )}
           <button onClick={handleExport} disabled={exporting}
-            className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
+            className="bg-green-700 hover:bg-green-800 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
             {exporting ? "Exporting…" : "↓ Download Excel"}
           </button>
         </div>
@@ -305,13 +266,20 @@ export default function InterviewLogs() {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
-        <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded bg-gray-100 border border-gray-200 inline-block"/>Auto-filled (read-only)</span>
-        <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded bg-white border border-gray-200 inline-block"/>Editable</span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-indigo-50 text-indigo-700 border-indigo-200">Research</span>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">Teaching</span>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200">Industry</span>
-          — experience types
+          <span className="w-4 h-4 rounded bg-gray-100 border border-gray-200 inline-block"/>
+          Auto-filled (read-only)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded bg-white border border-gray-200 inline-block"/>
+          Editable
+        </span>
+        <span className="flex items-center gap-2">
+          {Object.entries(TYPE_COLORS).map(([type, cls]) => (
+            <span key={type} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
+              {type}
+            </span>
+          ))}
         </span>
       </div>
 
@@ -325,102 +293,201 @@ export default function InterviewLogs() {
       {filtered.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="border-collapse text-xs" style={{ minWidth: "3500px" }}>
+            <table className="border-collapse text-xs" style={{ minWidth: "3600px" }}>
               <thead>
                 <tr className="bg-[#6b0f1a]">
-                  {/* Sr sticky */}
-                  <th className="sticky left-0 z-20 bg-[#6b0f1a] px-3 py-3 text-left text-white font-semibold whitespace-nowrap border-r border-white/20 min-w-[40px]">Sr.</th>
-                  {/* Before-exp columns */}
-                  {COLS_BEFORE_EXP.map(([key, label,,,minW]) => (
-                    <th key={key} className="px-3 py-3 text-left text-white font-semibold whitespace-nowrap border-r border-white/20" style={{ minWidth: minW }}>
-                      {label}
-                    </th>
-                  ))}
-                  {/* Experience column header */}
-                  <th className="px-3 py-3 text-left text-white font-semibold border-r border-white/20 min-w-[560px]">
-                    Total Experience (per candidate &amp; type) — <span className="text-indigo-200">To Date editable</span>
+                  <th className="sticky left-0 z-20 bg-[#6b0f1a] px-3 py-3 text-left text-white font-semibold whitespace-nowrap border-r border-white/20 min-w-[40px]">
+                    Sr.
                   </th>
-                  {/* After-exp columns */}
-                  {COLS_AFTER_EXP.map(([key, label,,,minW]) => (
-                    <th key={key} className="px-3 py-3 text-left text-white font-semibold whitespace-nowrap border-r border-white/20" style={{ minWidth: minW }}>
+
+                  {/* Shared column headers */}
+                  {SHARED_COLS.map(([key, label,,,minW]) => (
+                    <th key={key} style={{ minWidth: minW }}
+                      className="px-3 py-3 text-left text-white font-semibold whitespace-nowrap border-r border-white/20">
                       {label}
                     </th>
                   ))}
-                  <th className="px-3 py-3 text-center text-white font-semibold whitespace-nowrap min-w-[80px]">Action</th>
+
+                  {/* Expert 3 header — only if any row needs it */}
+                  {anyExpert3 && EXPERT3_COLS.map(([key, label,,,minW]) => (
+                    <th key={key} style={{ minWidth: minW }}
+                      className="px-3 py-3 text-left text-white font-semibold whitespace-nowrap border-r border-white/20">
+                      {label}
+                    </th>
+                  ))}
+
+                  {/* "Add Expert" placeholder header when not yet shown */}
+                  {!anyExpert3 && (
+                    <th className="px-3 py-3 text-left text-white/60 font-semibold whitespace-nowrap border-r border-white/20 min-w-[120px]">
+                      Expert 3 (optional)
+                    </th>
+                  )}
+
+                  {/* Per-candidate headers */}
+                  <th className="px-3 py-3 text-left text-white font-semibold border-r border-white/20 min-w-[160px]">
+                    Candidate
+                  </th>
+                  <th className="px-3 py-3 text-left text-white font-semibold border-r border-white/20 min-w-[160px]">
+                    For the Post of
+                  </th>
+                  <th className="px-3 py-3 text-left text-white font-semibold border-r border-white/20 min-w-[560px]">
+                    Total Experience — <span className="text-indigo-200">To Date editable</span>
+                  </th>
+
+                  {/* After-exp headers */}
+                  {AFTER_COLS.map(([key, label,,,minW]) => (
+                    <th key={key} style={{ minWidth: minW }}
+                      className="px-3 py-3 text-left text-white font-semibold whitespace-nowrap border-r border-white/20">
+                      {label}
+                    </th>
+                  ))}
+
+                  <th className="px-3 py-3 text-center text-white font-semibold whitespace-nowrap min-w-[80px]">
+                    Action
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
                 {filtered.map((row, idx) => {
-                  const isSaving = saving === row.hodId;
-                  const bg = idx % 2 === 0 ? "bg-white" : "bg-gray-50/40";
+                  const isSaving    = saving === row.hodId;
+                  const bg          = idx % 2 === 0 ? "bg-white" : "bg-gray-50/40";
+                  const candidates  = row.candidateExperiences || [];
+                  const showExpert3 = getExpertCount(row.hodId) >= 3;
 
-                  return (
-                    <tr key={row.hodId || idx} className={`border-b border-gray-100 ${bg}`}>
+                  // ✅ One table row per candidate; if none, still render one empty row
+                  const candRows = candidates.length > 0 ? candidates : [null];
+                  const rowSpan  = candRows.length;
 
-                      {/* Sr sticky */}
-                      <td className={`sticky left-0 z-10 px-3 py-2 text-gray-400 border-r border-gray-100 font-medium align-top ${bg}`}>
-                        {idx + 1}
-                      </td>
+                  return candRows.map((cand, candIdx) => {
+                    const isFirst = candIdx === 0;
 
-                      {/* Before-exp data cells */}
-                      {COLS_BEFORE_EXP.map(([key, , type, readOnly]) => (
-                        <td key={key} className="border-r border-gray-100 p-0.5 align-top">
-                          {key === "selectedCandidateName" || key === "waitlistedCandidateName" ? (
-                            <TextCell value={row[key]} readOnly={readOnly} onChange={v => updateCell(row.hodId, key, v)} minWidth="160px" />
-                          ) : (key.includes("Detail")) ? (
-                            <TextCell value={row[key]} readOnly={readOnly} onChange={v => updateCell(row.hodId, key, v)} minWidth="190px" />
-                          ) : (
-                            <Cell
-                              type={type}
-                              value={type === "date" && row[key] ? row[key].toString().slice(0,10) : row[key]}
-                              readOnly={readOnly}
-                              onChange={v => updateCell(row.hodId, key, v)}
-                            />
-                          )}
-                        </td>
-                      ))}
+                    return (
+                      <tr key={`${row.hodId}-${candIdx}`}
+                        className={`border-b border-gray-100 ${bg}`}>
 
-                      {/* ✅ Experience cell */}
-                      <td className="border-r border-gray-100 p-0 align-top">
-                        <ExperienceCell
-                          candidateExperiences={row.candidateExperiences || []}
-                          onUpdate={(sci, ei, val) => updateExpToDate(row.hodId, sci, ei, val)}
-                        />
-                      </td>
+                        {/* Sr — only on first candidate row, spans all */}
+                        {isFirst && (
+                          <td rowSpan={rowSpan}
+                            className={`sticky left-0 z-10 px-3 py-2 text-gray-400 border-r border-gray-100 font-medium align-top ${bg}`}>
+                            {idx + 1}
+                          </td>
+                        )}
 
-                      {/* After-exp data cells */}
-                      {COLS_AFTER_EXP.map(([key, , type, readOnly]) => (
-                        <td key={key} className="border-r border-gray-100 p-0.5 align-top">
-                          {key === "remark" ? (
-                            <TextCell value={row[key]} readOnly={readOnly} onChange={v => updateCell(row.hodId, key, v)} minWidth="190px" />
-                          ) : (key.includes("Link") || key.includes("link")) ? (
-                            <div className="flex items-center gap-1 px-1">
-                              <input type="url" value={row[key] || ""} placeholder="https://…"
-                                onChange={e => updateCell(row.hodId, key, e.target.value)}
-                                className="w-full min-w-[180px] px-2 py-1.5 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-indigo-300 rounded bg-white text-blue-600" />
-                              {row[key] && <a href={row[key]} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 shrink-0">↗</a>}
+                        {/* ── Shared (department-level) cells — only first row, rowSpan ── */}
+                        {isFirst && SHARED_COLS.map(([key, , type, readOnly]) => (
+                          <td key={key} rowSpan={rowSpan}
+                            className="border-r border-gray-100 p-0.5 align-top">
+                            {key.includes("Detail") ? (
+                              <TextCell value={row[key]} readOnly={readOnly} minWidth="190px"
+                                onChange={v => updateCell(row.hodId, key, v)} />
+                            ) : (
+                              <Cell type={type} readOnly={readOnly}
+                                value={type === "date" && row[key] ? row[key].toString().slice(0,10) : row[key]}
+                                onChange={v => updateCell(row.hodId, key, v)} />
+                            )}
+                          </td>
+                        ))}
+
+                        {/* Expert 3 cells — only first row */}
+                        {isFirst && showExpert3 && EXPERT3_COLS.map(([key, , type, readOnly]) => (
+                          <td key={key} rowSpan={rowSpan}
+                            className="border-r border-gray-100 p-0.5 align-top">
+                            {key.includes("Detail") ? (
+                              <TextCell value={row[key]} readOnly={readOnly} minWidth="190px"
+                                onChange={v => updateCell(row.hodId, key, v)} />
+                            ) : (
+                              <Cell type={type} readOnly={readOnly} value={row[key]}
+                                onChange={v => updateCell(row.hodId, key, v)} />
+                            )}
+                          </td>
+                        ))}
+
+                        {/* Add Expert 3 button — only first row, when not yet added */}
+                        {isFirst && !showExpert3 && (
+                          <td rowSpan={rowSpan} className="border-r border-gray-100 p-2 align-top">
+                            <button onClick={() => addExpert(row.hodId)}
+                              className="text-xs text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-2 py-1 rounded whitespace-nowrap transition">
+                              + Add Expert 3
+                            </button>
+                          </td>
+                        )}
+
+                        {/* ── Per-candidate cells ── */}
+
+                        {/* Candidate name + status badge */}
+                        <td className="border-r border-gray-100 px-2 py-1.5 align-top min-w-[160px]">
+                          {cand ? (
+                            <div className="space-y-1">
+                              <p className="text-xs font-semibold text-gray-800">{cand.candidateName}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                cand.status === "SELECTED"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}>
+                                {cand.status}
+                              </span>
                             </div>
                           ) : (
-                            <Cell
-                              type={type}
-                              value={type === "date" && row[key] ? row[key].toString().slice(0,10) : row[key]}
-                              readOnly={readOnly}
-                              onChange={v => updateCell(row.hodId, key, v)}
-                            />
+                            <span className="text-xs text-gray-400 italic">No candidates</span>
                           )}
                         </td>
-                      ))}
 
-                      {/* Save */}
-                      <td className="px-2 py-2 text-center align-middle">
-                        <button onClick={() => handleSave(row)} disabled={isSaving}
-                          className="bg-[#6b0f1a] hover:bg-rose-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-60 transition whitespace-nowrap">
-                          {isSaving ? "Saving…" : "Save"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
+                        {/* For the Post of — pre-filled from designation in SelectedCandidate, editable */}
+                        <td className="border-r border-gray-100 p-0.5 align-top min-w-[160px]">
+                          <Cell
+                            value={cand?.designation || ""}
+                            readOnly={false}
+                            placeholder="e.g. Assistant Professor"
+                            onChange={v => updateCandDesignation(row.hodId, candIdx, v)}
+                          />
+                        </td>
+
+                        {/* Experience breakdown — per candidate, to-date editable */}
+                        <td className="border-r border-gray-100 p-0 align-top">
+                          <ExperienceCell
+                            cand={cand}
+                            onUpdateToDate={(ei, val) => updateExpToDate(row.hodId, candIdx, ei, val)}
+                          />
+                        </td>
+
+                        {/* After-exp cells — only first row, rowSpan */}
+                        {isFirst && AFTER_COLS.map(([key, , type, readOnly]) => (
+                          <td key={key} rowSpan={rowSpan}
+                            className="border-r border-gray-100 p-0.5 align-top">
+                            {key === "remark" ? (
+                              <TextCell value={row[key]} readOnly={readOnly} minWidth="190px"
+                                onChange={v => updateCell(row.hodId, key, v)} />
+                            ) : key.includes("Link") ? (
+                              <div className="flex items-center gap-1 px-1">
+                                <input type="url" value={row[key] || ""} placeholder="https://…"
+                                  onChange={e => updateCell(row.hodId, key, e.target.value)}
+                                  className="w-full min-w-[180px] px-2 py-1.5 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-indigo-300 rounded bg-white text-blue-600" />
+                                {row[key] && (
+                                  <a href={row[key]} target="_blank" rel="noreferrer"
+                                    className="text-blue-500 hover:text-blue-700 shrink-0">↗</a>
+                                )}
+                              </div>
+                            ) : (
+                              <Cell type={type} readOnly={readOnly}
+                                value={type === "date" && row[key] ? row[key].toString().slice(0,10) : row[key]}
+                                onChange={v => updateCell(row.hodId, key, v)} />
+                            )}
+                          </td>
+                        ))}
+
+                        {/* Save — only first row, rowSpan */}
+                        {isFirst && (
+                          <td rowSpan={rowSpan} className="px-2 py-2 text-center align-middle">
+                            <button onClick={() => handleSave(row)} disabled={isSaving}
+                              className="bg-[#6b0f1a] hover:bg-rose-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-60 transition whitespace-nowrap">
+                              {isSaving ? "Saving…" : "Save"}
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  });
                 })}
               </tbody>
             </table>
