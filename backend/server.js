@@ -30,12 +30,12 @@ async function startServer() {
   try {
     // Connect MySQL
     await db.sequelize.authenticate();
-    console.log("✅ MySQL Connected");
+    console.log(" MySQL Connected");
 
     //  Sync DB (DEV ONLY)
     //await db.sequelize.sync({ alter: true });
     await db.sequelize.sync();
-    console.log("✅ Tables Synced");
+    console.log("Tables Synced");
 
     app.listen(5000, () => {
       console.log("Server running on port 5000");

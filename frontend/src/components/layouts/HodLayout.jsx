@@ -144,7 +144,7 @@ export default function HodLayout() {
         {/* Frozen banner */}
         {isFrozen && (
           <div className="bg-amber-50 border-b border-amber-200 text-amber-700 text-xs text-center py-2 font-medium">
-            🔒 Cycle submitted — editing is locked until DoFA responds
+             Cycle submitted — editing is locked until DoFA responds
           </div>
         )}
 

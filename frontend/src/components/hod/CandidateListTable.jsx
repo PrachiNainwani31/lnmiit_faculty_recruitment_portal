@@ -121,7 +121,6 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
       {/* Interview date banner */}
       {!interviewDate ? (
         <div className="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700">
-          <span className="text-base mt-0.5">🔒</span>
           <div>
             <p className="font-semibold">Appeared marking is locked</p>
             <p className="mt-0.5 text-amber-600">
@@ -172,7 +171,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
               <th className={`px-3 py-3 text-center text-xs font-semibold whitespace-nowrap ${
                 interviewDate ? "text-green-600" : "text-gray-400"
               }`}>
-                {interviewDate ? "Appeared ✓" : "Appeared 🔒"}
+                {interviewDate ? "Appeared confirmed" : "Appeared locked"}
               </th>
               {!isFrozen && (
                 <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500">Action</th>
@@ -228,7 +227,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
                       {togglingId === c.id ? "…" : c.appearedInInterview ? "✓" : "○"}
                     </button>
                   ) : (
-                    <span className="text-gray-300 text-lg" title="Interview date not set by DOFA">🔒</span>
+                    <span className="text-gray-300 text-lg" title="Interview date not set by DOFA"></span>
                   )}
                 </td>
 
@@ -263,13 +262,13 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
           </span>
           {!interviewDate && (
             <span className="flex items-center gap-1.5 text-amber-500">
-              🔒 Locked until DOFA sets interview date
+              Locked until DOFA sets interview date
             </span>
           )}
         </div>
       )}
 
-      {/* ✅ NEW: Submit appeared to DOFA button */}
+      {/* NEW: Submit appeared to DOFA button */}
       {showSubmitBtn && candidates.length > 0 && (
         <div className="mt-5 pt-5 border-t border-gray-100">
           <div className="flex items-center justify-between flex-wrap gap-3">

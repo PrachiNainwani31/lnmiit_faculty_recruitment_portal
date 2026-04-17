@@ -20,6 +20,7 @@ const DEPARTMENTS = [
   "Physics",
   "Mathematics",
   "Humanities and Social Sciences",
+  "Artificial Intelligence and Data Science",
 ];
 
 /* ══════════════════════════════════════

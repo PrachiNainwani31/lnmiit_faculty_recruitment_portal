@@ -376,7 +376,6 @@ export default function DofaCandidates() {
 
         {candidates.length === 0 && (
           <div className="py-12 text-center text-gray-400 text-sm">
-            <p className="text-3xl mb-2">🎓</p>
             {dept ? "No candidates for this department" : "Select a department from the dashboard"}
           </div>
         )}

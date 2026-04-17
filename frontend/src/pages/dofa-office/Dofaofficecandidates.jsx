@@ -113,7 +113,6 @@ export default function DofaOfficeCandidates() {
 
       {totalCount === 0 && (
         <div className="bg-white rounded-xl shadow p-12 text-center text-gray-400">
-          <p className="text-4xl mb-3">🎓</p>
           <p>No candidates found for cycle {cycle || "-"}</p>
         </div>
       )}

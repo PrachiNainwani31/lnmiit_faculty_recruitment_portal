@@ -376,7 +376,7 @@ function RegisterStep({ onBack, onSuccess }) {
           </div>
 
           <button disabled={loading} className="w-full bg-rose-700 hover:bg-rose-800 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60 flex items-center justify-center gap-2">
-            👤 {loading ? "Registering..." : "Register & Proceed"}
+            {loading ? "Registering..." : "Register & Proceed"}
           </button>
         </form>
       ) : (
@@ -528,7 +528,7 @@ function GuestStep({ refereeId, candidateName, prefillName, prefillEmail, onBack
 
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg mb-4 flex gap-2 items-center">
-          ✅ Reference letter submitted successfully! Thank you.
+          Reference letter submitted successfully! Thank you.
         </div>
       )}
 
@@ -671,7 +671,6 @@ export default function RefereePage() {
   if (error) return (
     <Wrapper>
       <div className="text-center py-8">
-        <p className="text-4xl mb-3">❌</p>
         <h2 className="text-xl font-bold text-gray-800 mb-2">Invalid Link</h2>
         <p className="text-gray-500 text-sm">{error}</p>
       </div>
@@ -682,7 +681,6 @@ export default function RefereePage() {
     <Wrapper>
       <div className="text-center py-8">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-3xl">✅</span>
         </div>
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Already Submitted</h2>
         <p className="text-gray-500 text-sm">

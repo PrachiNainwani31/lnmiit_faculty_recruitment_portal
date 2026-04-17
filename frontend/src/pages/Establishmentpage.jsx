@@ -172,7 +172,7 @@ function CandidateRecord({ record, onRefresh }) {
               <p className="text-sm font-medium text-gray-700">Offer letter</p>
               {!interviewComplete && !step1Done ? (
                 <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
-                  🔒 Locked — DOFA Office must mark interview as complete first
+                   Locked — DOFA Office must mark interview as complete first
                 </div>
               ) : step1Done ? (
                 <a href={`${BASE}/${record.offerLetterPath}`} target="_blank" rel="noreferrer"
@@ -434,11 +434,9 @@ function CandidateRecord({ record, onRefresh }) {
         </div>
       )}
 
-      {/* ✅ Already complete — frozen banner */}
       {record.joiningComplete && (
         <div className="border-t border-gray-100 pt-4">
           <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-3 flex items-center gap-3">
-            <span className="text-green-600 text-lg">🔒</span>
             <div>
               <p className="text-sm font-semibold text-gray-700">Joining Complete — Record Frozen</p>
               {record.joiningCompletedAt && (
@@ -535,7 +533,6 @@ export default function EstablishmentPage() {
 
       {depts.length === 0 && (
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
-          <p className="text-4xl mb-3">📋</p>
           {interviewDone ? (
             <>
               <p className="text-gray-600 font-medium">Interview process is complete</p>
@@ -574,7 +571,7 @@ export default function EstablishmentPage() {
                 }}
                 className="text-xs bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium"
               >
-                🔒 Close Cycle
+                 Close Cycle
               </button>
             </div>
           </div>

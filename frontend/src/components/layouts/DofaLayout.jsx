@@ -2,12 +2,12 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 const NAV_ITEMS = [
-  { to: "/dofa",                   label: "Dashboard",          icon: "📊", end: true },
-  { to: "/dofa/candidates",        label: "Candidates",         icon: "🎓" },
-  { to: "/dofa/experts",           label: "Experts",            icon: "👨‍🏫" },
-  { to: "/dofa/document-tracking", label: "Document Tracking",  icon: "📄" },
-  { to: "/dofa/quote-approval",    label: "Quote Approval",     icon: "💰" },
-  { to: "/dofa/comments",          label: "Comments",           icon: "💬" },
+  { to: "/dofa",                   label: "Dashboard", end: true },
+  { to: "/dofa/candidates",        label: "Candidates"},
+  { to: "/dofa/experts",           label: "Experts" },
+  { to: "/dofa/document-tracking", label: "Document Tracking" },
+  { to: "/dofa/quote-approval",    label: "Quote Approval" },
+  { to: "/dofa/comments",          label: "Comments" },
 ];
 
 export default function DofaLayout() {
@@ -27,7 +27,7 @@ export default function DofaLayout() {
               DF
             </div>
             <div>
-              <p className="text-white font-semibold text-sm leading-tight">DOFA Portal</p>
+              <p className="text-white font-semibold text-sm leading-tight">Welcome DoFA</p>
               <p className="text-white/40 text-xs mt-0.5">Dean of Faculty Affairs</p>
             </div>
           </div>

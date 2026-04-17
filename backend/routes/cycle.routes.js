@@ -9,7 +9,8 @@ const {
   getDofaDashboard,
   setInterviewDates,  
   submitAppearedToDofa,
-  initiateCycle
+  initiateCycle,
+  getNextCycleNumber,
 } = require("../controllers/cycle.controller");
 
 const auth   = require("../middlewares/auth");
@@ -28,5 +29,6 @@ router.get("/dofa-office-dashboard", auth(["DOFA_OFFICE","DOFA","ADOFA"]), getDo
 router.post("/set-dates",     auth(["DOFA","ADOFA"]),               setInterviewDates);
 router.post("/submit-appeared", auth(["HOD"]),                        submitAppearedToDofa);
 router.post("/initiate", auth(["HOD"]), initiateCycle);
+router.get("/next-cycle-number", auth(["HOD"]), getNextCycleNumber);
 
 module.exports = router;

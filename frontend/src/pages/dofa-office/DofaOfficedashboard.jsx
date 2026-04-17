@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import API from "../../api/api";
 import { useNavigate } from "react-router-dom";
 import SelectionStatusPanel from "../../components/Selectionstatuspanel";
-// ✅ FIX: removed useActiveCycle — DOFA_OFFICE has no HOD cycle record so it always returned null
 
 export default function DofaOfficeDashboard() {
   const [data, setData] = useState({

@@ -112,7 +112,7 @@ export default function SelectCandidates() {
 
   const handlePublish = async () => {
     if (interviewDone) {
-      alert("❌ Cannot update — interview already marked complete. Selection is locked.");
+      alert("Cannot update — interview already marked complete. Selection is locked.");
       return;
     }
     const payload = [];
@@ -182,7 +182,6 @@ export default function SelectCandidates() {
       {/* Locked banner */}
       {interviewDone && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-start gap-3">
-          <span className="text-red-500 text-xl shrink-0">🔒</span>
           <div>
             <p className="text-sm font-semibold text-red-800">Selection is locked</p>
             <p className="text-xs text-red-600 mt-0.5">
@@ -330,9 +329,9 @@ export default function SelectCandidates() {
       <div className="flex justify-end gap-3 pb-6">
         {interviewDone ? (
           <button
-            onClick={() => alert("❌ Interview already complete. Selection is locked.")}
+            onClick={() => alert("Interview already complete. Selection is locked.")}
             className="bg-gray-400 cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium">
-            🔒 Selection Locked
+              Selection Locked
           </button>
         ) : (
           <button onClick={handlePublish} disabled={saving || !dofaApproved}

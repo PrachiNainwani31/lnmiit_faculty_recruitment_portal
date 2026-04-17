@@ -129,7 +129,7 @@ LNMIIT`
         </div>
 
         <div className="px-6 mt-5">
-      <p className="text-sm font-semibold text-gray-600 mb-2">📋 Reminder letter (editable):</p>
+      <p className="text-sm font-semibold text-gray-600 mb-2">Reminder letter (editable):</p>
       <textarea
         rows={12}
         value={emailBody}

@@ -321,7 +321,7 @@ exports.uploadExperienceCertificate = async (req, res) => {
   }
 };
 
-/* ── ✅ NEW: Candidate submits their preferred joining date ── */
+/* ──  NEW: Candidate submits their preferred joining date ── */
 exports.submitJoiningDate = async (req, res) => {
   try {
     const { joiningDate } = req.body;

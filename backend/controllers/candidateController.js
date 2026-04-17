@@ -342,7 +342,7 @@ exports.getCandidatesByDepartment = async (req, res) => {
     const candidates = await Candidate.findAll({
       where: {
         hodId: hod.id,
-        cycle: latestCycle.cycle,   // ✅ FIXED
+        cycle: latestCycle.cycle,
       },
       order: [["srNo", "ASC"]],
     });
@@ -406,7 +406,7 @@ exports.getUploadedResumes = async (req, res) => {
     // Reconstruct the exact path where the file is saved
     const filePath = path.join(__dirname, "../uploads/resumes", cycle.cycle, dept, "resumes.zip");
 
-    // ✅ FIX: Physically check the server's hard drive. No database queries needed!
+    // FIX: Physically check the server's hard drive. No database queries needed!
     if (fs.existsSync(filePath)) {
       return res.json([{
         name: "resumes.zip",

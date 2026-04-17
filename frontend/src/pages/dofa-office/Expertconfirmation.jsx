@@ -37,18 +37,18 @@ function TravelStatusPanel({ travel }) {
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
       <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-        📋 Live Status from Travel Portal
+        Live Status from Travel Portal
       </p>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
 
-        {/* ✅ Quote — only for Offline */}
+        {/* Quote — only for Offline */}
         {isOffline && q && (
           <div className={`rounded-lg border px-3 py-2 ${qColor}`}>
             <p className="font-semibold uppercase tracking-wide opacity-70">Quote</p>
             <p className="font-bold text-sm mt-0.5">₹{q.amount}</p>
             <p className="opacity-70">{q.vendor || "—"} · {q.status}</p>
             {q.status === "REJECTED" && q.rejectionNote && (
-              <p className="text-red-600 mt-1">❌ {q.rejectionNote}</p>
+              <p className="text-red-600 mt-1">Error: {q.rejectionNote}</p>
             )}
           </div>
         )}
@@ -236,7 +236,7 @@ function ExpertCard({ item, onSaved }) {
         <div className="border-t border-gray-100 px-5 py-5 bg-gray-50 space-y-4">
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg">
-              ✅ Saved! {form.presenceStatus === "Offline" ? "Registrar Office has been notified." : ""}
+              Saved! {form.presenceStatus === "Offline" ? "Registrar Office has been notified." : ""}
             </div>
           )}
 

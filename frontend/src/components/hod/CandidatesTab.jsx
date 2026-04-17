@@ -88,7 +88,7 @@ export default function CandidatesTab({ refreshCounts, isFrozen }) {
       {/* ── Frozen banner ── */}
       {isFrozen && (
         <div className="bg-yellow-100 text-yellow-800 p-3 rounded text-sm">
-          🔒 This session is frozen. Editing is disabled until DoFA sends it back.
+          his session is frozen. Editing is disabled until DoFA sends it back.
         </div>
       )}
 

@@ -17,7 +17,6 @@ export default function Candidatehome({ application = {}, onOpenForm }) {
         {/* Application card */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center text-xl flex-shrink-0">📋</div>
             <div>
               <h2 className="font-semibold text-gray-800">My Application</h2>
               <p className="text-xs text-gray-400 mt-0.5">Fill in your details and submit</p>
@@ -50,7 +49,6 @@ export default function Candidatehome({ application = {}, onOpenForm }) {
         {/* Selection status card */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-xl flex-shrink-0">🎓</div>
             <div>
               <h2 className="font-semibold text-gray-800">Selection & Onboarding</h2>
               <p className="text-xs text-gray-400 mt-0.5">Track your selection and onboarding progress</p>

@@ -10,7 +10,7 @@ const wrap = (body) => `
     ${body}
   </div>
   <p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">
-    This is an automated message from the LNMIIT Recruitment Portal. Do not reply directly to this email.
+    This is an automated message from the LNMIIT Recruitment & Onboarding Portal. Do not reply directly to this email.
   </p>
 </div>`;
 
@@ -43,7 +43,7 @@ exports.hodSubmittedToDofa = ({ department, candidateCount, expertCount }) => ({
     </table>
     <p>Please review the submission and schedule the interview at the earliest.</p>
     ${btn("Review on Portal", `${PORTAL_URL}/dofa/dashboard`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 
@@ -75,7 +75,7 @@ exports.hodResubmittedToDofa = ({ department }) => ({
     <p>The HoD of <strong>${department}</strong> department has addressed your query 
     and resubmitted the data for review.</p>
     ${btn("Review Updated Submission", `${PORTAL_URL}/dofa/dashboard`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 
@@ -97,7 +97,7 @@ exports.expertInvitationToDofa = ({ expertName, department, expertEmail }) => ({
           <td style="padding:8px;border:1px solid #ddd">${department}</td></tr>
     </table>
     ${btn("View Experts", `${PORTAL_URL}/dofa/experts`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 
@@ -134,7 +134,7 @@ exports.candidateApplicationSubmitted = ({ candidateName, department, email }) =
           <td style="padding:8px;border:1px solid #ddd">${email}</td></tr>
     </table>
     ${btn("Review Documents", `${PORTAL_URL}/dofa-office/document-tracking`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 
@@ -173,7 +173,7 @@ exports.candidateResubmitted = ({ candidateName, department }) => ({
     <p><strong>${candidateName}</strong> (${department || "—"}) has addressed your remarks 
     and resubmitted the application for review.</p>
     ${btn("Review Updated Documents", `${PORTAL_URL}/dofa-office/document-tracking`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 
@@ -224,7 +224,7 @@ exports.refereeSubmitted = ({ refereeName, candidateName, department }) => ({
           <td style="padding:8px;border:1px solid #ddd">${candidateName}</td></tr>
     </table>
     ${btn("View Reference Letters", `${PORTAL_URL}/dofa-office/document-tracking`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 
@@ -273,7 +273,7 @@ exports.travelQuoteToDofa = ({ expertName, expertId, quoteAmount, quoteDetails }
     </table>
     <p>Please review and approve/reject the quote.</p>
     ${btn("Approve Quote", `${PORTAL_URL}/dofa/experts`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 
@@ -298,7 +298,7 @@ exports.ticketUpdatedToDofaOffice = ({ expertName, expertId, ticketDetails }) =>
       <p style="margin:0">${ticketDetails || "Ticket booked. Please check the portal for full details."}</p>
     </div>
     ${btn("View Expert Travel", `${PORTAL_URL}/dofa-office/experts`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 
@@ -335,7 +335,7 @@ exports.driverDetailsToDofaOffice = ({ expertName, expertId, driverDetails }) =>
           <td style="padding:8px;border:1px solid #ddd">${driverDetails.driverContact || "—"}</td></tr>
     </table>
     ${btn("View Expert Details", `${PORTAL_URL}/dofa-office/experts`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
   `),
 });
 

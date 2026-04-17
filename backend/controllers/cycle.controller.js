@@ -92,7 +92,7 @@ exports.submitToDofa = async (req, res) => {
       action: "CYCLE_SUBMITTED_TO_DOFA",
       entity: "RecruitmentCycle",
       entityId: cycle.id,
-      description: `Cycle submitted to DOFA for department ${hod?.department || req.user.department}`, // ✅ SAFE
+      description: `Cycle submitted to DoFA for department ${hod?.department || req.user.department}`, // ✅ SAFE
       req,
     });
 
@@ -234,7 +234,7 @@ exports.approveCycle = async (req, res) => {
     cycle:   cycle.cycle,
     role:    "HOD",
     title:   "Cycle Approved",
-    message: "DOFA has approved your submission.",
+    message: "DoFA has approved your submission.",
     type:    "STATUS",
     targetUserId: hodId,
   });
@@ -501,5 +501,18 @@ exports.initiateCycle = async (req, res) => {
   } catch (err) {
     console.error("initiateCycle error:", err.message);
     res.status(500).json({ message: "Failed to initiate cycle" });
+  }
+};
+
+exports.getNextCycleNumber = async (req, res) => {
+  try {
+    const cycles = await RecruitmentCycle.findAll({
+      where: { hodId: req.user.id },
+      order: [["cycleNumber", "DESC"]],
+    });
+    const last = cycles[0]?.cycleNumber || 0;
+    res.json({ nextNumber: last + 1 });
+  } catch (err) {
+    res.status(500).json({ message: "Failed" });
   }
 };

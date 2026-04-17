@@ -199,7 +199,7 @@ function LucsCard({ record, onRefresh }) {
         )}
         {isLocked && (
           <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1 rounded-full font-medium">
-            🔒 Awaiting joining letter
+            Awaiting joining letter
           </span>
         )}
       </div>

@@ -153,7 +153,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
         <!-- Footer -->
         <div style="background:#f9f9f9;border-top:1px solid #eeeeee;padding:16px 30px;text-align:center">
           <p style="margin:0;font-size:11px;color:#999999">
-            This is an automated message from the LNMIIT Recruitment Portal.<br>
+            This is an automated message from the LNMIIT Recruitment & Onboarding Portal.<br>
             Please do not reply directly to this email.
           </p>
         </div>
@@ -203,7 +203,7 @@ router.post("/send-expert-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req, re
       subject,
       `<div style="font-family:Arial,sans-serif;max-width:650px;margin:auto;padding:30px">
         <div style="background:#8b0000;color:#fff;padding:15px;text-align:center;border-radius:6px 6px 0 0">
-          <h2 style="margin:0">LNMIIT Recruitment Portal</h2>
+          <h2 style="margin:0">LNMIIT Recruitment & Onboarding Portal</h2>
         </div>
         <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;
              white-space:pre-wrap;font-size:14px;line-height:1.7;color:#333">

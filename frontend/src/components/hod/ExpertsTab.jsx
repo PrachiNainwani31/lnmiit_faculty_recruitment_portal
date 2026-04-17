@@ -45,7 +45,7 @@ export default function ExpertsTab({ refreshCounts, isFrozen }) {
 
       {isFrozen && (
         <div className="bg-yellow-100 text-yellow-800 p-3 rounded text-sm">
-          🔒 This session is frozen. Expert editing is disabled until DoFA sends it back.
+          This session is frozen. Expert editing is disabled until DoFA sends it back.
         </div>
       )}
 

@@ -15,12 +15,12 @@ function SubmitAppearedCard({ cycleData, onSubmitted }) {
 
   const handleSubmit = async () => {
     if (!window.confirm(
-      "Submit appeared candidate data to DOFA? Your portal will be frozen again after submission."
+      "Submit appeared candidate data to DoFA? Your portal will be frozen again after submission."
     )) return;
     try {
       setSubmitting(true);
       await API.post("/cycle/submit-appeared");
-      alert("Appeared candidates submitted to DOFA. Portal is now locked.");
+      alert("Appeared candidates submitted to DoFA. Portal is now locked.");
       onSubmitted();
     } catch (err) {
       alert(err.response?.data?.message || "Submission failed");
@@ -33,7 +33,7 @@ function SubmitAppearedCard({ cycleData, onSubmitted }) {
     <div className="bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden">
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-white text-sm font-semibold">Interview Scheduled by DOFA</span>
+          <span className="text-white text-sm font-semibold">Interview Scheduled by DoFA</span>
           <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full font-medium">Step 2</span>
         </div>
         <span className="text-indigo-200 text-xs">Mark appeared candidates, then submit</span>
@@ -57,13 +57,13 @@ function SubmitAppearedCard({ cycleData, onSubmitted }) {
           <span className="text-amber-500 mt-0.5 shrink-0">ℹ</span>
           <p className="text-xs text-amber-700">
             Go to <strong>Candidates</strong> and mark which candidates appeared using the toggle.
-            Come back here and submit to DOFA when done.
+            Come back here and submit to DoFA when done.
           </p>
         </div>
         <div className="flex justify-end">
           <button onClick={handleSubmit} disabled={submitting}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition shadow-sm">
-            {submitting ? "Submitting…" : "Submit Appeared Candidates to DOFA →"}
+            {submitting ? "Submitting…" : "Submit Appeared Candidates to DoFA →"}
           </button>
         </div>
       </div>
@@ -71,13 +71,19 @@ function SubmitAppearedCard({ cycleData, onSubmitted }) {
   );
 }
 
+const ACADEMIC_YEARS = Array.from({ length: 75 }, (_, i) => {
+  const start = 2026 + i;
+  const end   = String(start + 1).slice(-2);
+  return `${start}-${end}`;
+});
+
 function AppearedSubmittedBadge() {
   return (
     <div className="bg-green-50 border border-green-200 rounded-xl px-6 py-4 flex items-center gap-3">
       <span className="text-green-600 text-xl">✓</span>
       <div>
-        <p className="text-sm font-semibold text-green-800">Appeared Data Submitted to DOFA</p>
-        <p className="text-xs text-green-600 mt-0.5">Portal is locked pending DOFA's final selection.</p>
+        <p className="text-sm font-semibold text-green-800">Appeared Data Submitted to DoFA</p>
+        <p className="text-xs text-green-600 mt-0.5">Portal is locked pending DoFA's final selection.</p>
       </div>
     </div>
   );
@@ -85,9 +91,9 @@ function AppearedSubmittedBadge() {
 
 const STATUS_LABELS = {
   DRAFT:              { label: "Draft",                              cls: "bg-gray-100   text-gray-600   border-gray-200"   },
-  SUBMITTED:          { label: "Submitted to DOFA",                 cls: "bg-blue-100   text-blue-700   border-blue-200"   },
-  QUERY:              { label: "Query from DOFA — Please Respond",  cls: "bg-amber-100  text-amber-700  border-amber-200"  },
-  APPROVED:           { label: "Approved by DOFA",                  cls: "bg-green-100  text-green-700  border-green-200"  },
+  SUBMITTED:          { label: "Submitted to DoFA",                 cls: "bg-blue-100   text-blue-700   border-blue-200"   },
+  QUERY:              { label: "Query from DoFA — Please Respond",  cls: "bg-amber-100  text-amber-700  border-amber-200"  },
+  APPROVED:           { label: "Approved by DoFA",                  cls: "bg-green-100  text-green-700  border-green-200"  },
   INTERVIEW_SET:      { label: "Interview Scheduled — Mark Appeared",cls: "bg-indigo-100 text-indigo-700 border-indigo-200" },
   APPEARED_SUBMITTED: { label: "Appeared Data Submitted",           cls: "bg-violet-100 text-violet-700 border-violet-200" },
 };
@@ -101,10 +107,21 @@ export default function Dashboard() {
   const [initiating, setInitiating] = useState(false);
   const [cycleLoaded, setCycleLoaded] = useState(false);
   const [showNewCycleForm, setShowNewCycleForm] = useState(false);
-
+  const [nextCycleNumber, setNextCycleNumber] = useState(1);
   const fetchCounts = async () => {
     const res = await getHodCounts();
     setCounts(res.data);
+  };
+  const openNewCycleForm = async () => {
+    try {
+      // Count existing cycles for this HOD to determine next number
+      const res = await API.get("/cycle/next-cycle-number");
+      setNextCycleNumber(res.data.nextNumber || 1);
+      setYearForm(f => ({ ...f, cycleNumber: String(res.data.nextNumber || 1) }));
+    } catch {
+      setYearForm(f => ({ ...f, cycleNumber: "1" }));
+    }
+    setShowNewCycleForm(true);
   };
 
   const fetchCycle = async () => {
@@ -161,7 +178,7 @@ export default function Dashboard() {
   };
 
   const handleReSubmit = async () => {
-    if (!window.confirm("Re-submit to DOFA? Data will be frozen again after submission.")) return;
+    if (!window.confirm("Re-submit to DoFA? Data will be frozen again after submission.")) return;
     try {
       await submitToDofa();
       alert("Re-submitted to DoFA successfully. Data is now locked.");
@@ -195,8 +212,8 @@ const handleInitiate = async () => {
       cycleNumber:  parseInt(yearForm.cycleNumber),
     });
     setYearError("");
-    setShowNewCycleForm(false);                          // ✅ close form
-    setYearForm({ academicYear: "", cycleNumber: "" });  // ✅ reset
+    setShowNewCycleForm(false);                         
+    setYearForm({ academicYear: "", cycleNumber: "" }); 
     await refresh();
   } catch (e) {
     setYearError(e.response?.data?.message || "Failed to initiate cycle");
@@ -227,22 +244,17 @@ if (cycleLoaded && cycleData === null) return (
     )}
 
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">
-        Academic Year <span className="text-red-500">*</span>
-      </label>
-      <input
-        className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
-        placeholder="e.g. 2025-26"
-        maxLength={7}
-        value={yearForm.academicYear}
-        onChange={e => {
-          setYearError("");
-          let v = e.target.value.replace(/[^0-9-]/g, "");
-          if (v.length === 4 && !v.includes("-")) v = v + "-";
-          setYearForm(f => ({ ...f, academicYear: v }));
-        }}
-      />
-      <p className="text-xs text-gray-400 mt-1">Format: YYYY-YY (e.g. 2025-26)</p>
+      <Field label="Academic Year">
+        <select
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+          value={yearForm.academicYear}
+          onChange={e => { setYearError(""); setYearForm(f => ({ ...f, academicYear: e.target.value })); }}
+          style={{ maxHeight: "200px" }}
+        >
+          <option value="">— Select Academic Year —</option>
+          {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </Field>
     </div>
 
     <div>
@@ -282,7 +294,7 @@ if (cycleLoaded && cycleData === null) return (
         <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 flex items-start gap-3">
           <span className="text-amber-500 text-xl shrink-0">⚠</span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800">Query from DOFA</p>
+            <p className="text-sm font-semibold text-amber-800">Query from DoFA</p>
             <p className="text-sm text-amber-700 mt-1 leading-relaxed">{cycleData.dofaComment}</p>
             <p className="text-xs text-amber-600 mt-2">
               Please make the required changes and re-submit below.
@@ -305,7 +317,7 @@ if (cycleLoaded && cycleData === null) return (
         <div className="bg-white rounded-xl border border-amber-300 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-white text-sm font-semibold">Re-submit to DOFA</span>
+              <span className="text-white text-sm font-semibold">Re-submit to DoFA</span>
               <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full font-medium">
                 Query responded
               </span>
@@ -316,7 +328,7 @@ if (cycleLoaded && cycleData === null) return (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 flex items-start gap-2">
               <span className="text-amber-500 mt-0.5 shrink-0">ℹ</span>
               <p className="text-xs text-amber-700">
-                DOFA raised a query. You can now edit your candidates and experts.
+                DoFA raised a query. You can now edit your candidates and experts.
                 Once you have addressed the query, re-submit below.
               </p>
             </div>
@@ -336,7 +348,7 @@ if (cycleLoaded && cycleData === null) return (
                 disabled={isFrozen}
                 className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition shadow-sm"
               >
-                Re-submit Everything to DOFA →
+                Re-submit Everything to DpFA →
               </button>
             </div>
           </div>
@@ -382,10 +394,10 @@ if (cycleLoaded && cycleData === null) return (
             </>
           )}
 
-          {/* ✅ NEW: Start new cycle — only when current cycle is complete */}
-          {cycleData?.joiningComplete && (
+          {/* NEW: Start new cycle — only when current cycle is complete */}
+          {(cycleData?.joiningComplete || cycleData?.isClosed) && (
             <button
-              onClick={() => setShowNewCycleForm(v => !v)}
+              onClick={openNewCycleForm}
               className="ml-auto text-xs bg-red-700 hover:bg-red-800 text-white px-4 py-1.5 rounded-lg font-medium transition"
             >
               + Start New Cycle

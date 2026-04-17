@@ -12,11 +12,11 @@ export default function SidebarLayout({ children }) {
         </div>
 
         <nav className="mt-4">
-          <NavLink to="/hod" className="menu-item">📊 Dashboard</NavLink>
-          <NavLink to="/hod/candidates" className="menu-item">🎓 Candidates</NavLink>
-          <NavLink to="/hod/experts" className="menu-item">👨‍🏫 Experts</NavLink>
+          <NavLink to="/hod" className="menu-item">Dashboard</NavLink>
+          <NavLink to="/hod/candidates" className="menu-item">Candidates</NavLink>
+          <NavLink to="/hod/experts" className="menu-item">Experts</NavLink>
           <NavLink to="/comments" className="menu-item">Comments</NavLink>
-          <NavLink to="/hod/settings" className="menu-item">⚙ Settings</NavLink>
+          <NavLink to="/hod/settings" className="menu-item">Settings</NavLink>
         </nav>
       </aside>
 

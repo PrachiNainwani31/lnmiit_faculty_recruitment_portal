@@ -9,13 +9,14 @@ const DEPARTMENTS = [
   "Physics",
   "Mathematics",
   "Humanities and Social Sciences",
+  "Artificial Intelligence and Data Science",
   "Other",
 ];
 
 const ROLES = [
-  { value: "DOFA",          label: "DOFA"              },
-  { value: "DOFA_OFFICE",   label: "DOFA Office"       },
-  { value: "HOD",           label: "HOD"               },
+  { value: "DOFA",          label: "Dean of Faculty Affairs(DoFA)"              },
+  { value: "DOFA_OFFICE",   label: "DoFA Office"       },
+  { value: "HOD",           label: "Head of Department(HoD)"               },
   { value: "ESTABLISHMENT", label: "Establishment"     },
   { value: "LUCS",          label: "LUCS"              },
   { value: "ESTATE",        label: "Estate"            },
@@ -357,7 +358,7 @@ export default function Registration() {
         <div className="text-xs text-blue-700 space-y-1">
           <p><strong>Candidates</strong> are automatically registered when their application email is first used — 
           no manual action needed.</p>
-          <p><strong>HOD, DOFA, Establishment</strong> and all other staff must be registered here. 
+          <p><strong>HoD, DoFA, Establishment</strong> and all other staff must be registered here. 
           Credentials are sent by email instantly.</p>
           <p>Users can reset their password anytime using <strong>Forgot Password</strong> on the login page.</p>
         </div>

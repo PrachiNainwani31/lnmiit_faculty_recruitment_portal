@@ -94,7 +94,6 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-8">
         <div className="text-center mb-6">
-          <div className="text-4xl mb-3">🔒</div>
           <h1 className="text-xl font-bold text-gray-800">Reset Password</h1>
           <p className="text-xs text-gray-400 mt-1">{email}</p>
         </div>
