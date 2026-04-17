@@ -5,17 +5,18 @@ const controller      = require("../controllers/candidatePortal.controller");
 const documentUpload  = require("../middlewares/documentUpload");
 const SelectedCandidate = require("../models/SelectedCandidate");
 const OnboardingRecord  = require("../models/OnboardingRecord");
-console.log("✅ candidate routes loaded");
+const deadlineGuard = require("../middlewares/deadlineGuard");
+
 router.get("/me",      auth(["CANDIDATE"]), controller.getMyApplication);
-router.post("/save",   auth(["CANDIDATE"]), controller.saveDraft);
-router.post("/submit", auth(["CANDIDATE"]), controller.submitApplication);
+router.post("/save",   auth(["CANDIDATE"]), deadlineGuard, controller.saveDraft);
+router.post("/submit", auth(["CANDIDATE"]), deadlineGuard, controller.submitApplication);
 
 router.post("/referee/reminder/:id", auth(["CANDIDATE"]), controller.remindReferee);
 
 router.post("/upload",       auth(["CANDIDATE"]), documentUpload.single("file"), controller.uploadDocument);
 router.post("/upload-multi", auth(["CANDIDATE"]), documentUpload.single("file"), controller.uploadMultiDocument);
 
-// ✅ NEW: candidate submits their preferred joining date (shown after offer letter)
+// NEW: candidate submits their preferred joining date (shown after offer letter)
 router.post("/joining-date", auth(["CANDIDATE"]), controller.submitJoiningDate);
 
 /* ── Onboarding status for candidate portal ── */
@@ -29,11 +30,10 @@ router.get("/onboarding", auth(["CANDIDATE"]), async (req, res) => {
 
     const selected = await SelectedCandidate.findOne({ where: { candidateId: candidateDoc.id } });
     const record   = await OnboardingRecord.findOne({ where: { candidateId: candidateDoc.id } });
-
+    const app = await CandidateApplication.findOne({ where: { candidateUserId: req.user.id } });
     // Also return WAITLISTED status so the candidate portal can show it
     if (!selected || !["SELECTED","WAITLISTED"].includes(selected.status)) {
       // Check if application is in QUERY state even for non-selected
-      const app = await CandidateApplication.findOne({ where: { candidateUserId: req.user.id } });
       return res.json({
         selected:        false,
         selectionStatus: selected?.status || null,
@@ -41,26 +41,28 @@ router.get("/onboarding", auth(["CANDIDATE"]), async (req, res) => {
         record: null,
       });
     }
-
-    let safeRecord = null;
-    if (record) {
-      const raw = record.toJSON();
-      delete raw.joiningLetterPath;
-      delete raw.joiningLetterUploadedAt;
-      safeRecord = raw;
+    if (!record?.offerLetterPath) {
+      return res.json({
+        selected:          false,   // ← looks "not selected yet" to candidate
+        selectionStatus:   null,    // ← don't leak SELECTED/WAITLISTED
+        applicationStatus: app?.status || "SUBMITTED",
+        record:            null,
+      });
     }
 
-    // Get application status (to detect QUERY)
-    const app = await CandidateApplication.findOne({ where: { candidateUserId: req.user.id } });
+    const raw = record.toJSON();
+    delete raw.joiningLetterPath;
+    delete raw.joiningLetterUploadedAt;
 
     res.json({
-      selected:            true,
-      selectionStatus:     selected.status,           // SELECTED or WAITLISTED
-      applicationStatus:   app?.status || "SUBMITTED",
-      designation:         selected.designation    || null,
-      employmentType:      selected.employmentType || null,
-      department:          record?.department      || selected.department || null,
-      record:              safeRecord,
+      selected:           true,
+      selectionStatus:    selected.status,
+      waitlistedPriority: selected.waitlistPriority || null,
+      applicationStatus:  app?.status || "SUBMITTED",
+      designation:        selected.designation    || null,
+      employmentType:     selected.employmentType || null,
+      department:         record?.department      || selected.department || null,
+      record:             raw,
     });
   } catch (err) {
     console.error("ONBOARDING ERROR:", err);

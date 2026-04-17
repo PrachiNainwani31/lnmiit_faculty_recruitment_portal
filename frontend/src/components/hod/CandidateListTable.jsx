@@ -247,7 +247,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
 
         {candidates.length === 0 && (
           <div className="py-12 text-center text-gray-400 text-sm">
-            <p className="text-3xl mb-2">📋</p>No candidates uploaded yet
+            <p className="text-3xl mb-2"></p>No candidates uploaded yet
           </div>
         )}
       </div>

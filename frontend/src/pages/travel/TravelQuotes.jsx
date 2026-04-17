@@ -143,7 +143,7 @@ export default function TravelQuotes() {
                   disabled={saving === expert.id}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition"
                 >
-                  {saving === expert.id ? "Submitting…" : "Submit Quote to DOFA"}
+                  {saving === expert.id ? "Submitting…" : "Submit Quote to DoFA"}
                 </button>
               </div>
             </div>
@@ -224,7 +224,7 @@ export default function TravelQuotes() {
           <p className="text-4xl mb-3">💰</p>
           <p>No offline confirmed experts yet.</p>
           <p className="text-xs mt-2">
-            Quotes appear here once DOFA Office confirms an expert as Offline.
+            Quotes appear here once DoFA Office confirms an expert as Offline.
           </p>
         </div>
       )}

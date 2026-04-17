@@ -15,7 +15,7 @@ export default function DofaOfficeLayout() {
       <aside className="w-60 bg-[#6b0f1a] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <p className="text-white font-semibold text-sm">DOFA Office</p>
-          <p className="text-white/50 text-xs mt-0.5">Faculty Recruitment Portal</p>
+          <p className="text-white/50 text-xs mt-0.5">LNMIIT Recruitment & Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5 overflow-y-auto">
           <NavLink to="/dofa-office"               end className={navStyle}>Dashboard</NavLink>
@@ -38,7 +38,7 @@ export default function DofaOfficeLayout() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b px-6 h-14 flex items-center justify-between shadow-sm shrink-0">
-          <h2 className="font-semibold text-gray-800">DOFA Office Portal</h2>
+          <h2 className="font-semibold text-gray-800">Welcomes DoFA Office</h2>
           <span className="text-xs bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full font-medium">
             DOFA Office
           </span>

@@ -188,6 +188,33 @@ function SignatureInput({ onSignatureReady }) {
   );
 }
 
+function CaptchaGate({ onPass }) {
+  const [a] = useState(() => Math.floor(Math.random() * 10) + 1);
+  const [b] = useState(() => Math.floor(Math.random() * 10) + 1);
+  const [answer, setAnswer] = useState("");
+  const [error, setError]   = useState("");
+
+  return (
+    <div className="text-center space-y-5 py-4">
+      <p className="text-lg font-bold text-gray-800">Security Check</p>
+      <p className="text-sm text-gray-500">Please solve this to continue:</p>
+      <p className="text-3xl font-bold text-rose-700">{a} + {b} = ?</p>
+      <input type="number" value={answer} onChange={e => setAnswer(e.target.value)}
+        className="border border-gray-300 rounded-lg px-4 py-2 text-center text-lg w-32 focus:outline-none focus:ring-2 focus:ring-rose-300"
+        placeholder="?" />
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+      <button
+        onClick={() => {
+          if (parseInt(answer) === a + b) { onPass(); }
+          else { setError("Incorrect. Please try again."); setAnswer(""); }
+        }}
+        className="bg-rose-700 hover:bg-rose-800 text-white px-6 py-2 rounded-lg font-semibold text-sm transition">
+        Verify
+      </button>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════
    STEP 0 — Landing
 ══════════════════════════════════════════ */
@@ -271,7 +298,7 @@ function RegisterStep({ onBack, onSuccess }) {
     onSuccess();
   } catch (err) {
     const msg = err.response?.data?.msg || err.response?.data?.message || "";
-    // ✅ If already registered, try logging in directly
+    //  If already registered, try logging in directly
     if (err.response?.status === 400 && (msg.toLowerCase().includes("exist") || msg.toLowerCase().includes("already"))) {
       setError("This email is already registered. Please use the Login tab instead.");
       setTab("login");  // ← auto-switch to login tab
@@ -452,6 +479,7 @@ function GuestStep({ refereeId, candidateName, prefillName, prefillEmail, onBack
   const [loading,   setLoading]   = useState(false);
   const [success,   setSuccess]   = useState(false);
   const [error,     setError]     = useState("");
+  const [captchaPassed, setCaptchaPassed] = useState(false);
 
   const change = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -592,6 +620,7 @@ export default function RefereePage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
   const [step,    setStep]    = useState("landing");
+  const [captchaPassed, setCaptchaPassed] = useState(false);
 
   useEffect(() => {
     localStorage.removeItem("token");
@@ -660,6 +689,12 @@ export default function RefereePage() {
           Your reference letter for <strong>{info?.candidateName}</strong> has already been submitted.
         </p>
       </div>
+    </Wrapper>
+  );
+
+  if (!captchaPassed) return (
+    <Wrapper>
+      <CaptchaGate onPass={() => setCaptchaPassed(true)} />
     </Wrapper>
   );
 

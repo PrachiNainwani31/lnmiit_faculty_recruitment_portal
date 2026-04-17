@@ -32,8 +32,13 @@ const TYPE_COLORS = {
 
 /* ── Inline cells ── */
 function Cell({ value, onChange, type = "text", readOnly = false, placeholder = "", minWidth = "120px" }) {
+  // For number type, treat 0 as valid displayable value
+  const displayValue = (type === "number" && value === 0) ? "0" : (value ?? "");
   return (
-    <input type={type} value={value || ""} readOnly={readOnly}
+    <input
+      type={type}
+      value={displayValue}   // ✅ was: value ?? ""
+      readOnly={readOnly}
       placeholder={placeholder || (readOnly ? "—" : "")}
       onChange={e => !readOnly && onChange(e.target.value)}
       style={{ minWidth }}
@@ -156,27 +161,30 @@ export default function InterviewLogs() {
   const [saving,      setSaving]      = useState(null);
   const [exporting,   setExporting]   = useState(false);
   const [dateFilter,  setDateFilter]  = useState("");
-  // ✅ Track expert count per department row (default 2, expandable)
+  //  Track expert count per department row (default 2, expandable)
   const [expertCounts, setExpertCounts] = useState({});
+  const [dirtyRows, setDirtyRows] = useState(new Set());
 
   const getExpertCount = (hodId) => expertCounts[hodId] || 2;
   const addExpert      = (hodId) => setExpertCounts(p => ({
     ...p, [hodId]: Math.min((p[hodId] || 2) + 1, 10),
   }));
-
+  const initialCounts = {};
   const load = () => {
     setLoading(true);
-    API.get("/interview-logs")
-      .then(res => setRows(Array.isArray(res.data) ? res.data : []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+    API.get("/interview-logs").then(res => {
+        const data = Array.isArray(res.data) ? res.data : [];
+        data.forEach(r => { initialCounts[r.hodId] = r.expertCount || (r.expert3Name ? 3 : 2); });
+        setRows(data);
+        setExpertCounts(initialCounts);
+      }).catch(console.error).finally(() => setLoading(false));};
 
   useEffect(() => { load(); }, []);
 
   /* ── Cell update helpers ── */
-  const updateCell = (hodId, key, value) =>
+  const updateCell = (hodId, key, value) =>{
     setRows(prev => prev.map(r => r.hodId === hodId ? { ...r, [key]: value } : r));
+    setDirtyRows(prev => new Set(prev).add(hodId));}
 
   const updateCandDesignation = (hodId, candIdx, value) =>
     setRows(prev => prev.map(r => {
@@ -198,6 +206,7 @@ export default function InterviewLogs() {
             ei === expIdx ? { ...e, editedToDate: value } : e
           ),
         };
+        setDirtyRows(prev => new Set(prev).add(hodId));
       });
       return { ...r, candidateExperiences: updated };
     }));
@@ -205,12 +214,12 @@ export default function InterviewLogs() {
   const handleSave = async (row) => {
     try {
       setSaving(row.hodId);
-      await API.post("/interview-logs", row);
+      await API.post("/interview-logs", {...row,expertCount: getExpertCount(row.hodId)});
+      setDirtyRows(prev => { const s = new Set(prev); s.delete(row.hodId); return s; });
       load();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to save");
-      setSaving(null);
-    }
+    }finally{setSaving(null);}
   };
 
   const handleExport = async () => {
@@ -383,7 +392,11 @@ export default function InterviewLogs() {
                                 onChange={v => updateCell(row.hodId, key, v)} />
                             ) : (
                               <Cell type={type} readOnly={readOnly}
-                                value={type === "date" && row[key] ? row[key].toString().slice(0,10) : row[key]}
+                                value={
+                                  type === "date" && row[key]
+                                    ? row[key].toString().slice(0,10)
+                                    : (type === "number" ? (row[key] ?? 0) : row[key])  // ← explicit 0 for numbers
+                                }
                                 onChange={v => updateCell(row.hodId, key, v)} />
                             )}
                           </td>
@@ -480,8 +493,12 @@ export default function InterviewLogs() {
                         {isFirst && (
                           <td rowSpan={rowSpan} className="px-2 py-2 text-center align-middle">
                             <button onClick={() => handleSave(row)} disabled={isSaving}
-                              className="bg-[#6b0f1a] hover:bg-rose-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-60 transition whitespace-nowrap">
-                              {isSaving ? "Saving…" : "Save"}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-60 transition whitespace-nowrap text-white ${
+                                dirtyRows.has(row.hodId)
+                                  ? "bg-amber-600 hover:bg-amber-700"   // ← unsaved changes = amber
+                                  : "bg-[#6b0f1a] hover:bg-rose-800"   // ← saved = dark red
+                              }`}>
+                              {isSaving ? "Saving…" : dirtyRows.has(row.hodId) ? "● Save" : "Saved ✓"}
                             </button>
                           </td>
                         )}

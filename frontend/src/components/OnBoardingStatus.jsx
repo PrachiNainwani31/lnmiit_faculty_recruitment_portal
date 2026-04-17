@@ -35,13 +35,14 @@ export default function OnboardingStatus() {
     {
       label:  "Selected for position",
       done:   true,
-      // ✅ Show designation + employmentType from selection record
+      //Show designation + employmentType from selection record
       detail: [
+        data.selectionStatus==="WAITLISTED" ? (data.waitlistedPriority ? `Waitlisted #${data.waitlistedPriority}`:"Waitlisted") :null,
         data.designation     || "Faculty Position",
         data.employmentType  ? `(${data.employmentType})` : null,
         data.department      ? `· ${data.department}`     : null,
       ].filter(Boolean).join(" "),
-      color: "green",
+      color: data.selectionStatus==="WAITLISTED" ? "amber" : "green",
     },
     {
       label:     "Offer letter",
@@ -123,6 +124,7 @@ export default function OnboardingStatus() {
 
   const colorCls = {
     green:  "bg-green-100 text-green-700 border-green-300",
+    amber:  "bg-amber-100 text-amber-700 border-amber-300",
     blue:   "bg-blue-100 text-blue-700 border-blue-300",
     indigo: "bg-indigo-100 text-indigo-700 border-indigo-300",
     pink:   "bg-pink-100 text-pink-700 border-pink-300",

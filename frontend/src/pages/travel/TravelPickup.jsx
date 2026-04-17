@@ -51,7 +51,7 @@ export default function TravelPickup() {
 
   if (items.length === 0) return (
     <div className="bg-white rounded-xl shadow p-10 text-center text-gray-400">
-      <p className="text-4xl mb-3">🚗</p>
+      
       <p>No pickup/drop-off details from DOFA Office yet.</p>
       <p className="text-xs mt-2">Details will appear here once DOFA Office enters them.</p>
     </div>
@@ -60,7 +60,6 @@ export default function TravelPickup() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-gray-800">Pickup / Drop-off</h2>
-
       {items.map(({ expert, travel }) => {
         const pd = travel.pickupDrop;
         const form = driverForms[expert.id] || {};

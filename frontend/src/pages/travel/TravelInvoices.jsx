@@ -43,7 +43,6 @@ export default function TravelInvoices() {
 
   if (items.length === 0) return (
     <div className="bg-white rounded-xl shadow p-10 text-center text-gray-400">
-      <p className="text-4xl mb-3">🧾</p>
       <p>No tickets uploaded yet. Invoices can be added after ticket upload.</p>
     </div>
   );

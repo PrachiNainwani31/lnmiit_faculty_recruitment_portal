@@ -451,16 +451,27 @@ const handleCertUpload = async (index, file) => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               {[
-                {field:"name",label:"Full Name",span:1},{field:"designation",label:"Designation",span:1},
+                { field:"salutation", label:"Salutation", span:1 },{field:"name",label:"Full Name",span:1},{field:"designation",label:"Designation",span:1},
                 {field:"department",label:"Department",span:1},{field:"institute",label:"Institute",span:1},
                 {field:"email",label:"Email",span:2},
-              ].map(({field,label,span})=>(
-                <div key={field} className={span===2?"col-span-2":""}>
-                  <label className={labelCls}>{label}{i<3&&<span className="text-red-500"> *</span>}</label>
-                  <input value={ref[field]||""} placeholder={`Enter ${label}`} className={inputCls}
-                    disabled={isReadOnly}
-                    onChange={e=>!isReadOnly&&handleRefereeChange(i,field,e.target.value)}
-                    onBlur={()=>!isReadOnly&&saveNow()} />
+              ].map(({ field, label, span }) => (
+                <div key={field} className={span === 2 ? "col-span-2" : ""}>
+                  <label className={labelCls}>{label}{i < 3 && <span className="text-red-500"> *</span>}</label>
+                  {field === "salutation" ? (
+                    <select value={ref[field] || "Prof."} className={inputCls}
+                      disabled={isReadOnly}
+                      onChange={e => !isReadOnly && handleRefereeChange(i, field, e.target.value)}
+                      onBlur={() => !isReadOnly && saveNow()}>
+                      {["Prof.", "Dr.", "Mr.", "Ms.", "Mrs."].map(s => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input value={ref[field] || ""} placeholder={`Enter ${label}`} className={inputCls}
+                      disabled={isReadOnly}
+                      onChange={e => !isReadOnly && handleRefereeChange(i, field, e.target.value)}
+                      onBlur={() => !isReadOnly && saveNow()} />
+                  )}
                 </div>
               ))}
             </div>

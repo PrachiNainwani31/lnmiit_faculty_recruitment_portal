@@ -34,18 +34,30 @@ exports.publishSelection = async (req, res) => {
     if (!Array.isArray(selections) || selections.length === 0)
       return res.status(400).json({ message: "No selections provided" });
 
+    // Track waitlist priority per department
+    const waitlistCounts = {};
+
     for (const s of selections) {
-      const status = VALID_STATUSES.includes(s.status) ? s.status : "NOT_SELECTED";
+      const status   = VALID_STATUSES.includes(s.status) ? s.status : "NOT_SELECTED";
       const hodCycle = await getCurrentCycle(s.hodId);
+
+      // Compute waitlist priority
+      let waitlistPriority = null;
+      if (status === "WAITLISTED") {
+        waitlistCounts[s.department] = (waitlistCounts[s.department] || 0) + 1;
+        waitlistPriority = s.waitlistPriority || waitlistCounts[s.department];
+      }
+
       await SelectedCandidate.upsert({
-        candidateId:    s.candidateId,
-        cycle:          hodCycle?.cycle || s.cycle,
-        department:     s.department,
-        hodId:          s.hodId,
-        selectedById:   req.user.id,
+        candidateId:      s.candidateId,
+        cycle:            hodCycle?.cycle || s.cycle,
+        department:       s.department,
+        hodId:            s.hodId,
+        selectedById:     req.user.id,
         status,
-        designation:    s.designation    || "",
-        employmentType: s.employmentType || "",
+        designation:      s.designation    || "",
+        employmentType:   s.employmentType || "",
+        waitlistPriority, // ← now correctly included
       });
 
       if (status === "SELECTED" || status === "WAITLISTED") {

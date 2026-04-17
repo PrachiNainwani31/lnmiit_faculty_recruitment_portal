@@ -97,6 +97,8 @@ function RegisterUser({ onRefresh }) {
     if (!form.role) e.role = "Role is required";
     if (form.role === "HOD" && !form.department) e.department = "Department is required for HOD";
     if (form.role === "OTHER" && !form.otherRole.trim()) e.otherRole = "Please specify role";
+    if (form.department === "Other" && !form.otherDepartment?.trim())
+      e.otherDepartment = "Please specify department";
     return e;
   };
 
@@ -191,11 +193,22 @@ function RegisterUser({ onRefresh }) {
             onChange={e => set("department", e.target.value)}
           >
             <option value="">— Select Department (if applicable) —</option>
-            {DEPARTMENTS.map(d => (
+            {DEPARTMENTS.filter(d => d !== "Other").map(d => (
               <option key={d} value={d}>{d}</option>
             ))}
+            <option value="Other">Other</option>
           </select>
         </Field>
+        {form.department === "Other" && (
+          <Field label="Specify Department" required error={errors.otherDepartment}>
+            <input
+              className={inputCls(errors.otherDepartment)}
+              placeholder="Enter department name"
+              value={form.otherDepartment || ""}
+              onChange={e => set("otherDepartment", e.target.value)}
+            />
+          </Field>
+        )}
       </div>
 
       <div className="flex justify-end">

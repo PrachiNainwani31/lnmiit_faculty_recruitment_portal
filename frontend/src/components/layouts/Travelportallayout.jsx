@@ -17,11 +17,11 @@ export default function TravelPortalLayout() {
           <p className="text-white/50 text-xs mt-0.5">Registrar Office</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
-          <NavLink to="/travel"              end className={navStyle}>📋 Expert Travel</NavLink>
-          <NavLink to="/travel/quotes"          className={navStyle}>💰 Quotes</NavLink>
-          <NavLink to="/travel/tickets"         className={navStyle}>🎫 Tickets</NavLink>
-          <NavLink to="/travel/invoices"        className={navStyle}>🧾 Invoices</NavLink>
-          <NavLink to="/travel/pickup"          className={navStyle}>🚗 Pickup / Drop-off</NavLink>
+          <NavLink to="/travel"              end className={navStyle}>Expert Travel</NavLink>
+          <NavLink to="/travel/quotes"          className={navStyle}>Quotes</NavLink>
+          <NavLink to="/travel/tickets"         className={navStyle}>Tickets</NavLink>
+          <NavLink to="/travel/invoices"        className={navStyle}>Invoices</NavLink>
+          <NavLink to="/travel/pickup"          className={navStyle}>Pickup / Drop-off</NavLink>
         </nav>
         <button
           onClick={() => { localStorage.clear(); navigate("/login"); }}

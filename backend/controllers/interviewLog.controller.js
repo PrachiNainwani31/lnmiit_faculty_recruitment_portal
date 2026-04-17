@@ -96,7 +96,9 @@ async function getPrefill(hodId,cycleString) {
     noOfApplications:        stats?.totalApplications  || 0,
     noOfIlscShortlisted: stats?.ilscShortlisted     || 0,
     noOfDlscShortlisted: stats?.dlscShortlisted     || 0,
-    noForPersonalInterview:  appearedCount,
+    noForTeachingPresentation:appearedCount??0,
+    noShortlistedForInterview: appearedCount?? 0,
+    noForPersonalInterview:  appearedCount??0,
     expert1Name:   experts[0]?.fullName    || "",
     expert1Detail: experts[0] ? `${experts[0].designation}, ${experts[0].institute}` : "",
     expert2Name:   experts[1]?.fullName    || "",
@@ -141,10 +143,12 @@ exports.getLogs = async (req, res) => {
         cycleLabel:rc.cycle,
         // Always use fresh prefill for read-only portal data
         interviewDate:           prefill.interviewDate,
-        noOfApplications:        saved.noOfApplications        ?? prefill.noOfApplications,
-        noOfIlscShortlisted: saved.noOfIlscShortlisted ?? prefill.noOfIlscShortlisted,
-        noOfDlscShortlisted: saved.noOfDlscShortlisted ?? prefill.noOfDlscShortlisted,
-        noForPersonalInterview:  saved.noForPersonalInterview  ?? prefill.noForPersonalInterview,
+        noOfApplications:        saved.noOfApplications        ?? prefill.noOfApplications??0,
+        noOfIlscShortlisted: saved.noOfIlscShortlisted ?? prefill.noOfIlscShortlisted??0,
+        noOfDlscShortlisted: saved.noOfDlscShortlisted ?? prefill.noOfDlscShortlisted??0,
+        noForTeachingPresentation: saved.noForTeachingPresentation ?? prefill.noForTeachingPresentation??0,
+        noShortlistedForInterview: saved.noShortlistedForInterview ?? prefill.noShortlistedForInterview??0,
+        noForPersonalInterview:  saved.noForPersonalInterview  ?? prefill.noForPersonalInterview??0,
         selectedCandidateName:   saved.selectedCandidateName   ?? prefill.selectedCandidateName,
         waitlistedCandidateName: saved.waitlistedCandidateName ?? prefill.waitlistedCandidateName,
         expert1Name:   saved.expert1Name   || prefill.expert1Name,
@@ -190,6 +194,7 @@ exports.saveLog = async (req, res) => {
       noForTeachingPresentation: body.noForTeachingPresentation ?? null,
       noShortlistedForInterview: body.noShortlistedForInterview ?? null,
       noForPersonalInterview:    body.noForPersonalInterview    ?? null,
+      expertCount: body.expertCount ?? 2,
       expert1Name:               body.expert1Name               || null,
       expert1Detail:             body.expert1Detail             || null,
       expert2Name:               body.expert2Name               || null,
@@ -198,7 +203,7 @@ exports.saveLog = async (req, res) => {
       expert3Detail:             body.expert3Detail             || null,
       selectedCandidateName:     body.selectedCandidateName     || null,
       waitlistedCandidateName:   body.waitlistedCandidateName   || null,
-      // ✅ Store the full candidateExperiences (with editedToDate from DOFA)
+      // Store the full candidateExperiences (with editedToDate from DOFA)
       candidateExperiences:      body.candidateExperiences      || [],
       evaluationSheetLink:       body.evaluationSheetLink       || null,
       advCopyDate:               body.advCopyDate               || null,
@@ -218,56 +223,62 @@ exports.saveLog = async (req, res) => {
 /* ════════════════════════════════════
    EXPORT — flat rows for Excel
 ════════════════════════════════════ */
+// interviewLog.controller.js — replace exportLogs
 exports.exportLogs = async (req, res) => {
   try {
     const cycles = await RecruitmentCycle.findAll({ order: [["createdAt", "DESC"]] });
-    const logs   = await InterviewLog.findAll();    const logMap = {};
+    const logs   = await InterviewLog.findAll();
+    const logMap = {};
     logs.forEach(l => { logMap[`${l.hodId}__${l.cycle}`] = l.toJSON(); });
 
     const rows = [];
 
     for (const rc of cycles) {
       if (!rc.hodId) continue;
-      const prefill = await getPrefill(rc.hodId,rc.cycle);
+      const prefill = await getPrefill(rc.hodId, rc.cycle);
       const saved   = logMap[`${rc.hodId}__${rc.cycle}`] || {};
       const merged  = { ...prefill, ...saved };
 
-      // Flatten candidateExperiences for Excel — one row per candidate+type
-      const candidateExps = (merged.candidateExperiences || []);
-      const allExpRows = [];
-      candidateExps.forEach(sc => {
-        (sc.experiences || []).forEach(e => {
-          const effectiveTo = e.editedToDate || e.toDate || "";
-          allExpRows.push(
-            `${sc.candidateName} [${sc.status}] — ${e.type}: ${e.fromDate || "?"} → ${effectiveTo || "?"}`
-          );
-        });
-      });
+      const candidates = merged.candidateExperiences || [];
 
-      rows.push({
-        "Date of Faculty Interview": merged.interviewDate || "",
-        "Department":                merged.department    || "",
-        "For the Post of":           merged.forThePostOf  || "",
-        "No. of Applications":       merged.noOfApplications || 0,
-        "Ilsc Shortlisted":    merged.noOfIlscShortlisted || 0,
-        "Dlsc Shortlisted":          merged.noOfDlscShortlisted || 0,
-        "Present for Teaching":      merged.noForTeachingPresentation || 0,
-        "Shortlisted for Interview": merged.noShortlistedForInterview || 0,
-        "Present for Personal Interview": merged.noForPersonalInterview || 0,
-        "Expert 1 Name":   merged.expert1Name   || "",
-        "Expert 1 Detail": merged.expert1Detail || "",
-        "Expert 2 Name":   merged.expert2Name   || "",
-        "Expert 2 Detail": merged.expert2Detail || "",
-        "Expert 3 Name":   merged.expert3Name   || "",
-        "Expert 3 Detail": merged.expert3Detail || "",
-        "Selected Candidate":        merged.selectedCandidateName   || "",
-        "Waitlisted Candidate":      merged.waitlistedCandidateName || "",
-        "Experience Details":        allExpRows.join(" | "),
-        "Evaluation Sheet":          merged.evaluationSheetLink || "",
-        "Adv. Copy Date":            merged.advCopyDate         || "",
-        "Adv. Copy Link":            merged.advCopyLink         || "",
-        "Committee Link":            merged.committeeLink        || "",
-        "Remark":                    merged.remark               || "",
+      // One row per candidate (or one blank row if no candidates)
+      const candRows = candidates.length > 0 ? candidates : [null];
+
+      candRows.forEach(cand => {
+        const expParts = [];
+        (cand?.experiences || []).forEach(e => {
+          const to = e.editedToDate || e.toDate || "?";
+          expParts.push(`${e.type}: ${e.fromDate || "?"} → ${to} (${e.organization || "—"})`);
+        });
+
+        rows.push({
+          "Date of Faculty Interview":      merged.interviewDate || "",
+          "Department":                     merged.department    || "",
+          "Candidate Name":                 cand?.candidateName  || "-No candidate selected-",
+          "Selection Status":               cand?.status         || "",
+          "For the Post of":                cand?.designation    || merged.forThePostOf || "",
+          "Total Applications":             merged.noOfApplications ?? 0,
+          "ILSC Shortlisted":               merged.noOfIlscShortlisted ?? 0,
+          "DLSC Shortlisted":               merged.noOfDlscShortlisted ?? 0,
+          "Present for Teaching":           merged.noForTeachingPresentation ?? 0,
+          "Shortlisted for Interview":      merged.noShortlistedForInterview ?? 0,
+          "Present for Personal Interview": merged.noForPersonalInterview ?? 0,
+          "Expert 1 Name":                  merged.expert1Name   || "",
+          "Expert 1 Detail":                merged.expert1Detail || "",
+          "Expert 2 Name":                  merged.expert2Name   || "",
+          "Expert 2 Detail":                merged.expert2Detail || "",
+          // Only include expert3 if actually filled
+          ...((merged.expertCount >= 3 && merged.expert3Name) ? {
+            "Expert 3 Name":   merged.expert3Name   || "",
+            "Expert 3 Detail": merged.expert3Detail || "",
+          } : {}),
+          "Experience Details":             expParts.join(" | ") || "",
+          "Evaluation Sheet":               merged.evaluationSheetLink || "",
+          "Adv. Copy Date":                 merged.advCopyDate   || "",
+          "Adv. Copy Link":                 merged.advCopyLink   || "",
+          "Committee Link":                 merged.committeeLink || "",
+          "Remark":                         merged.remark        || "",
+        });
       });
     }
 

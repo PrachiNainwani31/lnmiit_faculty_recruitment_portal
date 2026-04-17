@@ -145,8 +145,13 @@ function CandidateRecord({ record, onRefresh }) {
           <p className="text-xs text-gray-400">{c?.email}</p>
         </div>
 
-        {/* ✅ SELECTED / WAITLISTED tag */}
+        {/*SELECTED / WAITLISTED tag */}
         <SelectionTag status={record.selectionStatus} />
+          {record.selectionStatus === "WAITLISTED" && record.waitlistPriority && (
+            <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full font-medium">
+              Waitlist #{record.waitlistPriority}
+            </span>
+          )}
 
         <div className="flex gap-2 flex-wrap justify-end">
           <StatusBadge done={step1Done} label="Offer sent" />
@@ -156,21 +161,6 @@ function CandidateRecord({ record, onRefresh }) {
         </div>
         <span className="text-gray-400 text-xs ml-2">{open ? "▲" : "▼"}</span>
       </div>
-
-      <button
-        onClick={async () => {
-          if (!window.confirm("Close this cycle permanently? No further edits will be allowed by anyone.")) return;
-          // Get hodId from first record
-          const hodId = depts[0]?.records[0]?.hodId;
-          if (!hodId) return alert("No active cycle found");
-          await API.post("/establishment/close-cycle", { hodId });
-          alert("Cycle closed.");
-          load();
-        }}
-        className="text-xs bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium"
-      >
-        🔒 Close Cycle
-      </button>
 
       {open && (
         <div className="px-5 pb-6 bg-gray-50 border-t border-gray-100 space-y-6 pt-5">
@@ -250,6 +240,24 @@ function CandidateRecord({ record, onRefresh }) {
                 <button onClick={saveJoiningDate} disabled={saving || !step1Done}
                   className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg text-sm disabled:opacity-60">
                   {step2Done ? "Update" : "Save"}
+                </button>
+                <button
+                  onClick={async () => {
+                    const reason = window.prompt("Reason candidate did not join (optional):");
+                    if (reason === null) return; // cancelled
+                    try {
+                      setSaving(true);
+                      await API.post("/establishment/not-joined", { candidateId: c.id, reason });
+                      alert("Marked as not joined. All parties notified.");
+                      onRefresh();
+                    } catch (err) {
+                      alert(err.response?.data?.message || "Failed");
+                    } finally { setSaving(false); }
+                  }}
+                  disabled={saving}
+                  className="bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 px-4 py-1.5 rounded-lg text-sm disabled:opacity-60"
+                >
+                  ✗ Did Not Join
                 </button>
               </div>
             </div>
@@ -464,7 +472,10 @@ export default function EstablishmentPage() {
         const selMap = {};
         (Array.isArray(selRes.data) ? selRes.data : []).forEach(s => {
           const id = s.candidateId || s.candidate?.id;
-          if (id) selMap[id] = s.status;
+          if (id) selMap[id] = {
+            status:          s.status,
+            waitlistPriority: s.waitlistPriority || null,  // ← add
+          };
         });
 
         // Merge selectionStatus into each record
@@ -472,7 +483,8 @@ export default function EstablishmentPage() {
           ...dept,
           records: (dept.records || []).map(r => ({
             ...r,
-            selectionStatus: selMap[r.candidate?.id] || "SELECTED",
+            selectionStatus: selMap[r.candidate?.id]?.status || "NOT_SELECTED",
+            waitlistPriority: selMap[r.candidate?.id]?.waitlistPriority || null,
           })),
         }));
 
@@ -549,7 +561,21 @@ export default function EstablishmentPage() {
                 <span className="text-amber-200 font-semibold">
                   ⟳ {records.filter(r => r.selectionStatus === "WAITLISTED").length} waitlisted
                 </span>
-              )}
+              )}        
+              <button
+                onClick={async () => {
+                  if (!window.confirm("Close this cycle permanently? No further edits will be allowed by anyone.")) return;
+                  // Get hodId from first record
+                  const hodId = depts[0]?.records[0]?.hodId;
+                  if (!hodId) return alert("No active cycle found");
+                  await API.post("/establishment/close-cycle", { hodId });
+                  alert("Cycle closed.");
+                  load();
+                }}
+                className="text-xs bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                🔒 Close Cycle
+              </button>
             </div>
           </div>
           {records.map(r => (

@@ -4,7 +4,7 @@ const FROM_NAME  = process.env.EMAIL_FROM_NAME || "LNMIIT Recruitment Portal";
 const wrap = (body) => `
 <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:30px">
   <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-    <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment Portal</h2>
+    <h2 style="margin:0;font-size:18px">LNMIIT Recruitment & Onboarding Portal</h2>
   </div>
   <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;line-height:1.7;color:#333">
     ${body}
@@ -33,8 +33,8 @@ const btn = (label, url) =>
 exports.hodSubmittedToDofa = ({ department, candidateCount, expertCount }) => ({
   subject: `Request to Schedule Interview — ${department} Department`,
   html: wrap(`
-    <p>Dear DOFA Team,</p>
-    <p>The <strong>${department}</strong> department HOD has submitted their recruitment data for the current cycle.</p>
+    <p>Dear Dean of Faculty Affairs,</p>
+    <p>The HoD of <strong>${department}</strong> department has submitted the candidates shortlisted in ILSC for the next cycle of interviews.</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
       <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidates submitted</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateCount}</td></tr>
@@ -53,8 +53,8 @@ exports.hodSubmittedToDofa = ({ department, candidateCount, expertCount }) => ({
 exports.dofaQueryToHod = ({ hodName, department, comment }) => ({
   subject: `Notification for Request for Change/Comments — ${department}`,
   html: wrap(`
-    <p>Dear ${hodName || "HOD"},</p>
-    <p>The DOFA team has reviewed your submission for the <strong>${department}</strong> department 
+    <p>Dear ${hodName || "HoD"},</p>
+    <p>The Dean of Faculty Affairs has reviewed your submission for the <strong>${department}</strong> department 
     and has raised a query that requires your attention.</p>
     <div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:12px 16px;margin:15px 0;border-radius:0 6px 6px 0">
       <p style="margin:0;font-style:italic;color:#92400e">"${comment}"</p>
@@ -71,9 +71,9 @@ exports.dofaQueryToHod = ({ hodName, department, comment }) => ({
 exports.hodResubmittedToDofa = ({ department }) => ({
   subject: `Notification for Changes Requested — ${department} Department`,
   html: wrap(`
-    <p>Dear DOFA Team,</p>
-    <p>The HOD of <strong>${department}</strong> department has addressed your query 
-    and resubmitted their recruitment data for review.</p>
+    <p>Dear Dean of Faculty Affairs,</p>
+    <p>The HoD of <strong>${department}</strong> department has addressed your query 
+    and resubmitted the data for review.</p>
     ${btn("Review Updated Submission", `${PORTAL_URL}/dofa/dashboard`)}
     <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
   `),
@@ -86,8 +86,8 @@ exports.hodResubmittedToDofa = ({ department }) => ({
 exports.expertInvitationToDofa = ({ expertName, department, expertEmail }) => ({
   subject: `Expert Added for Interview — ${department}`,
   html: wrap(`
-    <p>Dear DOFA Team,</p>
-    <p>The <strong>${department}</strong> HOD has added an expert for the upcoming interview panel.</p>
+    <p>Dear Dean of Faculty Affairs,</p>
+    <p>The HoD of<strong>${department}</strong> department has added the external expert details for the upcoming interview panel.</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
       <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Expert Name</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${expertName}</td></tr>
@@ -123,8 +123,8 @@ exports.expertInvitationToExpert = ({ expertName, department, interviewDate, por
 exports.candidateApplicationSubmitted = ({ candidateName, department, email }) => ({
   subject: `New Application Received — ${candidateName} (${department})`,
   html: wrap(`
-    <p>Dear DOFA Office Team,</p>
-    <p>A new faculty application has been submitted and is ready for document verification.</p>
+    <p>Dear DoFA Office,</p>
+    <p>A candidate has filled the document submission form for your review.</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
       <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidate Name</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateName}</td></tr>
@@ -169,9 +169,9 @@ exports.documentRemarkToCandidate = ({ candidateName, issues }) => ({
 exports.candidateResubmitted = ({ candidateName, department }) => ({
   subject: `Remarks Response — ${candidateName} Resubmitted Application`,
   html: wrap(`
-    <p>Dear DOFA Office Team,</p>
-    <p><strong>${candidateName}</strong> (${department || "—"}) has addressed your document remarks 
-    and resubmitted their application for review.</p>
+    <p>Dear DoFA Office,</p>
+    <p><strong>${candidateName}</strong> (${department || "—"}) has addressed your remarks 
+    and resubmitted the application for review.</p>
     ${btn("Review Updated Documents", `${PORTAL_URL}/dofa-office/document-tracking`)}
     <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
   `),
@@ -184,9 +184,9 @@ exports.refereeInvitation = ({ refereeName, candidateName, portalLink }) => ({
   subject: `Reference Letter Request — ${candidateName}, LNMIIT`,
   html: wrap(`
     <p>Dear ${refereeName},</p>
-    <p><strong>${candidateName}</strong> has applied for a faculty position at LNMIIT and has 
+    <p><strong>${candidateName}</strong> has applied for the faculty position at LNMIIT, Jaipur and has 
     listed you as a referee.</p>
-    <p>We request you to kindly submit your reference letter through the secure portal link below.</p>
+    <p>We request you to kindly submit your reference letter on official letterhead of your organization/institute using  the secure portal link below.</p>
     ${btn("Submit Reference Letter", portalLink)}
     <p>This link is unique to you. Please do not share it.</p>
     <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>

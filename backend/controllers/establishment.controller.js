@@ -35,6 +35,7 @@ exports.getOnboardingRecords = async (req, res) => {
         ...r.toJSON(),
         interviewComplete: sel?.interviewComplete || false,
         selectionStatus:   sel?.status            || "SELECTED",
+         waitlistPriority:  sel?.waitlistPriority    || null,
         designation:       sel?.designation       || "",
         employmentType:    sel?.employmentType     || "",
       });
@@ -373,5 +374,59 @@ exports.closeCycle = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: "Failed to close cycle" });
+  }
+};
+
+exports.markNotJoined = async (req, res) => {
+  try {
+    const { candidateId, reason } = req.body;
+
+    await OnboardingRecord.update(
+      { joiningComplete: false, notJoined: true, notJoinedReason: reason || null,
+        notJoinedAt: new Date() },
+      { where: { candidateId } }
+    );
+
+    const record    = await OnboardingRecord.findOne({ where: { candidateId } });
+    const candidate = await Candidate.findByPk(candidateId);
+
+    // Notify all relevant roles
+    const notifyRoles = ["HOD", "DOFA", "DOFA_OFFICE", "LUCS", "ESTATE", "ESTABLISHMENT"];
+    const recipients  = await User.findAll({ where: { role: notifyRoles } });
+    if (record?.hodId) {
+      const hod = await User.findByPk(record.hodId);
+      if (hod && !recipients.find(u => u.id === hod.id)) recipients.push(hod);
+    }
+
+    for (const u of recipients) {
+      await sendEmail(
+        u.email,
+        `Candidate Did Not Join — ${candidate?.fullName}`,
+        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
+          <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
+            <h2 style="margin:0">LNMIIT Recruitment & Onboarding Portal</h2>
+          </div>
+          <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
+            <p>Dear ${u.name || u.role},</p>
+            <p><strong>${candidate?.fullName || "The candidate"}</strong> 
+            (${record?.department || "—"}) has not joined as expected.</p>
+            ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
+            <p>Please take necessary action if required.</p>
+            <p>Regards,<br><strong>Establishment Section, LNMIIT</strong></p>
+          </div>
+        </div>`
+      ).catch(console.error);
+    }
+
+    await log({
+      user: req.user, action: "CANDIDATE_NOT_JOINED",
+      entity: "OnboardingRecord", entityId: candidateId,
+      description: `${candidate?.fullName} did not join. Reason: ${reason || "Not specified"}`, req,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("markNotJoined:", err);
+    res.status(500).json({ message: "Failed" });
   }
 };

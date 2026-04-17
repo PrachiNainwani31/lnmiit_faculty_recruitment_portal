@@ -15,16 +15,16 @@ const SelectedCandidate = sequelize.define(
 
     selectedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 
-    // ✅ FIX: added NOT_SELECTED — controller sends this for unchecked candidates
+    // FIX: added NOT_SELECTED — controller sends this for unchecked candidates
     status: {
       type: DataTypes.ENUM("SELECTED", "NOT_SELECTED", "WAITLISTED", "REJECTED"),
       defaultValue: "SELECTED",
     },
 
-    // ✅ FIX: added designation + employmentType — set by DOFA Office during selection
+    // FIX: added designation + employmentType — set by DOFA Office during selection
     designation:    { type: DataTypes.STRING(200), defaultValue: "" },
     employmentType: { type: DataTypes.STRING(100), defaultValue: "" },
-
+    waitlistPriority: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
     interviewComplete:    { type: DataTypes.BOOLEAN, defaultValue: false },
     interviewCompletedAt: { type: DataTypes.DATE },
   },

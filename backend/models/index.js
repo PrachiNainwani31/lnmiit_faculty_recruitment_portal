@@ -24,6 +24,7 @@ const OnboardingRecord   = require("./OnboardingRecord");
 const RecruitmentCycle   = require("./RecruitmentCycle");
 const SelectedCandidate  = require("./SelectedCandidate");
 const ActivityLog= require("./ActivityLog");
+const PortalDeadline = require("./PortalDeadline");
 
 // ─── Associations ─────────────────────────────────────────────────────────────
 
@@ -88,4 +89,5 @@ module.exports = {
   RecruitmentCycle,
   SelectedCandidate,
   ActivityLog,
+  PortalDeadline,
 };

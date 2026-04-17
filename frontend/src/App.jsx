@@ -118,6 +118,7 @@ export default function App() {
       <Route path="/establishment" element={<ProtectedRoute role="ESTABLISHMENT"><EstablishmentLayout /></ProtectedRoute>}>
         <Route index             element={<EstablishmentPage />} />
         <Route path="onboarding" element={<EstablishmentPage />} />
+        <Route path="room-allotment" element={<EstablishmentPage />} />
       </Route>
 
       {/* Estate */}

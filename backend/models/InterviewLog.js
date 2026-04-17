@@ -18,7 +18,8 @@ const InterviewLog = sequelize.define(
     noForTeachingPresentation: { type: DataTypes.INTEGER.UNSIGNED },
     noShortlistedForInterview: { type: DataTypes.INTEGER.UNSIGNED },
     noForPersonalInterview:    { type: DataTypes.INTEGER.UNSIGNED },
-
+ 
+    expertCount: { type: DataTypes.INTEGER.UNSIGNED, defaultValue: 2 },
     expert1Name:   { type: DataTypes.STRING(300) },
     expert1Detail: { type: DataTypes.STRING(400) },
     expert2Name:   { type: DataTypes.STRING(300) },
@@ -29,17 +30,6 @@ const InterviewLog = sequelize.define(
     selectedCandidateName:   { type: DataTypes.TEXT },
     waitlistedCandidateName: { type: DataTypes.TEXT },
 
-    // ✅ NEW: replaces totalExpFrom/totalExpTo scalar fields
-    // Stores per-candidate, per-experience-type breakdown.
-    // Shape: [
-    //   {
-    //     candidateId, candidateName, status ("SELECTED"|"WAITLISTED"),
-    //     experiences: [
-    //       { type:"Research"|"Teaching"|"Industry", organization, fromDate, toDate,
-    //         editedToDate: <DOFA-editable, persisted here> }
-    //     ]
-    //   }
-    // ]
     candidateExperiences: {
       type:         DataTypes.JSON,
       defaultValue: [],

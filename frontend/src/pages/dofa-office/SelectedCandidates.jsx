@@ -121,7 +121,7 @@ export default function SelectCandidates() {
         const info   = extraInfo[c.id] || {};
         const status = selections[c.id] || "NOT_SELECTED";
         payload.push({ candidateId: c.id, status, hodId, department: dept,
-          designation: info.designation || "", employmentType: info.employmentType || "" });
+          designation: info.designation || "", employmentType: info.employmentType || "" ,waitlistPriority: info.waitlistPriority ? parseInt(info.waitlistPriority) : null,});
       });
     });
     try {
@@ -260,10 +260,16 @@ export default function SelectCandidates() {
                   <div className={`px-14 pb-4 border-t grid grid-cols-2 gap-3 pt-3 ${
                     isSelected ? "bg-green-50 border-green-100" : "bg-amber-50 border-amber-100"
                   }`}>
-                    {/* ✅ Tag shown in the detail panel too */}
-                    <div className="col-span-2 mb-1">
+                    <div className="col-span-2 mb-1 flex items-center gap-2">
                       <SelectionTag status={status} />
+                      {/* ✅ Show waitlist priority badge next to tag */}
+                      {isWaitlisted && info.waitlistPriority && (
+                        <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full font-semibold">
+                          Waitlisted #{info.waitlistPriority}
+                        </span>
+                      )}
                     </div>
+
                     <div>
                       <label className={lbl}>Designation / Position Offered</label>
                       <input className={`${inputCls} ${interviewDone ? "bg-gray-100" : ""}`}
@@ -272,6 +278,7 @@ export default function SelectCandidates() {
                         value={info.designation || ""}
                         onChange={e => setExtra(c.id, "designation", e.target.value)} />
                     </div>
+
                     <div>
                       <label className={lbl}>Type of Employment</label>
                       <select className={`${inputCls} ${interviewDone ? "bg-gray-100" : ""}`}
@@ -285,6 +292,33 @@ export default function SelectCandidates() {
                         <option value="Adjunct">Adjunct</option>
                       </select>
                     </div>
+
+                    {/* ✅ Waitlist priority — only for waitlisted */}
+                    {isWaitlisted && (
+                      <div className="col-span-2">
+                        <label className={lbl}>
+                          Waitlist Priority
+                          <span className="text-gray-400 font-normal normal-case ml-1">
+                            (1 = highest priority, will be shown as Waitlisted #1)
+                          </span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number" min="1" max="20"
+                            className={`${inputCls} w-24 ${interviewDone ? "bg-gray-100" : ""}`}
+                            placeholder="1"
+                            readOnly={interviewDone}
+                            value={info.waitlistPriority || ""}
+                            onChange={e => setExtra(c.id, "waitlistPriority", e.target.value)}
+                          />
+                          {info.waitlistPriority && (
+                            <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-3 py-1.5 rounded-full font-semibold">
+                              Will show as: Waitlisted #{info.waitlistPriority}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

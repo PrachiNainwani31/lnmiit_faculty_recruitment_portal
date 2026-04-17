@@ -5,10 +5,10 @@ import { getCurrentCycle } from "../../api/hodApi";
 import NotificationBell from "../../components/notifications/NotificationBell";
 
 const NAV_ITEMS = [
-  { to: "/hod",            label: "Dashboard",  icon: "📊", end: true },
-  { to: "/hod/candidates", label: "Candidates", icon: "🎓" },
-  { to: "/hod/experts",    label: "Experts",    icon: "👨‍🏫" },
-  { to: "/hod/comments",   label: "Comments",   icon: "💬" },
+  { to: "/hod",            label: "Dashboard", end: true },
+  { to: "/hod/candidates", label: "Candidates"},
+  { to: "/hod/experts",    label: "Experts" },
+  { to: "/hod/comments",   label: "Comments" },
 ];
 
 const STATUS_CONFIG = {
@@ -16,7 +16,6 @@ const STATUS_CONFIG = {
   SUBMITTED:          { label: "Submitted",                   dot: "bg-blue-400",   badge: "bg-blue-50    text-blue-700   border-blue-200"   },
   QUERY:              { label: "Query from DOFA",             dot: "bg-amber-400",  badge: "bg-amber-50   text-amber-700  border-amber-200"  },
   APPROVED:           { label: "Approved",                    dot: "bg-green-400",  badge: "bg-green-50   text-green-700  border-green-200"  },
-  // ✅ NEW
   INTERVIEW_SET:      { label: "Interview Scheduled",         dot: "bg-indigo-400", badge: "bg-indigo-50  text-indigo-700 border-indigo-200" },
   APPEARED_SUBMITTED: { label: "Appeared Submitted",          dot: "bg-violet-400", badge: "bg-violet-50  text-violet-700 border-violet-200" },
 };

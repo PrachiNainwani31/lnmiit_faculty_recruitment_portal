@@ -33,10 +33,22 @@ function applyVariables(text, c) {
 }
 
 /* ── Email Modal ── */
-function EmailModal({ candidate, allCandidates, onClose }) {
+function EmailModal({ candidate, allCandidates, onClose,activeCycle,existingDeadline }) {
   const [template, setTemplate] = useState(loadTemplate);
   const [preview,  setPreview]  = useState(false);
   const [sending,  setSending]  = useState(false);
+  const [showExtend,      setShowExtend]      = useState(false); 
+  const [deadlineInput,   setDeadlineInput]   = useState(() => {
+    if (existingDeadline?.deadlineAt) {
+      const d = new Date(existingDeadline.deadlineAt);
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+    return "";
+  });
+  const [deadlineSaving, setDeadlineSaving] = useState(false);
+  const [deadlineSet,    setDeadlineSet]    = useState(!!existingDeadline?.deadlineAt);
+  const hasDeadline    = !!existingDeadline?.deadlineAt;
+  const deadlinePassed = hasDeadline && new Date() > new Date(existingDeadline.deadlineAt);
 
   const update = (key, val) => {
     const updated = { ...template, [key]: val };
@@ -47,27 +59,35 @@ function EmailModal({ candidate, allCandidates, onClose }) {
   const targets    = candidate ? [candidate] : allCandidates;
   const previewFor = candidate || allCandidates?.[0];
 
-  const handleSend = async () => {
+   const handleSend = async () => {
     if (!targets?.length) return;
     if (!window.confirm(`Send email to ${targets.length} candidate(s)?`)) return;
     try {
       setSending(true);
+
+      // Set deadline only if user explicitly entered one
+      if (deadlineInput && activeCycle) {
+        setDeadlineSaving(true);
+        await API.post("/deadline", {
+          cycle:      activeCycle,
+          deadlineAt: new Date(deadlineInput).toISOString(),
+        }).catch(console.error);
+        setDeadlineSaving(false);
+      }
+
       for (const c of targets) {
-        const res=await API.post("/email/send-interview-invite", {
+        await API.post("/email/send-interview-invite", {
           candidateId: c.id,
           subject:     applyVariables(template.subject, c),
           body:        applyVariables(template.body, c),
+          // ✅ Only include deadline on first send OR if extending
+          deadlineAt:  (!hasDeadline || showExtend) ? (deadlineInput || null) : null,
         });
-        if (res.data.portalCreated) {
-          alert(`Email sent. A portal account was also created for ${res.data.sentTo} — credentials included in the email.`);
-        } else {
-          alert("Email sent successfully.");
-        }
       }
-      alert(`Email sent to ${targets.length} candidate(s)`);
+      alert(`Email sent to ${targets.length} candidate(s).`);
       onClose();
     } catch { alert("Failed to send email"); }
-    finally  { setSending(false); }
+    finally { setSending(false); setDeadlineSaving(false); }
   };
 
   return (
@@ -99,6 +119,7 @@ function EmailModal({ candidate, allCandidates, onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-3 space-y-3">
+          {/* Subject */}
           <div>
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Subject</label>
             {preview
@@ -107,23 +128,90 @@ function EmailModal({ candidate, allCandidates, onClose }) {
                   className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300" />
             }
           </div>
+
+          {/* Body */}
           <div>
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
               Body {preview && previewFor && <span className="text-blue-500 normal-case ml-1">Preview: {previewFor.fullName}</span>}
             </label>
             {preview
-              ? <pre className="mt-1 bg-gray-50 rounded-lg px-4 py-3 text-sm whitespace-pre-wrap max-h-72 overflow-y-auto font-sans">{applyVariables(template.body, previewFor)}</pre>
-              : <textarea rows={12} value={template.body} onChange={e => update("body", e.target.value)}
+              ? <pre className="mt-1 bg-gray-50 rounded-lg px-4 py-3 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto font-sans">{applyVariables(template.body, previewFor)}</pre>
+              : <textarea rows={8} value={template.body} onChange={e => update("body", e.target.value)}
                   className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-300 resize-none" />
             }
+          </div>
+
+          {/* ✅ Deadline section */}
+          <div className={`rounded-xl border p-4 space-y-3 ${
+            deadlinePassed ? "bg-red-50 border-red-200" :
+            hasDeadline    ? "bg-amber-50 border-amber-200" :
+                             "bg-blue-50 border-blue-100"
+          }`}>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                📅 Application Deadline
+              </label>
+
+              {hasDeadline ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* ✅ Show current deadline prominently */}
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    deadlinePassed ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                  }`}>
+                    {deadlinePassed ? "⛔ Expired" : "✓ Active"}:{" "}
+                    {new Date(existingDeadline.deadlineAt).toLocaleString("en-GB", {
+                      day: "numeric", month: "short", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowExtend(v => !v)}
+                    className="text-xs text-amber-700 border border-amber-300 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-lg font-medium transition"
+                  >
+                    {showExtend ? "▲ Cancel" : "✏ Extend Deadline & Re-email"}
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-blue-600">Not set — portal open indefinitely</span>
+              )}
+            </div>
+
+            {/* Input — show always for first time, or when extend clicked */}
+            {(!hasDeadline || showExtend) && (
+              <div className="space-y-2">
+                <label className="text-xs text-gray-600">
+                  {hasDeadline ? "New deadline (must be after current)" : "Set deadline (optional)"}
+                </label>
+                <input
+                  type="datetime-local"
+                  value={deadlineInput}
+                  min={hasDeadline ? new Date(existingDeadline.deadlineAt).toISOString().slice(0,16) : undefined}
+                  onChange={e => setDeadlineInput(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                />
+                {hasDeadline && deadlineInput && (
+                  <p className="text-xs text-amber-700">
+                    ⚠ A separate deadline-extension email will be sent to all candidates.
+                    The main email will also include the new deadline.
+                  </p>
+                )}
+                {!hasDeadline && (
+                  <p className="text-xs text-gray-500">
+                    If set, the deadline will appear in the email body and portal will auto-close after it passes.
+                    Reminders sent 4 days and 1 day before.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex justify-end gap-3 px-6 py-4 border-t">
           <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Cancel</button>
-          <button onClick={handleSend} disabled={sending}
+          <button onClick={handleSend} disabled={sending || deadlineSaving}
             className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
-            {sending ? "Sending…" : "Send Email"}
+            {sending || deadlineSaving ? "Sending…" : "Send Email"}
           </button>
         </div>
       </div>
@@ -137,19 +225,34 @@ export default function DofaCandidates() {
   const dept         = params.get("dept");
   const [candidates, setCandidates] = useState([]);
   const [modal,      setModal]      = useState(null);
-
+  const [deadline,        setDeadline]        = useState(null);
+  const [activeCycle,     setActiveCycle]     = useState(null);
+  const loadDeadline = (cycle) => {
+    API.get(`/deadline/${cycle}`)
+      .then(r => setDeadline(r.data))
+      .catch(() => setDeadline(null));
+  };
   useEffect(() => {
     if (!dept) { setCandidates([]); return; }
     getCandidatesByDepartment(dept)
-      .then(res => setCandidates(res.data))
+      .then(res => {
+        setCandidates(res.data);
+        // Get cycle from first candidate
+        const cycle = res.data[0]?.cycle;
+        if (cycle) {
+          setActiveCycle(cycle);
+          loadDeadline(cycle);
+        }
+      })
       .catch(console.error);
   }, [dept]);
 
+  
+  const deadlinePassed = deadline?.deadlineAt && new Date() > new Date(deadline.deadlineAt);
   const appeared = candidates.filter(c => c.appearedInInterview).length;
 
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
@@ -163,6 +266,24 @@ export default function DofaCandidates() {
             </p>
           )}
         </div>
+
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* ✅ Deadline badge — visible on DOFA page */}
+          {deadline?.deadlineAt && (
+            <span className={`text-xs px-3 py-1.5 rounded-full border font-medium ${
+              deadlinePassed
+                ? "bg-red-100 text-red-700 border-red-200"
+                : "bg-blue-100 text-blue-700 border-blue-200"
+            }`}>
+              📅 Deadline: {new Date(deadline.deadlineAt).toLocaleString("en-GB", {
+                day: "numeric", month: "short", year: "numeric",
+                hour: "2-digit", minute: "2-digit",
+              })}
+              {deadlinePassed && " ⛔"}
+            </span>
+          )}
+          </div>
+
 
         {candidates.length > 0 && (
           <div className="flex gap-2 flex-wrap">
@@ -265,7 +386,14 @@ export default function DofaCandidates() {
         <EmailModal
           candidate={modal.mode === "single" ? modal.candidate : null}
           allCandidates={modal.mode === "all" ? candidates : null}
-          onClose={() => setModal(null)}
+          activeCycle={activeCycle}
+          existingDeadline={deadline}
+          onClose={() => {
+            setModal(null);
+            if (activeCycle) {
+              loadDeadline(activeCycle);
+            }
+          }}
         />
       )}
     </div>

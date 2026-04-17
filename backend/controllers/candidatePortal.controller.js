@@ -201,7 +201,7 @@ exports.submitApplication = async (req, res) => {
       if (!referee.email) continue;
       const portalLink = `${frontendUrl}referee/${referee.id}`;
       const tmpl = templates.refereeInvitation({
-        refereeName:   referee.name,
+        refereeName:   `${referee.salutation || ""} ${referee.name}`.trim(),
         candidateName: app.name,
         portalLink,
       });
@@ -238,7 +238,7 @@ exports.remindReferee = async (req, res) => {
     const baseUrl = process.env.FRONTEND_URL || req.headers.origin || `${req.protocol}://${req.get("host")}`;
     const portalLink = `${baseUrl}referee/${refereeId}`
     const tmpl = templates.refereeReminder({
-      refereeName:   referee.name,
+      refereeName:   `${referee.salutation || ""} ${referee.name}`.trim(),
       candidateName: app.name,
       portalLink,
     });
