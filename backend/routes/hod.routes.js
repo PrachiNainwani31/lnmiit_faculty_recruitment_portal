@@ -16,6 +16,7 @@ const {
   getHodCounts,
   getAllExperts,
   uploadExpertsCSV,
+  getHodLogs,
 } = require("../controllers/hod.controller");
 
 const { submitToDofa } = require("../controllers/cycle.controller");
@@ -149,5 +150,7 @@ router.post(
   upload.single("file"),
   uploadExpertsCSV
 );
+
+router.get("/logs", auth(["HOD"]), getHodLogs);
 
 module.exports = router;

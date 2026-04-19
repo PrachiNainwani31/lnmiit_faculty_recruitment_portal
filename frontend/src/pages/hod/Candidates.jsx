@@ -48,7 +48,10 @@ export default function Candidates({ isFrozen }) {
   );
 
   return (
-    <>
+    <div className={`relative ${isFrozen ? "pointer-events-none" : ""}`}>
+    {isFrozen && (
+      <div className="absolute inset-0 bg-white/60 z-10 rounded-xl cursor-not-allowed" />
+    )}
       {!status.statsEntered && (
         <CandidateStatsCard cycle={cycle} onSaved={() =>
           getCandidateStatus().then(r => setStatus(r.data)).catch(() => {})
@@ -83,6 +86,6 @@ export default function Candidates({ isFrozen }) {
           isFrozen={isFrozen}
         />
       )}
-    </>
+    </div>
   );
 }

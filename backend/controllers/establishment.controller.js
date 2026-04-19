@@ -5,7 +5,15 @@ const templates = require("../utils/emailTemplates");
 const getCurrentCycle = require("../utils/getCurrentCycle");
 const { log } = require("../utils/activityLogger");
 const BASE_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-
+const checkCycleLocked = async (candidateId) => {
+  const { OnboardingRecord, RecruitmentCycle } = require("../models");
+  const record = await OnboardingRecord.findOne({ where: { candidateId } });
+  if (!record) return false;
+  const cycle = await RecruitmentCycle.findOne({
+    where: { cycle: record.cycle, hodId: record.hodId },
+  });
+  return cycle?.isClosed === true;
+};
 /* ── Get all onboarding records grouped by department ──Includes interviewComplete from SelectedCandidate so Establishment can gate the offer letter upload.── */
 exports.getOnboardingRecords = async (req, res) => {
   try {
@@ -22,10 +30,15 @@ exports.getOnboardingRecords = async (req, res) => {
         { model: User,      as: "hod", attributes: ["department", "name", "email"] },
       ],
     });
+
     const selRecords = await SelectedCandidate.findAll({ where: { cycle: cycleStrings } });
     const selMap = {};
     selRecords.forEach(s => { selMap[s.candidateId] = s; });
-
+    const cycles = await RecruitmentCycle.findAll({
+      where: { cycle: cycleStrings },
+    });
+    const cycleClosedMap = {};
+    cycles.forEach(c => { cycleClosedMap[c.cycle] = c.isClosed || false; });
     const deptMap = {};
     records.forEach(r => {
       const dept = r.department || "General";
@@ -38,6 +51,7 @@ exports.getOnboardingRecords = async (req, res) => {
          waitlistPriority:  sel?.waitlistPriority    || null,
         designation:       sel?.designation       || "",
         employmentType:    sel?.employmentType     || "",
+        isCycleClosedFlag:  cycleClosedMap[r.cycle] || false,
       });
     });
 
@@ -55,7 +69,8 @@ exports.uploadOfferLetter = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "PDF required" });
     const { candidateId } = req.body;
-
+    if (await checkCycleLocked(candidateId))
+        return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
     await OnboardingRecord.update(
       {
         offerLetterPath:       req.file.path,
@@ -91,7 +106,8 @@ exports.setJoiningDate = async (req, res) => {
   try {
     const { candidateId, joiningDate } = req.body;
     if (!joiningDate) return res.status(400).json({ message: "Joining date required" });
-
+    if (await checkCycleLocked(candidateId))
+        return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
     await OnboardingRecord.update(
       {
         joiningDate:               new Date(joiningDate),
@@ -146,6 +162,8 @@ exports.uploadJoiningLetter = async (req, res) => {
   try {
     const { candidateId } = req.body;
     if (!req.file) return res.status(400).json({ message: "File required" });
+    if (await checkCycleLocked(candidateId))
+      return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
 
     await OnboardingRecord.update(
       { joiningLetterPath: req.file.path },
@@ -188,7 +206,8 @@ exports.allotRoom = async (req, res) => {
   try {
     const { candidateId, roomNumber } = req.body;
     if (!roomNumber) return res.status(400).json({ message: "Room number required" });
-
+    if (await checkCycleLocked(candidateId))
+        return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
     await OnboardingRecord.update(
       {
         roomNumber,
@@ -223,15 +242,16 @@ exports.allotRoom = async (req, res) => {
 /* ── Save MIS + Library ── */
 exports.saveMisLibrary = async (req, res) => {
   try {
-    const { candidateId, misLoginDone, misLoginNote, libraryDone, libraryDetails } = req.body;
-
+    const { candidateId, misLoginDone, libraryDone } = req.body;
     if (!candidateId) return res.status(400).json({ message: "candidateId required" });
-
+    if (await checkCycleLocked(candidateId))
+      return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
     const updateData = {
-      misUsername:       misLoginDone ? (misLoginNote || null) : null,
-      misProvidedAt:     misLoginDone ? new Date() : null,
-      libraryMemberId:   libraryDone  ? (libraryDetails || null) : null,
-      libraryDoneAt:     libraryDone  ? new Date() : null,
+      // Use a placeholder "YES" so the field is non-null when ticked
+      misUsername:     misLoginDone ? (req.body.misLoginNote || "YES") : null,
+      misProvidedAt:   misLoginDone ? new Date() : null,
+      libraryMemberId: libraryDone  ? (req.body.libraryDetails || "YES") : null,
+      libraryDoneAt:   libraryDone  ? new Date() : null,
     };
 
     await OnboardingRecord.update(updateData, { where: { candidateId } });
@@ -247,7 +267,8 @@ exports.uploadRfidCard = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "PDF required" });
     const { candidateId } = req.body;
-
+    if (await checkCycleLocked(candidateId))
+        return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
     // Gate: joining letter must exist first
     const record = await OnboardingRecord.findOne({ where: { candidateId } });
     if (!record?.joiningLetterPath)
@@ -282,19 +303,14 @@ exports.uploadRfidCard = async (req, res) => {
 exports.sendRfidToCandidate = async (req, res) => {
   try {
     const { candidateId } = req.body;
-
-    const record = await OnboardingRecord.findOne({ where: { candidateId } });
-    if (!record?.rfidPath)
-      return res.status(400).json({ message: "RFID card not uploaded yet" });
-
+    if (await checkCycleLocked(candidateId))
+        return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
     await OnboardingRecord.update(
       { rfidSentToCandidate: true, rfidDoneAt: new Date() },
       { where: { candidateId } }
     );
-
     res.json({ success: true });
   } catch (err) {
-    console.error("sendRfidToCandidate error:", err);
     res.status(500).json({ message: "Failed" });
   }
 };
@@ -303,7 +319,8 @@ exports.sendRfidToCandidate = async (req, res) => {
 exports.markJoiningComplete = async (req, res) => {
   try {
     const { candidateId } = req.body;
-
+    if (await checkCycleLocked(candidateId))
+        return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
     await OnboardingRecord.update(
       { joiningComplete: true, joiningCompletedAt: new Date() },
       { where: { candidateId } }
@@ -380,7 +397,8 @@ exports.closeCycle = async (req, res) => {
 exports.markNotJoined = async (req, res) => {
   try {
     const { candidateId, reason } = req.body;
-
+    if (await checkCycleLocked(candidateId))
+        return res.status(403).json({ message: "Cycle is closed. No changes allowed." });
     await OnboardingRecord.update(
       { joiningComplete: false, notJoined: true, notJoinedReason: reason || null,
         notJoinedAt: new Date() },

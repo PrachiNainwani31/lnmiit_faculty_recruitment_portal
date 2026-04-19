@@ -4,7 +4,7 @@ const { createNotification } = require("../utils/notify");
 const getCurrentCycle = require("../utils/getCurrentCycle");
 const { log } = require("../utils/activityLogger");
 const templates = require("../utils/emailTemplates");
-
+const crypto = require("crypto");
 const getOrCreateApp = async (userId, email) => {
   let app = await CandidateApplication.findOne({ where: { candidateUserId: userId } });
   if (!app) app = await CandidateApplication.create({ candidateUserId: userId, email });
@@ -34,7 +34,41 @@ exports.getMyApplication = async (req, res) => {
       });
     }
 
-    res.json(app);
+    // ── Auto-fill department from HOD's Candidate upload if not set ──
+    if (!app.department) {
+      const { Candidate, User } = require("../models");
+      const candidate = await Candidate.findOne({
+        where: { email: req.user.email },
+        include: [{ model: User, as: "hod", attributes: ["department"] }],
+      });
+      if (candidate?.hod?.department) {
+        await CandidateApplication.update(
+          { department: candidate.hod.department },
+          { where: { id: app.id } }
+        );
+        if (!app.email && req.user.email) {
+          await CandidateApplication.update(
+            { email: req.user.email },
+            { where: { id: app.id } }
+          );
+          app.email = req.user.email;
+        }
+        app = await CandidateApplication.findByPk(app.id, {
+          include: [
+            { model: CandidateReferee,    as: "referees",    required: false },
+            { model: CandidateExperience, as: "experiences", required: false },
+          ],
+        });
+      }
+    }
+
+    const appData = app.toJSON();
+    appData.experienceTypes = {
+      research:   !!appData.expResearch,
+      teaching:   !!appData.expTeaching,
+      industrial: !!appData.expIndustrial,
+    };
+    res.json(appData);
   } catch (err) {
     console.error("getMyApplication error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -58,45 +92,75 @@ exports.saveDraft = async (req, res) => {
     if (req.body.acceptance    !== undefined) updateData.acceptance    = req.body.acceptance;
     if (req.body.accommodation !== undefined) updateData.accommodation = req.body.accommodation;
     if (req.body.department    !== undefined) updateData.department    = req.body.department;
+    if (req.body.phdStatus !== undefined) updateData.phdStatus = req.body.phdStatus;
     if (req.body.publications  !== undefined) updateData.publications  = req.body.publications;
+    if (req.body.documents?.docDateOfDefense !== undefined)
+      updateData.docDateOfDefense = req.body.documents.docDateOfDefense;
+    if (req.body.experienceTypes !== undefined) {
+      updateData.expResearch   = !!req.body.experienceTypes.research;
+      updateData.expTeaching   = !!req.body.experienceTypes.teaching;
+      updateData.expIndustrial = !!req.body.experienceTypes.industrial;
+    }
     if (req.body.expResearch   !== undefined) updateData.expResearch   = req.body.expResearch;
     if (req.body.expTeaching   !== undefined) updateData.expTeaching   = req.body.expTeaching;
     if (req.body.expIndustrial !== undefined) updateData.expIndustrial = req.body.expIndustrial;
+
 
     if (Object.keys(updateData).length) {
       await CandidateApplication.update(updateData, { where: { id: app.id } });
     }
 
     if (Array.isArray(req.body.referees)) {
-  await CandidateReferee.destroy({ where: { applicationId: app.id } });
+      const incoming = req.body.referees.filter(r => r.name || r.email);
+      
+      for (const r of incoming) {
+        if (r.id) {
+          // ── UPDATE existing referee — preserve ID so portal link stays valid ──
+          await CandidateReferee.update({
+            salutation:  r.salutation  || null,
+            name:        r.name        || null,
+            designation: r.designation || null,
+            department:  r.department  || null,
+            institute:   r.institute   || null,
+            email:       r.email       || null,
+          }, { where: { id: r.id, applicationId: app.id } });
+        } else {
+          // ── INSERT only truly new referees (no id yet) ──
+          // Deduplicate by email before inserting
+          if (r.email) {
+            const exists = await CandidateReferee.findOne({
+              where: { applicationId: app.id, email: r.email.trim().toLowerCase() }
+            });
+            if (exists) continue; // skip duplicate
+          }
+          await CandidateReferee.create({
+            applicationId: app.id,
+            salutation:    r.salutation  || null,
+            name:          r.name        || null,
+            designation:   r.designation || null,
+            department:    r.department  || null,
+            institute:     r.institute   || null,
+            email:         r.email       || null,
+            status:        "PENDING",
+          });
+        }
+      }
 
-  // ✅ Deduplicate by email before inserting
-  const seen = new Set();
-  const refereeRows = req.body.referees
-    .filter(r => r.name || r.email)
-    .filter(r => {
-      const key = (r.email || "").trim().toLowerCase();
-      if (!key) return true;       // allow blank email slots
-      if (seen.has(key)) return false;  // skip duplicate emails
-      seen.add(key);
-      return true;
-    })
-    .map(r => ({
-      applicationId: app.id,
-      salutation:    r.salutation  || null,
-      name:          r.name        || null,
-      designation:   r.designation || null,
-      department:    r.department  || null,
-      institute:     r.institute   || null,
-      email:         r.email       || null,
-      status:        r.status      || "PENDING",
-      letter:        r.letter      || null,
-      signedName:    r.signedName  || null,
-      submittedAt:   r.submittedAt ? new Date(r.submittedAt) : null,
-    }));
-
-  if (refereeRows.length > 0) await CandidateReferee.bulkCreate(refereeRows);
-}
+      // ── DELETE only referees the user explicitly removed ──
+      // (those with an id that no longer appear in the incoming list)
+      const incomingIds = incoming.filter(r => r.id).map(r => r.id);
+      const allExisting = await CandidateReferee.findAll({
+        where: { applicationId: app.id },
+        attributes: ["id", "status"],
+      });
+      for (const existing of allExisting) {
+        // Never delete a referee who already submitted their letter
+        if (existing.status === "SUBMITTED") continue;
+        if (!incomingIds.includes(existing.id)) {
+          await CandidateReferee.destroy({ where: { id: existing.id } });
+        }
+      }
+    }
 
     if (Array.isArray(req.body.experiences)) {
   // Delete all existing, re-insert fresh — prevents duplicate accumulation
@@ -183,8 +247,6 @@ exports.submitApplication = async (req, res) => {
       return res.json({ message: "Application resubmitted successfully." });
     }
 
-    // First submission:
-
     // Email #5 — notify DOFA Office
     const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
     const tmpl5 = templates.candidateApplicationSubmitted({
@@ -199,24 +261,30 @@ exports.submitApplication = async (req, res) => {
     const frontendUrl = process.env.FRINTEND_URL || (req.headers.origin ? req.headers.origin : `${req.protocol}://${req.get("host")}`);
     for (const referee of referees) {
       if (!referee.email) continue;
+      const captcha = crypto.randomBytes(3).toString("hex").toUpperCase();
+      await CandidateReferee.update(
+        { captchaCode: captcha },
+        { where: { id: referee.id } }
+      );
       const portalLink = `${frontendUrl}referee/${referee.id}`;
       const tmpl = templates.refereeInvitation({
         refereeName:   `${referee.salutation || ""} ${referee.name}`.trim(),
         candidateName: app.name,
         portalLink,
+        captcha
       });
       await sendEmail(referee.email, tmpl.subject, tmpl.html)
         .catch(err => console.error(`Referee email failed for ${referee.email}:`, err.message));
     }
 
     await log({
-  user:        req.user,
-  action:      "APPLICATION_SUBMITTED",
-  entity:      "CandidateApplication",
-  entityId:    app.id,
-  description: `Application submitted for candidate ${app.candidateUserId}`,
-  req,
-});
+      user:        req.user,
+      action:      "APPLICATION_SUBMITTED",
+      entity:      "CandidateApplication",
+      entityId:    app.id,
+      description: `Application submitted for candidate ${app.candidateUserId}`,
+      req,
+    });
 
     res.json({ message: "Application submitted successfully!" });
   } catch (err) {
@@ -235,13 +303,23 @@ exports.remindReferee = async (req, res) => {
     if (!app || referee.applicationId !== app.id) return res.status(403).json({ message: "Access denied" });
     if (referee.status === "SUBMITTED") return res.status(400).json({ message: "Already submitted" });
 
+    // ✅ Generate fresh captcha and save it (replaces old one)
+    const captcha = crypto.randomBytes(3).toString("hex").toUpperCase();
+    await CandidateReferee.update(
+      { captchaCode: captcha },
+      { where: { id: referee.id } }
+    );
+
     const baseUrl = process.env.FRONTEND_URL || req.headers.origin || `${req.protocol}://${req.get("host")}`;
-    const portalLink = `${baseUrl}referee/${refereeId}`
+    const portalLink = `${baseUrl}referee/${refereeId}`;
+
     const tmpl = templates.refereeReminder({
       refereeName:   `${referee.salutation || ""} ${referee.name}`.trim(),
       candidateName: app.name,
       portalLink,
+      captcha,        // pass captcha to template
     });
+
     await sendEmail(referee.email, tmpl.subject, tmpl.html);
     res.json({ message: "Reminder sent" });
   } catch (err) {
@@ -261,7 +339,7 @@ exports.uploadDocument = async (req, res) => {
     const ALLOWED_DOC_COLUMNS = [
       "docCv","docTeachingStatement","docResearchStatement",
       "docMarks10","docMarks12","docGraduation","docPostGraduation",
-      "docPhdCourseWork","docPhdProvisional","docPhdDegree",
+      "docPhdCourseWork","docPhdProvisional","docPhdDegree","docThesisSubmission"
     ];
 
     if (!ALLOWED_DOC_COLUMNS.includes(type))

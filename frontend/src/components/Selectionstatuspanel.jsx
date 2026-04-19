@@ -19,19 +19,19 @@ function SelectionTag({ status }) {
   );
 }
 
-export default function SelectionStatusPanel({ role }) {
+export default function SelectionStatusPanel({ role,cycle }) {
   const [depts, setDepts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       API.get("/establishment/records").catch(() => ({ data: [] })),
-      API.get("/selected-candidates").catch(() => ({ data: [] })),
+      API.get(cycle ? `/selected-candidates?cycle=${cycle}` : "/selected-candidates").catch(() => ({ data: [] })),
     ]).then(([recRes, selRes]) => {
       const selMap = {};
       selRes.data.forEach(s => {
-        const id = s.candidate?.id;
-        selMap[id] = s;
+        const id = s.candidate?.id || s.candidateId;
+        if (id) selMap[id] = s;
       });
 
       const deptMap = {};
@@ -39,57 +39,69 @@ export default function SelectionStatusPanel({ role }) {
         if (!records?.length) return;
         deptMap[department] = records.map(r => ({
           ...r,
-          designation: selMap[r.candidate?.id]?.designation || "",
-          employmentType: selMap[r.candidate?.id]?.employmentType || "",
-          selectionStatus: selMap[r.candidate?.id]?.status || null,
-          interviewComplete: selMap[r.candidate?.id]?.interviewComplete || false,
+          designation:       r.designation      || "",
+          employmentType:    r.employmentType    || "",
+          selectionStatus:   r.selectionStatus  || null,
+          waitlistPriority:  r.waitlistPriority || null,   
+          interviewComplete: r.interviewComplete || false,
+          notJoined:         !!r.notJoined,
+          notJoinedReason:   r.notJoinedReason  || "",
         }));
       });
 
       setDepts(Object.entries(deptMap));
     }).catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [cycle]);
 
   if (loading) return <p className="text-gray-400 text-sm">Loading selection status…</p>;
   if (depts.length === 0) return null;
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-gray-800">
-          Selected Candidates — Onboarding Status
-        </h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Post-interview selection and joining tracker.
-        </p>
-      </div>
-
-      {depts.map(([dept, records]) => {
-        const selectedCount = records.filter(r => r.selectionStatus === "SELECTED").length;
-        const waitlistedCount = records.filter(r => r.selectionStatus === "WAITLISTED").length;
-
-        return (
-          <div key={dept} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
-            <div className="bg-indigo-600 px-5 py-3 flex items-center justify-between">
-              <p className="text-white font-medium text-sm">{dept}</p>
-              <span className="text-indigo-200 text-xs">
-                {selectedCount} selected · {waitlistedCount} waitlisted
-              </span>
-            </div>
-
-            {records.map(r => (
-              <CandidateStatusRow key={r.id} record={r} role={role} />
-            ))}
-          </div>
-        );
-      })}
+  <div className="space-y-5">
+    <div>
+      <h2 className="text-xl font-bold text-gray-800">
+        Selected Candidates — Onboarding Status
+      </h2>
+      <p className="text-sm text-gray-500 mt-1">
+        Post-interview selection and joining tracker.
+      </p>
     </div>
-  );
-} // ✅ CLOSED COMPONENT
 
+    {depts.map(([dept, records]) => {
+      const selectedCount   = records.filter(r => r.selectionStatus === "SELECTED").length;
+      const waitlistedCount = records.filter(r => r.selectionStatus === "WAITLISTED").length;
 
-/* ✅ MOVED OUTSIDE — ONLY CHANGE */
+      return (
+        <div key={dept} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+          {/* ── Dept header ── */}
+          <div className="bg-indigo-600 px-5 py-3 flex items-center justify-between">
+            <p className="text-white font-medium text-sm">{dept}</p>
+            <div className="flex items-center gap-2">
+              {selectedCount > 0 && (
+                <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2.5 py-0.5 rounded-full font-semibold">
+                  ✓ {selectedCount} selected
+                </span>
+              )}
+              {waitlistedCount > 0 && (
+                <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
+                  ⟳ {waitlistedCount} waitlisted
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* ── Candidate rows ── */}
+          {records.map(r => (
+            <CandidateStatusRow key={r.id} record={r} role={role} />
+          ))}
+        </div>
+      );
+    })}
+  </div>
+);
+} 
+/* MOVED OUTSIDE — ONLY CHANGE */
 function CandidateStatusRow({ record, role }) {
   const [open, setOpen] = useState(false);
   const c = record.candidate;
@@ -112,11 +124,14 @@ function CandidateStatusRow({ record, role }) {
       link: record.offerLetterPath ? `${BASE}/${record.offerLetterPath}` : null,
     },
     {
-      label: "Joining date",
-      done: !!record.joiningDate,
-      detail: record.joiningDate
-        ? new Date(record.joiningDate).toLocaleDateString("en-GB")
-        : null,
+      label:  "Joining date",
+      done:   !!record.joiningDate || !!record.notJoined,
+      detail: record.notJoined
+        ? `✗ Did Not Join${record.notJoinedReason ? ` — ${record.notJoinedReason}` : ""}`
+        : record.joiningDate
+          ? new Date(record.joiningDate).toLocaleDateString("en-GB")
+          : null,
+      notJoined: !!record.notJoined,   // ← flag for styling
     },
     {
       label: "MIS login",
@@ -179,7 +194,11 @@ function CandidateStatusRow({ record, role }) {
         </div>
 
         <SelectionTag status={record.selectionStatus} />
-
+        {record.selectionStatus === "WAITLISTED" && record.waitlistPriority && (
+          <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full font-medium">
+            Waitlist #{record.waitlistPriority}
+          </span>
+        )}
         <div className="flex items-center gap-2">
           <div className="w-24 bg-gray-200 rounded-full h-1.5">
             <div
@@ -203,21 +222,23 @@ function CandidateStatusRow({ record, role }) {
           <div className="grid grid-cols-3 gap-3 mt-3">
             {steps.map((s, i) => (
               <div key={i} className={`flex items-start gap-2 p-3 rounded-lg border ${
-                s.done ? "bg-green-50 border-green-200" : "bg-white border-gray-200"
+                s.notJoined ? "bg-red-50 border-red-200"
+                : s.done    ? "bg-green-50 border-green-200"
+                            : "bg-white border-gray-200"
               }`}>
-                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
-                  s.done ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
+                  s.notJoined ? "bg-red-100 text-red-700"
+                  : s.done    ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-400"
                 }`}>
-                  {s.done ? "✓" : i + 1}
+                  {s.notJoined ? "✗" : s.done ? "✓" : i + 1}
                 </span>
                 <div>
-                  <p className="text-xs font-medium">{s.label}</p>
+                  <p className={`text-xs font-medium ${s.notJoined ? "text-red-700" : ""}`}>{s.label}</p>
                   {s.link ? (
-                    <a href={s.link} target="_blank" rel="noreferrer" className="text-xs text-blue-600">
-                      View document
-                    </a>
+                    <a href={s.link} target="_blank" rel="noreferrer" className="text-xs text-blue-600">View document</a>
                   ) : s.detail ? (
-                    <p className="text-xs text-gray-500">{s.detail}</p>
+                    <p className={`text-xs ${s.notJoined ? "text-red-500" : "text-gray-500"}`}>{s.detail}</p>
                   ) : (
                     <p className="text-xs text-gray-400">Pending</p>
                   )}

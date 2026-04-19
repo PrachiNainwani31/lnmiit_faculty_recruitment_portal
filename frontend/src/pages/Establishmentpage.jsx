@@ -47,7 +47,12 @@ function CandidateRecord({ record, onRefresh }) {
   const rfidRef    = useRef();
 
   const c = record.candidate;
-
+  useEffect(() => {
+  setMisLoginDone(!!record.misUsername);
+  setMisLoginNote(record.misUsername && record.misUsername !== "YES" ? record.misUsername : "");
+  setLibraryDone(!!record.libraryMemberId);
+  setLibraryDetails(record.libraryMemberId && record.libraryMemberId !== "YES" ? record.libraryMemberId : "");
+}, [record.id]);
   const upload = async (type, file) => {
     if (!file) return;
     const fd = new FormData();
@@ -112,14 +117,14 @@ function CandidateRecord({ record, onRefresh }) {
     } catch { alert("Failed to send"); }
     finally { setSaving(false); }
   };
-
+  
+  const notJoined   = !!record.notJoined;
   const step1Done = !!record.offerLetterPath;
-  const step2Done = !!record.joiningDate;
+  const step2Done = !!record.joiningDate || notJoined;
   const step3Done = !!record.joiningLetterPath;
   const step4Done = !!(record.misUsername && record.libraryMemberId);
   const step5Done = !!record.rfidSentToCandidate;
   const interviewComplete = !!record.interviewComplete;
-
   const stepCls = (done, prev) => `flex gap-3 ${!prev ? "opacity-40 pointer-events-none" : ""}`;
   const numCls  = (done, prev) =>
     `w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 border ${
@@ -155,7 +160,14 @@ function CandidateRecord({ record, onRefresh }) {
 
         <div className="flex gap-2 flex-wrap justify-end">
           <StatusBadge done={step1Done} label="Offer sent" />
-          {step1Done && <StatusBadge done={step3Done} label="Joining letter" />}
+          {step1Done && (
+            notJoined
+              ? <span className="text-xs px-2.5 py-1 rounded-full border font-medium bg-red-100 text-red-700 border-red-200">
+                  ✗ Did Not Join
+                </span>
+              : <StatusBadge done={step2Done} label="Joining date" />
+          )}
+          {step2Done && !notJoined && <StatusBadge done={step3Done} label="Joining letter" />}
           {step3Done && <StatusBadge done={step4Done} label="MIS & Library" />}
           {step4Done && <StatusBadge done={step5Done} label="RFID sent" />}
         </div>
@@ -192,77 +204,79 @@ function CandidateRecord({ record, onRefresh }) {
             </div>
           </div>
 
-          {/* Step 2: Joining date — editable, shows candidate's preference */}
+          {/* Step 2: Joining date */}
           <div className={stepCls(step2Done, step1Done)}>
             <div className={numCls(step2Done, step1Done)}>{step2Done ? "✓" : "2"}</div>
             <div className="flex-1 space-y-2">
               <p className="text-sm font-medium text-gray-700">
                 Joining date
-                {step2Done && (
+                {step2Done && !notJoined && (
                   <span className="text-xs text-gray-500 font-normal ml-2">
-                    {new Date(record.joiningDate).toLocaleDateString("en-GB", {
-                      day: "numeric", month: "long", year: "numeric",
-                    })}
+                    {new Date(record.joiningDate).toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" })}
+                  </span>
+                )}
+                {notJoined && (
+                  <span className="ml-2 text-xs bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-medium">
+                    ✗ Did Not Join
                   </span>
                 )}
               </p>
 
-              {/* ✅ Show candidate's preferred joining date if set */}
-              {record.candidatePreferredJoiningDate && (
-                <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                  <span className="text-blue-500 text-xs">📅</span>
-                  <p className="text-xs text-blue-700">
-                    Candidate's preference:{" "}
-                    <strong>
-                      {new Date(record.candidatePreferredJoiningDate).toLocaleDateString("en-GB", {
-                        day: "numeric", month: "long", year: "numeric",
-                      })}
-                    </strong>
-                    {!joiningDate && (
-                      <button
-                        onClick={() =>
-                          setJoiningDate(record.candidatePreferredJoiningDate.split("T")[0])
-                        }
-                        className="ml-2 underline text-blue-600 hover:text-blue-800"
-                      >
-                        Use this date
-                      </button>
-                    )}
-                  </p>
+              {notJoined ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+                  <p className="font-medium">Candidate did not join.</p>
+                  {record.notJoinedReason && (
+                    <p className="text-xs mt-1 text-red-500">Reason: {record.notJoinedReason}</p>
+                  )}
                 </div>
+              ) : (
+                <>
+                  {record.candidatePreferredJoiningDate && (
+                    <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                      <span className="text-blue-500 text-xs">📅</span>
+                      <p className="text-xs text-blue-700">
+                        Candidate's preference:{" "}
+                        <strong>
+                          {new Date(record.candidatePreferredJoiningDate).toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" })}
+                        </strong>
+                        {!joiningDate && (
+                          <button onClick={() => setJoiningDate(record.candidatePreferredJoiningDate.split("T")[0])}
+                            className="ml-2 underline text-blue-600 hover:text-blue-800">
+                            Use this date
+                          </button>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input type="date" value={joiningDate} onChange={e => setJoiningDate(e.target.value)} className={`${inputCls} flex-1`} />
+                    <button onClick={saveJoiningDate} disabled={saving || !step1Done}
+                      className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg text-sm disabled:opacity-60">
+                      {step2Done ? "Update" : "Save"}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const reason = window.prompt("Reason candidate did not join (optional):");
+                        if (reason === null) return;
+                        try {
+                          setSaving(true);
+                          await API.post("/establishment/not-joined", { candidateId: c.id, reason });
+                          await API.post("/establishment/joining-complete", { candidateId: c.id }).catch(() => {});
+                          alert("Marked as not joined. Record auto-closed.");
+                          onRefresh();
+                        } catch (err) {
+                          alert(err.response?.data?.message || "Failed");
+                        } finally { setSaving(false); }
+                      }}
+                      disabled={saving}
+                      className="bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 px-4 py-1.5 rounded-lg text-sm disabled:opacity-60">
+                      ✗ Did Not Join
+                    </button>
+                  </div>
+                </>
               )}
-
-              {/* ✅ Always editable by Establishment */}
-              <div className="flex gap-2">
-                <input type="date" value={joiningDate}
-                  onChange={e => setJoiningDate(e.target.value)}
-                  className={`${inputCls} flex-1`} />
-                <button onClick={saveJoiningDate} disabled={saving || !step1Done}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg text-sm disabled:opacity-60">
-                  {step2Done ? "Update" : "Save"}
-                </button>
-                <button
-                  onClick={async () => {
-                    const reason = window.prompt("Reason candidate did not join (optional):");
-                    if (reason === null) return; // cancelled
-                    try {
-                      setSaving(true);
-                      await API.post("/establishment/not-joined", { candidateId: c.id, reason });
-                      alert("Marked as not joined. All parties notified.");
-                      onRefresh();
-                    } catch (err) {
-                      alert(err.response?.data?.message || "Failed");
-                    } finally { setSaving(false); }
-                  }}
-                  disabled={saving}
-                  className="bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 px-4 py-1.5 rounded-lg text-sm disabled:opacity-60"
-                >
-                  ✗ Did Not Join
-                </button>
-              </div>
-            </div>
-          </div>
-
+            </div>  {/* ← closes flex-1 div */}
+          </div>  {/* ← closes step 2 outer div */}
           {/* Step 3: Joining letter */}
           <div className={stepCls(step3Done, step2Done)}>
             <div className={numCls(step3Done, step2Done)}>{step3Done ? "✓" : "3"}</div>
@@ -292,89 +306,55 @@ function CandidateRecord({ record, onRefresh }) {
           {/* Step 4: MIS + Library */}
           <div className={stepCls(step4Done, step3Done)}>
             <div className={numCls(step4Done, step3Done)}>{step4Done ? "✓" : "4"}</div>
-            <div className="flex-1 space-y-4">
+            <div className="flex-1 space-y-3">
               <p className="text-sm font-medium text-gray-700">MIS Login & Library Details</p>
               <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id={`mis-${c.id}`} checked={misLoginDone}
-                    onChange={e => setMisLoginDone(e.target.checked)} className="w-4 h-4 accent-amber-600" />
-                  <label htmlFor={`mis-${c.id}`} className="text-sm font-medium text-gray-700 cursor-pointer">
-                    MIS Portal Login Assigned
-                  </label>
-                </div>
-                {misLoginDone && (
-                  <div>
-                    <label className={lbl}>Login URL / Username / Note</label>
-                    <input className={inputCls} placeholder="e.g. https://mis.lnmiit.ac.in · username: firstname.dept"
-                      value={misLoginNote} onChange={e => setMisLoginNote(e.target.value)} />
-                  </div>
-                )}
-              </div>
-              <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id={`lib-${c.id}`} checked={libraryDone}
-                    onChange={e => setLibraryDone(e.target.checked)} className="w-4 h-4 accent-amber-600" />
-                  <label htmlFor={`lib-${c.id}`} className="text-sm font-medium text-gray-700 cursor-pointer">
-                    Library Membership Activated
-                  </label>
-                </div>
-                {libraryDone && (
-                  <div>
-                    <label className={lbl}>Membership ID / Instructions</label>
-                    <input className={inputCls} placeholder="e.g. Membership ID: LIB-2025-042"
-                      value={libraryDetails} onChange={e => setLibraryDetails(e.target.value)} />
-                  </div>
-                )}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={misLoginDone}
+                    onChange={e => setMisLoginDone(e.target.checked)}
+                    className="w-4 h-4 accent-amber-600" />
+                  <span className="text-sm text-gray-700">MIS Portal Login Assigned</span>
+                  {misLoginDone && <span className="ml-auto text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">Done</span>}
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={libraryDone}
+                    onChange={e => setLibraryDone(e.target.checked)}
+                    className="w-4 h-4 accent-amber-600" />
+                  <span className="text-sm text-gray-700">Library Membership Activated</span>
+                  {libraryDone && <span className="ml-auto text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">Done</span>}
+                </label>
               </div>
               <button onClick={saveMisLibrary} disabled={mlSaving}
-                className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
-                {mlSaving ? "Saving…" : "Save MIS & Library"}
+                className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+                {mlSaving ? "Saving…" : "Save"}
               </button>
             </div>
           </div>
 
-          {/* Step 5: RFID */}
+          {/* Step 5: RFID — just checkbox, no upload */}
           <div className={stepCls(step5Done, step3Done)}>
             <div className={numCls(step5Done, step3Done)}>{step5Done ? "✓" : "5"}</div>
             <div className="flex-1 space-y-3">
               <p className="text-sm font-medium text-gray-700">RFID Access Card</p>
-              {record.rfidPath ? (
-                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <a href={`${BASE}/${record.rfidPath}`} target="_blank" rel="noreferrer"
-                      className="text-xs text-blue-600 hover:underline flex-1">
-                      View uploaded RFID card PDF
-                    </a>
-                    <input ref={rfidRef} type="file" accept=".pdf" className="hidden"
-                      onChange={e => uploadRfid(e.target.files[0])} />
-                    <button onClick={() => rfidRef.current.click()} disabled={saving}
-                      className="text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-60">
-                      Replace PDF
-                    </button>
-                  </div>
-                  {!step5Done ? (
-                    <button onClick={sendRfid} disabled={saving}
-                      className="w-full bg-green-700 hover:bg-green-800 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
-                      {saving ? "Sending…" : `Send RFID Card to ${c.fullName}`}
-                    </button>
-                  ) : (
-                    <p className="text-xs text-green-600 font-medium">
-                      ✓ Sent to candidate on {record.rfidSentAt
-                        ? new Date(record.rfidSentAt).toLocaleDateString("en-GB")
-                        : "—"}
-                    </p>
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={!!record.rfidSentToCandidate}
+                    onChange={async (e) => {
+                      if (!e.target.checked) return;
+                      try {
+                        setSaving(true);
+                        await API.post("/establishment/rfid-send", { candidateId: c.id });
+                        onRefresh();
+                      } catch { alert("Failed"); }
+                      finally { setSaving(false); }
+                    }}
+                    className="w-4 h-4 accent-green-600" />
+                  <span className="text-sm text-gray-700">RFID Card Issued to Candidate</span>
+                  {record.rfidSentToCandidate && (
+                    <span className="ml-auto text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">Done</span>
                   )}
-                </div>
-              ) : (
-                <>
-                  <input ref={rfidRef} type="file" accept=".pdf" className="hidden"
-                    onChange={e => uploadRfid(e.target.files[0])} />
-                  <button onClick={() => rfidRef.current.click()} disabled={saving}
-                    className="border border-dashed border-gray-300 text-gray-500 px-4 py-2 rounded-lg text-sm hover:bg-white w-full text-center disabled:opacity-60">
-                    Upload RFID card PDF
-                  </button>
-                </>
-              )}
+                </label>
+              </div>
             </div>
           </div>
 

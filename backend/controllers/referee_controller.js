@@ -29,6 +29,7 @@ exports.getRefereeInfo = async (req, res) => {
       refereeEmail:     referee.email,
       status:           referee.status,
       alreadySubmitted: referee.status === "SUBMITTED",
+      requiresCaptcha:  !!referee.captchaCode,
     });
   } catch (err) {
     console.error("getRefereeInfo error:", err.message);
@@ -36,9 +37,29 @@ exports.getRefereeInfo = async (req, res) => {
   }
 };
 
+exports.verifyCaptcha = async (req, res) => {
+  try {
+    const { refereeId, captcha } = req.body;
+    const referee = await CandidateReferee.findByPk(refereeId);
+    if (!referee) return res.status(404).json({ message: "Invalid link" });
+
+    if (!referee.captchaCode) return res.json({ success: true });
+
+    if (referee.captchaCode.toUpperCase() !== (captcha || "").toUpperCase().trim()) {
+      return res.status(400).json({ message: "Incorrect access code. Please check your email." });
+    }
+
+    // DON'T clear captchaCode here — clear it in uploadReferenceLetter instead
+    res.json({ success: true });
+  } catch (err) {
+    console.error("verifyCaptcha error:", err.message);
+    res.status(500).json({ message: "Verification failed" });
+  }
+};
+
 /* =====================================================
    UPLOAD REFERENCE LETTER
-   ✅ FIX: base64 drawn signatures no longer stored raw —
+    FIX: base64 drawn signatures no longer stored raw —
    causes "Data too long for column 'signedName'" 500.
 ===================================================== */
 exports.uploadReferenceLetter = async (req, res) => {
@@ -52,7 +73,7 @@ exports.uploadReferenceLetter = async (req, res) => {
     if (!referee)                       return res.status(404).json({ message: "Invalid link" });
     if (referee.status === "SUBMITTED") return res.status(400).json({ message: "Reference already submitted" });
 
-    // ✅ FIX: strip base64 drawing, store readable name
+    // FIX: strip base64 drawing, store readable name
     const safeSignedName = resolveSignedName(signedName, referee.name || guestEmail);
 
     const updateData = {
@@ -60,6 +81,7 @@ exports.uploadReferenceLetter = async (req, res) => {
       signedName:  safeSignedName,
       status:      "SUBMITTED",
       submittedAt: new Date(),
+      captchaCode:null,
     };
 
     if (designation) updateData.designation = designation;
@@ -116,13 +138,20 @@ exports.sendRefereeReminder = async (req, res) => {
     if (!referee)                       return res.status(404).json({ message: "Referee not found" });
     if (referee.status === "SUBMITTED") return res.status(400).json({ message: "Already submitted" });
 
-    const app      = await CandidateApplication.findByPk(referee.applicationId);
-    const baseUrl  = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
+    const app     = await CandidateApplication.findByPk(referee.applicationId);
+    const baseUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
     const portalLink = `${baseUrl}/referee/${refereeId}`;
+
+    // ✅ ADD: generate fresh captcha and save it
+    const crypto  = require("crypto");
+    const captcha = crypto.randomBytes(3).toString("hex").toUpperCase();
+    await CandidateReferee.update({ captchaCode: captcha }, { where: { id: refereeId } });
+
     const tmpl = templates.refereeReminder({
       refereeName:   referee.name,
       candidateName: app?.name || "the candidate",
       portalLink,
+      captcha,   
     });
     await sendEmail(referee.email, tmpl.subject, tmpl.html);
     res.json({ success: true });

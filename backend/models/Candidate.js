@@ -46,7 +46,7 @@ const Candidate = sequelize.define(
 
     phone: {
       type:      DataTypes.STRING(30),
-      allowNull: false,
+      allowNull: true,
     },
     qualification: {
       type:      DataTypes.STRING(200),
@@ -69,12 +69,19 @@ const Candidate = sequelize.define(
       allowNull: true,
     },
 
-    // renamed label in UI — field name stays the same in DB
-    reviewerObservation: {
+    dlscRecommendation: {
+      type:      DataTypes.STRING(200),
+      allowNull: true,
+    },
+    ilscRecommendation: {
+      type:      DataTypes.STRING(200),
+      allowNull: true,
+    },
+    dlscRemarks: {
       type:      DataTypes.TEXT,
       allowNull: true,
     },
-    ilscComments: {
+    ilscRemarks: {
       type:      DataTypes.TEXT,
       allowNull: true,
     },

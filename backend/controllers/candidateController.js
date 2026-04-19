@@ -11,18 +11,24 @@ const { notifyDofaUpload } = require("./email.controller");
 const normalizeHeader = (h) => h.toLowerCase().replace(/[\s_\-]+/g, "");
 
 const COLUMN_MAP = {
-  srno:                   "srNo",
-  fullname:               "fullName",
-  email:                  "email",
-  secondaryemail:         "secondaryEmail",
-  phone:                  "phone",
-  qualification:          "qualification",
-  specialization:         "specialization",
-  appliedposition:        "appliedPosition",
-  recommendedposition:    "recommendedPosition",
-  recommendedforposition: "recommendedPosition",
-  reviewerobservation:    "reviewerObservation",
-  ilsccomments:           "ilscComments",
+  srno:                  "srNo",
+  fullname:              "fullName",
+  primaryemail:          "email",
+  email:                 "email",           // fallback for old CSVs
+  secondaryemail:        "secondaryEmail",
+  phoneno:               "phone",
+  phone:                 "phone",
+  qualification:         "qualification",
+  specialization:        "specialization",
+  appliedposition:       "appliedPosition",
+  recommendedposition:   "recommendedPosition",
+  dlscrecommendation:    "dlscRecommendation",
+  ilscrecommendation:    "ilscRecommendation",
+  dlscremarks:           "dlscRemarks",
+  ilscremarks:           "ilscRemarks",
+  // legacy fallbacks
+  reviewerobservation:   "dlscRemarks",
+  ilsccomments:          "ilscRemarks",
 };
 
 /* =====================================================
@@ -46,7 +52,7 @@ exports.uploadCandidates = async (req, res) => {
     });
 
     const validRows = rows.filter(
-      r => r.fullName && r.email && r.phone && r.qualification && r.specialization
+      r => r.fullName && r.email && r.qualification && r.specialization
     );
     const cycle = await getCurrentCycle(req.user.id);
 
@@ -74,14 +80,16 @@ exports.uploadCandidates = async (req, res) => {
         srNo:                Number(r.srNo) || (formatted.length + 1),
         fullName:            r.fullName,
         email:               r.email,
-        secondaryEmail:      r.secondaryEmail     || null,
-        phone:               r.phone,
+        secondaryEmail:      r.secondaryEmail      || null,
+        phone:               r.phone               || null,
         qualification:       r.qualification,
         specialization:      r.specialization,
         appliedPosition:     r.appliedPosition     || null,
         recommendedPosition: r.recommendedPosition || null,
-        reviewerObservation: r.reviewerObservation || "",
-        ilscComments:        r.ilscComments        || "",
+        dlscRecommendation:  r.dlscRecommendation  || null,
+        ilscRecommendation:  r.ilscRecommendation  || null,
+        dlscRemarks:         r.dlscRemarks         || null,
+        ilscRemarks:         r.ilscRemarks         || null,
         hodId,
         appearedInInterview: false,
       });
@@ -292,11 +300,12 @@ exports.downloadTemplate = async (req, res) => {
   if (!stats) return res.status(400).json({ message: "Stats not found" });
 
   const fields = [
-    "srNo","fullName","email","secondaryEmail","phone",
-    "qualification","specialization",
-    "appliedPosition","recommendedPosition",
-    "reviewerObservation","ilscComments",
-  ];
+  "Sr. No.", "Full Name", "Primary Email", "Secondary Email",
+  "Phone No.", "Qualification", "Specialization",
+  "Applied Position", "Recommended Position",
+  "DLSC Recommendation", "ILSC Recommendation",
+  "DLSC Remarks", "ILSC Remarks"
+];
 
   const rows = Array.from({ length: stats.ilscShortlisted }).map((_, i) => ({
     srNo: i + 1, fullName: "", email: "", secondaryEmail: "", phone: "",
@@ -368,7 +377,8 @@ exports.uploadResumes = async (req, res) => {
     const hod  = await User.findByPk(req.user.id);
     const dept = (hod?.department || "UNKNOWN").toUpperCase().replace(/\s+/g, "_");
   
-    const destDir  = path.join(__dirname, "../uploads/resumes", cycle.cycle, dept);
+    const cycleFolder = cycle.cycle.replace(/[^a-zA-Z0-9_\-]/g, "_");
+    const destDir  = path.join(__dirname, "../uploads/resumes", cycleFolder, dept);
     const destFile = path.join(destDir, "resumes.zip");
  
     // Ensure directory exists
@@ -404,7 +414,8 @@ exports.getUploadedResumes = async (req, res) => {
     const dept = (hod?.department || "UNKNOWN").toUpperCase().replace(/\s+/g, "_");
 
     // Reconstruct the exact path where the file is saved
-    const filePath = path.join(__dirname, "../uploads/resumes", cycle.cycle, dept, "resumes.zip");
+    const cycleFolder = cycle.cycle.replace(/[^a-zA-Z0-9_\-]/g, "_");
+    const filePath = path.join(__dirname, "../uploads/resumes", cycleFolder, dept, "resumes.zip");
 
     // FIX: Physically check the server's hard drive. No database queries needed!
     if (fs.existsSync(filePath)) {

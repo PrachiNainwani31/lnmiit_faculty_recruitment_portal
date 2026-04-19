@@ -27,6 +27,7 @@ export default function DofaOfficeLayout() {
           <NavLink to="/dofa-office/room-allotment"    className={navStyle}>Room Allotment</NavLink>
           <NavLink to="/dofa-office/logs"              className={navStyle}>Interview Logs</NavLink>
           <NavLink to="/dofa-office/registration" className={navStyle}>Registration</NavLink>
+          <NavLink to="/dofa-office/cycle-logs"        className={navStyle}>Logs</NavLink>
         </nav>
         <button
           onClick={() => { localStorage.clear(); navigate("/login"); }}

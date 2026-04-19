@@ -12,7 +12,7 @@ const getCurrentCycle = require("../utils/getCurrentCycle");
 const SINGLE_DOC_COLS = [
   "docCv","docTeachingStatement","docResearchStatement",
   "docMarks10","docMarks12","docGraduation","docPostGraduation",
-  "docPhdCourseWork","docPhdProvisional","docPhdDegree",
+  "docPhdCourseWork","docPhdProvisional","docPhdDegree","docThesisSubmission",
 ];
 const MULTI_DOC_COLS = [
   "docResearchExpCerts","docTeachingExpCerts","docIndustryExpCerts",
@@ -23,7 +23,7 @@ const DOC_LABELS = {
   docResearchStatement:"Research_Statement", docMarks10:"10th_Marksheet",
   docMarks12:"12th_Marksheet", docGraduation:"Graduation_Cert",
   docPostGraduation:"PostGraduation_Cert", docPhdCourseWork:"PhD_CourseWork",
-  docPhdProvisional:"PhD_Provisional", docPhdDegree:"PhD_Degree",
+  docPhdProvisional:"PhD_Provisional", docPhdDegree:"PhD_Degree",docThesisSubmission: "Thesis_Submission_Certificate",
   docResearchExpCerts:"Research_Exp", docTeachingExpCerts:"Teaching_Exp",
   docIndustryExpCerts:"Industry_Exp", docBestPapers:"Best_Papers",
   docPostDocDocs:"PostDoc", docSalarySlips:"Salary_Slips", docOtherDocs:"Other",
@@ -78,7 +78,7 @@ exports.getDocumentTracking = async (req, res) => {
         status: {
           [Op.in]: ["SUBMITTED", "QUERY"]
         }
-      },   // ✅ include QUERY status apps
+      }, 
       include: [
         { model: CandidateReferee,    as: "referees",    required: false },
         { model: CandidateExperience, as: "experiences", required: false },
@@ -114,6 +114,7 @@ exports.getDocumentTracking = async (req, res) => {
           phdCourseWork:     clean(app.docPhdCourseWork),
           phdProvisional:    clean(app.docPhdProvisional),
           phdDegree:         clean(app.docPhdDegree),
+          thesisSubmission:    clean(app.docThesisSubmission),
           dateOfDefense:     app.docDateOfDefense || null,
           researchExpCerts: Array.isArray(app.docResearchExpCerts) ? app.docResearchExpCerts.map(clean).filter(Boolean) : [],
           teachingExpCerts: Array.isArray(app.docTeachingExpCerts) ? app.docTeachingExpCerts.map(clean).filter(Boolean) : [],

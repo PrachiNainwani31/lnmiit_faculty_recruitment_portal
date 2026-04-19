@@ -4,7 +4,7 @@ import API from "../../api/api";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-export default function Experienceentry({ exp, index, onChange, onRemove, isReadOnly, total, onCertUpload }) {
+export default function Experienceentry({ exp, index, onChange, onRemove, isReadOnly, total, onCertUpload,hideNatureOfWork=false }) {
   const certRef = useRef();
 
   const uploadCert = (file)=>onCertUpload?.(file);
@@ -48,18 +48,8 @@ export default function Experienceentry({ exp, index, onChange, onRemove, isRead
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelCls}>Type</label>
-          <select value={exp.type || ""} className={inputCls} disabled={isReadOnly}
-            onChange={e => onChange(index, "type", e.target.value)}>
-            <option value="">Select type</option>
-            <option>Research</option>
-            <option>Teaching</option>
-            <option>Industrial</option>
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>Organization</label>
-          <input value={exp.organization || ""} placeholder="Organization" className={inputCls}
+          <label className={labelCls}>Organization/Institute</label>
+          <input value={exp.organization || ""} placeholder="Organization/Institute" className={inputCls}
             disabled={isReadOnly} onChange={e => onChange(index, "organization", e.target.value)} />
         </div>
         <div>
@@ -72,12 +62,14 @@ export default function Experienceentry({ exp, index, onChange, onRemove, isRead
           <input value={exp.department || ""} placeholder="Department" className={inputCls}
             disabled={isReadOnly} onChange={e => onChange(index, "department", e.target.value)} />
         </div>
-        <div className="col-span-2">
-          <label className={labelCls}>Nature of Work</label>
-          <input value={exp.natureOfWork || ""} placeholder="Describe nature of work"
-            className={inputCls} disabled={isReadOnly}
-            onChange={e => onChange(index, "natureOfWork", e.target.value)} />
-        </div>
+        {!hideNatureOfWork && (
+          <div className="col-span-2">
+            <label className={labelCls}>Nature of Work</label>
+            <input value={exp.natureOfWork || ""} placeholder="Describe nature of work"
+              className={inputCls} disabled={isReadOnly}
+              onChange={e => onChange(index, "natureOfWork", e.target.value)} />
+          </div>
+        )}
         <div>
           <label className={labelCls}>{exp.ongoing ? "Start Date" : "From Date"}</label>
           <input type="date" value={exp.fromDate?.split("T")[0] || ""} className={inputCls}

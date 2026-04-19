@@ -7,6 +7,7 @@ import {
   markCandidateAppeared,
 } from "../../api/candidateApi";
 import API from "../../api/api";
+import { showToast, showConfirm } from "../../components/ui/Toast";
 
 export default function CandidateListTable({ cycle, isFrozen, onChange }) {
   const [candidates,    setCandidates]    = useState([]);
@@ -33,15 +34,18 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
   useEffect(() => { fetchCandidates(); }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this candidate?")) return;
+    const ok = await showConfirm("Delete this candidate?");
+    if (!ok) return;
     await deleteCandidateById(id);
     window.dispatchEvent(new Event("hod-refresh"));
     await fetchCandidates();
     onChange?.();
+    showToast("Candidate deleted.");
   };
 
   const handleClearAll = async () => {
-    if (!window.confirm("Delete ALL candidates and reset?")) return;
+    const ok = await showConfirm("Delete ALL candidates and reset?");
+    if (!ok) return;
     await clearCandidateStats(cycle);
     window.dispatchEvent(new Event("hod-refresh"));
     onChange?.();
@@ -57,28 +61,29 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
       );
     } catch (err) {
       if (err.response?.data?.gated) {
-        alert("Interview date not yet set by DOFA. Cannot mark appeared yet.");
+        showToast("Interview date not yet set by DOFA. Cannot mark appeared yet.", "error");
       } else {
-        alert("Failed to update appeared status");
+        showToast("Failed to update appeared status", "error");
       }
-    } finally {
+    }finally {
       setTogglingId(null);
     }
   };
 
   /* ── Submit appeared to DOFA ── */
   const handleSubmitAppeared = async () => {
-    if (!window.confirm(
+    const ok = await showConfirm(
       "Submit appeared candidate data to DOFA? Your portal will be frozen again after submission."
-    )) return;
+    );
+    if (!ok) return;
     try {
       setSubmitting(true);
       await API.post("/cycle/submit-appeared");
-      alert("Appeared candidates submitted to DOFA. Portal is now locked.");
-      window.dispatchEvent(new Event("hod-refresh")); // refresh layout freeze state
+      showToast("Appeared candidates submitted to DOFA. Portal is now locked.");
+      window.dispatchEvent(new Event("hod-refresh"));
       await fetchCandidates();
     } catch (err) {
-      alert(err.response?.data?.message || "Submission failed");
+      showToast(err.response?.data?.message || "Submission failed", "error");
     } finally {
       setSubmitting(false);
     }
@@ -162,9 +167,10 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
               {[
-                "Sr","Name","Email","Secondary Email","Phone",
+                "Sr","Name","Primary Email","Secondary Email","Phone",
                 "Qualification","Specialization","Applied Position",
-                "Recommended Position","Reviewer Observation","ILSC Comments",
+                "Recommended Position","DLSC Recommendation","ILSC Recommendation",
+                "DLSC Remarks","ILSC Remarks",
               ].map(h => (
                 <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
               ))}
@@ -192,14 +198,16 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.specialization}</td>
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.appliedPosition || "—"}</td>
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.recommendedPosition || "—"}</td>
+                <td className="px-3 py-2.5 text-gray-600 text-xs">{c.dlscRecommendation||"-"}</td>
+                <td className="px-3 py-2.5 text-gray-600 text-xs">{c.ilscRecommendation||"-"}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 max-w-[160px]">
-                  <span className="line-clamp-2" title={c.reviewerObservation}>
-                    {c.reviewerObservation || "—"}
+                  <span className="line-clamp-2" title={c.dlscRemarks}>
+                    {c.dlscRemarks || "—"}
                   </span>
                 </td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 max-w-[140px]">
-                  <span className="line-clamp-2" title={c.ilscComments}>
-                    {c.ilscComments || "—"}
+                  <span className="line-clamp-2" title={c.ilscRemarks}>
+                    {c.ilscRemarks || "—"}
                   </span>
                 </td>
 

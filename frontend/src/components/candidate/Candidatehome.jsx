@@ -3,12 +3,16 @@ import OnboardingStatus from "../OnBoardingStatus";
 
 export default function Candidatehome({ application = {}, onOpenForm }) {
   const isSubmitted = application?.status === "SUBMITTED";
-
+   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const displayName = application?.name || user?.name || "";
+  const firstName = displayName.split(" ").find(p => 
+    !["Dr.", "Dr", "Prof.", "Prof", "Mr.", "Mr", "Ms.", "Ms", "Mrs.", "Mrs"].includes(p)
+  ) || displayName;
   return (
     <div className="flex-1 p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-800">
-          Welcome{application?.name ? `, ${application.name.split(" ")[0]}` : ""}!
+          Welcome{firstName ? `, ${firstName}` : ""}!
         </h1>
         <p className="text-sm text-gray-500 mt-1">LNMIIT Recruitment & Onboarding Portal</p>
       </div>
@@ -18,8 +22,8 @@ export default function Candidatehome({ application = {}, onOpenForm }) {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
           <div className="flex items-start gap-3">
             <div>
-              <h2 className="font-semibold text-gray-800">My Application</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Fill in your details and submit</p>
+              <h2 className="font-semibold text-gray-800">My Document</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Open Document Submission Form and Submit</p>
             </div>
           </div>
 

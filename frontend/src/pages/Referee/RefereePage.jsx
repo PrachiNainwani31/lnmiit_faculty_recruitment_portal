@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-// Import LNMIIT campus background — same as AuthLayout
-import bg from "../../assets/LNMIIT_campus_image.jpg";
 
 const BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
@@ -188,33 +186,6 @@ function SignatureInput({ onSignatureReady }) {
   );
 }
 
-function CaptchaGate({ onPass }) {
-  const [a] = useState(() => Math.floor(Math.random() * 10) + 1);
-  const [b] = useState(() => Math.floor(Math.random() * 10) + 1);
-  const [answer, setAnswer] = useState("");
-  const [error, setError]   = useState("");
-
-  return (
-    <div className="text-center space-y-5 py-4">
-      <p className="text-lg font-bold text-gray-800">Security Check</p>
-      <p className="text-sm text-gray-500">Please solve this to continue:</p>
-      <p className="text-3xl font-bold text-rose-700">{a} + {b} = ?</p>
-      <input type="number" value={answer} onChange={e => setAnswer(e.target.value)}
-        className="border border-gray-300 rounded-lg px-4 py-2 text-center text-lg w-32 focus:outline-none focus:ring-2 focus:ring-rose-300"
-        placeholder="?" />
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      <button
-        onClick={() => {
-          if (parseInt(answer) === a + b) { onPass(); }
-          else { setError("Incorrect. Please try again."); setAnswer(""); }
-        }}
-        className="bg-rose-700 hover:bg-rose-800 text-white px-6 py-2 rounded-lg font-semibold text-sm transition">
-        Verify
-      </button>
-    </div>
-  );
-}
-
 /* ══════════════════════════════════════════
    STEP 0 — Landing
 ══════════════════════════════════════════ */
@@ -269,7 +240,15 @@ function LandingStep({ onChoose }) {
     </div>
   );
 }
-
+function validatePassword(pwd) {
+  const errors = [];
+  if (pwd.length < 8)           errors.push("At least 8 characters");
+  if (!/[A-Z]/.test(pwd))       errors.push("One uppercase letter");
+  if (!/[a-z]/.test(pwd))       errors.push("One lowercase letter");
+  if (!/\d/.test(pwd))          errors.push("One number");
+  if (!/[!@#$%^&*(),.?":{}|<>_\-]/.test(pwd)) errors.push("One special character");
+  return errors;
+}
 /* ══════════════════════════════════════════
    STEP 1a — Register / Login
 ══════════════════════════════════════════ */
@@ -285,6 +264,8 @@ function RegisterStep({ onBack, onSuccess }) {
   e.preventDefault();
   setError("");
   if (form.password !== form.confirm) return setError("Passwords do not match");
+  const pwdErrors = validatePassword(form.password);
+  if (pwdErrors.length > 0) return setError(`Password requirements: ${pwdErrors.join(", ")}`);
   setLoading(true);
   try {
     await axios.post(`${BASE}/auth/register`, {
@@ -369,6 +350,16 @@ function RegisterStep({ onBack, onSuccess }) {
           <div className="grid grid-cols-2 gap-4">
             <Field label="Password" required>
               <PwdField name="password" placeholder="Create password" value={form.password} onChange={change} />
+              {form.password && validatePassword(form.password).length > 0 && (
+                <div className="mt-1 space-y-0.5">
+                  {validatePassword(form.password).map(e => (
+                    <p key={e} className="text-xs text-red-500">• {e}</p>
+                  ))}
+                </div>
+              )}
+              {form.password && validatePassword(form.password).length === 0 && (
+                <p className="text-xs text-green-600 mt-1">Password strength: Good</p>
+              )}
             </Field>
             <Field label="Confirm Password" required>
               <PwdField name="confirm" placeholder="Repeat password" value={form.confirm} onChange={change} />
@@ -479,7 +470,6 @@ function GuestStep({ refereeId, candidateName, prefillName, prefillEmail, onBack
   const [loading,   setLoading]   = useState(false);
   const [success,   setSuccess]   = useState(false);
   const [error,     setError]     = useState("");
-  const [captchaPassed, setCaptchaPassed] = useState(false);
 
   const change = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -620,27 +610,29 @@ export default function RefereePage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
   const [step,    setStep]    = useState("landing");
-  const [captchaPassed, setCaptchaPassed] = useState(false);
-
+  const [captchaVerified, setCaptchaVerified] = useState(false);
+  const [captchaInput,    setCaptchaInput]    = useState("");
+  const [captchaError,    setCaptchaError]    = useState("");
+  const [requiresCaptcha, setRequiresCaptcha] = useState(false);
   useEffect(() => {
     localStorage.removeItem("token");
   }, []);
   useEffect(() => {
-    axios
-      .get(`${BASE}/referee/info/${refereeId}`)
-      .then((res) => {
-        setInfo(res.data);
-        if (res.data.alreadySubmitted) setStep("done");
-      })
-      .catch(() => setError("This link is invalid or has expired."))
-      .finally(() => setLoading(false));
-  }, [refereeId]);
+  axios
+    .get(`${BASE}/referee/info/${refereeId}`)
+    .then((res) => {
+      setInfo(res.data);
+      if (res.data.alreadySubmitted) setStep("done");
+      setRequiresCaptcha(!!res.data.requiresCaptcha); // ← SET from API
+    })
+    .catch(() => setError("This link is invalid or has expired."))
+    .finally(() => setLoading(false));
+}, [refereeId]);
 
   /* ── wrapper with LNMIIT background ── */
   const Wrapper = ({ children }) => (
     <div
-      className="min-h-screen flex items-center justify-center bg-no-repeat bg-center bg-cover py-10 px-4"
-      style={{ backgroundImage: `url(${bg})` }}
+      className="min-h-screen flex items-center justify-center ng-white bg-no-repeat bg-center bg-cover py-10 px-4"
     >
       <div className="w-full max-w-2xl">
         {/* Header */}
@@ -690,26 +682,75 @@ export default function RefereePage() {
     </Wrapper>
   );
 
-  if (!captchaPassed) return (
+   if (loading) return <Wrapper><p className="text-center text-gray-400 py-10">Loading...</p></Wrapper>;
+  if (error)   return <Wrapper><div className="text-center py-8"><h2 className="text-xl font-bold text-gray-800 mb-2">Invalid Link</h2><p className="text-gray-500 text-sm">{error}</p></div></Wrapper>;
+  if (step === "done") return (
     <Wrapper>
-      <CaptchaGate onPass={() => setCaptchaPassed(true)} />
+      <div className="text-center py-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Already Submitted</h2>
+        <p className="text-gray-500 text-sm">Your reference letter for <strong>{info?.candidateName}</strong> has already been submitted.</p>
+      </div>
     </Wrapper>
   );
 
+  // ── CAPTCHA gate — shown before landing if requiresCaptcha ──
+  if (requiresCaptcha && !captchaVerified) return (
+  <Wrapper>
+    <div className="space-y-5">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-rose-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-800">Enter Your Access Code</h2>
+        <p className="text-sm text-gray-500 mt-2">
+          Check the reference letter invitation email you received.<br/>
+          Enter the 6-character access code shown in the email.
+        </p>
+      </div>
+
+      <input
+        type="text"
+        maxLength={6}
+        autoFocus
+        value={captchaInput}
+        onChange={e => {
+          setCaptchaInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+          if (captchaError) setCaptchaError("");
+        }}
+        placeholder="e.g. A3F9B2"
+        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-widest uppercase focus:outline-none focus:border-red-400"
+      />
+
+      {captchaError && <p className="text-red-600 text-sm text-center">{captchaError}</p>}
+
+      <button
+        onClick={async () => {
+          try {
+            await axios.post(`${BASE}/referee/verify-captcha`, { refereeId, captcha: captchaInput });
+            setCaptchaVerified(true);
+            setRequiresCaptcha(false);
+          } catch (err) {
+            setCaptchaError(err.response?.data?.message || "Incorrect code. Please try again.");
+          }
+        }}
+        disabled={captchaInput.length < 6}
+        className="w-full bg-rose-700 hover:bg-rose-800 text-white py-3 rounded-xl font-semibold disabled:opacity-50 transition"
+      >
+        Verify & Continue
+      </button>
+    </div>
+  </Wrapper>
+);
+
+  // ── Normal flow ──
   return (
     <Wrapper>
       {step === "landing"  && <LandingStep onChoose={setStep} />}
       {step === "register" && <RegisterStep onBack={() => setStep("landing")} onSuccess={() => setStep("submit")} />}
-      {step === "submit" && (<AuthenticatedSubmitStep refereeId={refereeId} candidateName={info?.candidateName} onDone={() => setStep("done")}/>)}
-      {step === "guest"    && (
-        <GuestStep
-          refereeId={refereeId}
-          candidateName={info?.candidateName}
-          prefillName={info?.refereeName}
-          prefillEmail={info?.refereeEmail}
-          onBack={() => setStep("landing")}
-        />
-      )}
+      {step === "submit"   && <AuthenticatedSubmitStep refereeId={refereeId} candidateName={info?.candidateName} onDone={() => setStep("done")} />}
+      {step === "guest"    && <GuestStep refereeId={refereeId} candidateName={info?.candidateName} prefillName={info?.refereeName} prefillEmail={info?.refereeEmail} onBack={() => setStep("landing")} />}
     </Wrapper>
-  );
+  )
 }

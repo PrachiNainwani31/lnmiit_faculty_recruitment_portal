@@ -1,4 +1,4 @@
-const { SelectedCandidate, OnboardingRecord, Candidate, User } = require("../models");
+const { SelectedCandidate, OnboardingRecord, Candidate, User,RecruitmentCycle } = require("../models");
 const { sendEmail }          = require("../utils/emailSender");
 const { createNotification } = require("../utils/notify");
 const templates              = require("../utils/emailTemplates");
@@ -11,7 +11,29 @@ const VALID_STATUSES = ["SELECTED", "WAITLISTED", "NOT_SELECTED", "REJECTED"];
 exports.getSelectedCandidates = async (req, res) => {
   try {
     const where = {};
-    if (req.user.role === "HOD") where.hodId = req.user.id;
+    if (req.user.role === "HOD") {
+       const activeCycle = await getCurrentCycle(req.user.id);
+        if (!activeCycle) return res.json([]);
+        where.hodId = req.user.id;
+        where.cycle = activeCycle.cycle;
+    }else if(req.user.role === "DOFA" || req.user.role === "DOFA_OFFICE"){
+      const { Op } = require("sequelize");
+      const hods = await User.findAll({ where: { role: "HOD" }, attributes: ["id"] });
+      const cyclePerHod = await Promise.all(
+        hods.map(h => RecruitmentCycle.findOne({
+          where: { hodId: h.id },
+          order: [["createdAt", "DESC"]],
+        }))
+      );
+      const validCycles = cyclePerHod
+        .filter(Boolean)
+        .map(rc => rc.cycle);
+      if (!validCycles.length) return res.json([]);
+      where.cycle = { [Op.in]: validCycles };
+    }
+    if (req.query.cycle) {
+      where.cycle = req.query.cycle;
+    }
 
     const selected = await SelectedCandidate.findAll({
       where,
@@ -19,6 +41,7 @@ exports.getSelectedCandidates = async (req, res) => {
         { model: Candidate, as: "candidate" },
         { model: User, as: "hod", attributes: ["department", "email", "name"] },
       ],
+      order: [["createdAt", "DESC"]],
     });
     res.json(selected);
   } catch (err) {
@@ -176,20 +199,23 @@ exports.addManualExpert = async (req, res) => {
     if (!fullName || !email)
       return res.status(400).json({ message: "Full name and email are required" });
 
-    const dept = (department || "").toUpperCase().trim();
-    let uploadedById = req.user.id;
-    if (dept) {
-      const hod = await User.findOne({ where: { role: "HOD", department: dept } });
-      if (hod) uploadedById = hod.id;
-    }
-
-    const { Expert } = require("../models");
-    const hod = await User.findOne({ where: { role: "HOD", department: dept } });
-    const hodCycle = hod ? await getCurrentCycle(hod.id) : null;
+    const dept = (department || "").trim();  // ← no .toUpperCase() forced
+    
+    // Find any HOD to get a cycle, or use MANUAL if none
+    const { Expert, User, RecruitmentCycle } = require("../models");
+    const anyHod = await User.findOne({ where: { role: "HOD" } });
+    const hodCycle = anyHod ? await getCurrentCycle(anyHod.id) : null;
+    
     const expert = await Expert.create({
-      fullName, designation: designation || null, department: dept || null,
-      institute: institute || null, email, phone: phone || null,
-      specialization: specialization || null, cycle: hodCycle?.cycle || "UNKNOWN", uploadedById,
+      fullName,
+      designation: designation || null,
+      department:  dept || "External",
+      institute:   institute  || null,
+      email,
+      phone:           phone || null,
+      specialization:  specialization || null,
+      cycle:           hodCycle?.cycle || "MANUAL",
+      uploadedById:    req.user.id,   // ← DOFA's own id
     });
     res.json({ success: true, expert });
   } catch (err) {

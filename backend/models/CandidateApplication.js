@@ -36,6 +36,8 @@ const CandidateApplication = sequelize.define(
     docPhdProvisional:    { type: DataTypes.STRING(500) },
     docPhdDegree:         { type: DataTypes.STRING(500) },
     docDateOfDefense:     { type: DataTypes.STRING(50)  },
+    docThesisSubmission: { type: DataTypes.STRING(500) },
+    phdStatus: { type: DataTypes.STRING(30), defaultValue: "" },
 
     // ── Documents (multi-file — stored as JSON arrays) ─────────────────────
     docResearchExpCerts:  { type: DataTypes.JSON, defaultValue: [] },
@@ -87,6 +89,7 @@ const CandidateReferee = sequelize.define(
     letter:       { type: DataTypes.STRING(500) },
     signedName:   { type: DataTypes.TEXT(200) },
     submittedAt:  { type: DataTypes.DATE },
+    captchaCode: { type: DataTypes.STRING(10), allowNull: true },
   },
   {
     tableName:  "candidate_referees",

@@ -37,6 +37,17 @@ export default function HodComments() {
   return (
     <div className="space-y-6 p-6">
       <h2 className="text-xl font-semibold text-gray-800">Comments (DOFA ↔ HOD)</h2>
+      <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 text-sm">
+        <span className="text-indigo-700">
+          Ready to submit everything to DoFA?
+        </span>
+        <a
+          href="/hod"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition"
+        >
+          Go to Dashboard → Submit
+        </a>
+      </div>
 
       <div className="bg-white rounded-xl shadow p-5 space-y-3 max-h-[60vh] overflow-y-auto">
         {comments.length === 0 && (

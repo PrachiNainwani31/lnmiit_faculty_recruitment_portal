@@ -5,6 +5,18 @@ import FinalSubmissionCard from "../../components/hod/FinalSubmissionCard";
 import { useOutletContext } from "react-router-dom";
 import SelectionStatusPanel from "../../components/Selectionstatuspanel";
 import API from "../../api/api";
+import { showToast, showConfirm } from "../../components/ui/Toast";
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">
+        {label} <span className="text-red-500">*</span>
+      </label>
+      {children}
+    </div>
+  );
+}
 
 /* ── Submit Appeared card — shown after DOFA sets interview date ── */
 function SubmitAppearedCard({ cycleData, onSubmitted }) {
@@ -14,16 +26,17 @@ function SubmitAppearedCard({ cycleData, onSubmitted }) {
     d ? new Date(d).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" }) : null;
 
   const handleSubmit = async () => {
-    if (!window.confirm(
+    const ok = await showConfirm(
       "Submit appeared candidate data to DoFA? Your portal will be frozen again after submission."
-    )) return;
+    );
+    if (!ok) return;
     try {
       setSubmitting(true);
       await API.post("/cycle/submit-appeared");
-      alert("Appeared candidates submitted to DoFA. Portal is now locked.");
+      showToast("Appeared candidates submitted to DoFA. Portal is now locked.");
       onSubmitted();
     } catch (err) {
-      alert(err.response?.data?.message || "Submission failed");
+      showToast(err.response?.data?.message || "Submission failed", "error");
     } finally {
       setSubmitting(false);
     }
@@ -71,8 +84,9 @@ function SubmitAppearedCard({ cycleData, onSubmitted }) {
   );
 }
 
-const ACADEMIC_YEARS = Array.from({ length: 75 }, (_, i) => {
-  const start = 2026 + i;
+const currentYear = new Date().getFullYear();
+const ACADEMIC_YEARS = Array.from({ length: 20 }, (_, i) => {
+  const start = currentYear - 2 + i;  // show 2 past + 18 future
   const end   = String(start + 1).slice(-2);
   return `${start}-${end}`;
 });
@@ -102,25 +116,24 @@ export default function Dashboard() {
   const [counts,    setCounts]    = useState({ candidates: 0, experts: 0 });
   const [cycleData, setCycleData] = useState(null);
   const { isFrozen } = useOutletContext();
-  const [yearForm,  setYearForm]  = useState({ academicYear: "", cycleNumber: "" });
+  const [yearForm, setYearForm] = useState({
+  academicYear: `${currentYear}-${String(currentYear + 1).slice(-2)}`,cycleNumber: "",});
   const [yearError, setYearError] = useState("");
   const [initiating, setInitiating] = useState(false);
   const [cycleLoaded, setCycleLoaded] = useState(false);
   const [showNewCycleForm, setShowNewCycleForm] = useState(false);
   const [nextCycleNumber, setNextCycleNumber] = useState(1);
   const fetchCounts = async () => {
+  try {
     const res = await getHodCounts();
     setCounts(res.data);
-  };
-  const openNewCycleForm = async () => {
-    try {
-      // Count existing cycles for this HOD to determine next number
-      const res = await API.get("/cycle/next-cycle-number");
-      setNextCycleNumber(res.data.nextNumber || 1);
-      setYearForm(f => ({ ...f, cycleNumber: String(res.data.nextNumber || 1) }));
-    } catch {
-      setYearForm(f => ({ ...f, cycleNumber: "1" }));
+  } catch (err) {
+    if (err?.response?.status !== 400) {
+      console.error("fetchCounts error:", err);
     }
+  }
+};
+  const openNewCycleForm = async () => {
     setShowNewCycleForm(true);
   };
 
@@ -143,6 +156,12 @@ export default function Dashboard() {
     return () => window.removeEventListener("hod-refresh", refresh);
   }, []);
 
+useEffect(() => {
+  if (!yearForm.academicYear) return;
+  API.get(`/cycle/next-cycle-number?academicYear=${yearForm.academicYear}`)
+    .then(res => setYearForm(f => ({ ...f, cycleNumber: String(res.data.nextNumber || 1) })))
+    .catch(() => setYearForm(f => ({ ...f, cycleNumber: "1" })));
+}, [yearForm.academicYear]);
   const status    = cycleData?.status;
   const statusCfg = STATUS_LABELS[status] || STATUS_LABELS.DRAFT;
 
@@ -159,48 +178,49 @@ export default function Dashboard() {
   // Previously this was combined with showFirstSubmit but QUERY was excluded — bug fixed here.
   const showReSubmit =
     hasData &&
-    status === "QUERY" &&
-    !isFrozen;
+    status === "QUERY";
 
   // Step 2: Submit appeared candidates after interview is scheduled
   const showSubmitAppeared  = status === "INTERVIEW_SET" && !isFrozen;
   const showAppearedDone    = status === "APPEARED_SUBMITTED";
 
   const handleFirstSubmit = async () => {
-    if (!window.confirm("Once submitted, data will be frozen. Continue?")) return;
+    const ok = window.confirm("Once submitted, data will be frozen. Continue?");
+    if (!ok) return;
     try {
       await submitToDofa();
-      alert("Submitted to DoFA successfully. Data is now locked.");
+      showToast("Submitted to DoFA successfully. Data is now locked.");
       refresh();
     } catch (err) {
-      alert(err.response?.data?.message || "Submission failed");
+      console.error("Submit error:", err);
+      showToast(err.response?.data?.message || "Submission failed", "error");
     }
   };
 
   const handleReSubmit = async () => {
-    if (!window.confirm("Re-submit to DoFA? Data will be frozen again after submission.")) return;
+    const ok = window.confirm("Re-submit to DoFA? Data will be frozen again after submission.");
+    if (!ok) return;
     try {
       await submitToDofa();
-      alert("Re-submitted to DoFA successfully. Data is now locked.");
+      showToast("Re-submitted to DoFA successfully. Data is now locked.");
       refresh();
     } catch (err) {
-      alert(err.response?.data?.message || "Submission failed");
+      console.error("Re-submit error:", err);
+      showToast(err.response?.data?.message || "Submission failed", "error");
     }
   };
 
   const validateYearForm = () => {
-  const { academicYear, cycleNumber } = yearForm;
-  if (!academicYear) return "Academic year is required";
-  if (!/^\d{4}-\d{2}$/.test(academicYear))
-    return "Format must be YYYY-YY (e.g. 2025-26)";
-  const [start, end] = academicYear.split("-");
-  if (parseInt(end) !== (parseInt(start) + 1) % 100)
-    return "End year must be start year + 1 (e.g. 2025-26)";
-  const cn = parseInt(cycleNumber);
-  if (!cn || cn < 1 || cn > 10)
-    return "Cycle number must be between 1 and 10";
-  return null;
-};
+    const { academicYear } = yearForm;
+    if (!academicYear) return "Academic year is required";
+    if (!/^\d{4}-\d{2}$/.test(academicYear))
+      return "Format must be YYYY-YY (e.g. 2025-26)";
+    const [start, end] = academicYear.split("-");
+    if (parseInt(end) !== (parseInt(start) + 1) % 100)
+      return "End year must be start year + 1 (e.g. 2025-26)";
+    // cycleNumber is auto-calculated, no validation needed
+    return null;
+  };
 
 const handleInitiate = async () => {
   const err = validateYearForm();
@@ -213,7 +233,10 @@ const handleInitiate = async () => {
     });
     setYearError("");
     setShowNewCycleForm(false);                         
-    setYearForm({ academicYear: "", cycleNumber: "" }); 
+    setYearForm({
+      academicYear: `${currentYear}-${String(currentYear + 1).slice(-2)}`,
+      cycleNumber: "",
+    });
     await refresh();
   } catch (e) {
     setYearError(e.response?.data?.message || "Failed to initiate cycle");
@@ -257,24 +280,17 @@ if (cycleLoaded && cycleData === null) return (
       </Field>
     </div>
 
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">
-        Cycle Number <span className="text-red-500">*</span>
-      </label>
-      <input
-        type="number" min={1} max={10}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
-        placeholder="e.g. 1"
-        value={yearForm.cycleNumber}
-        onChange={e => {
-          setYearError("");
-          const v = e.target.value.replace(/\D/g, "").slice(0, 2);
-          setYearForm(f => ({ ...f, cycleNumber: v }));
-        }}
-      />
-      <p className="text-xs text-gray-400 mt-1">
-        Each academic year can have multiple cycles (1, 2, 3…). First cycle = 1.
-      </p>
+    <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between">
+      <div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cycle Number</p>
+        <p className="text-2xl font-bold text-gray-800 mt-0.5">{yearForm.cycleNumber || "—"}</p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Auto-calculated based on previous cycles in {yearForm.academicYear || "selected year"}
+        </p>
+      </div>
+      <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700 text-xl font-bold">
+        {yearForm.cycleNumber || "?"}
+      </div>
     </div>
 
     <button
@@ -345,10 +361,9 @@ if (cycleLoaded && cycleData === null) return (
             <div className="flex justify-end">
               <button
                 onClick={handleReSubmit}
-                disabled={isFrozen}
                 className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition shadow-sm"
               >
-                Re-submit Everything to DpFA →
+                Re-submit Everything to DoFA →
               </button>
             </div>
           </div>
@@ -425,34 +440,33 @@ if (cycleLoaded && cycleData === null) return (
               <label className="block text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">
                 Academic Year <span className="text-red-500">*</span>
               </label>
-              <input
+              <select
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
-                placeholder="e.g. 2026-27"
-                maxLength={7}
                 value={yearForm.academicYear}
                 onChange={e => {
                   setYearError("");
-                  let v = e.target.value.replace(/[^0-9-]/g, "");
-                  if (v.length === 4 && !v.includes("-")) v = v + "-";
-                  setYearForm(f => ({ ...f, academicYear: v }));
+                  setYearForm(f => ({ ...f, academicYear: e.target.value }));
                 }}
-              />
+              >
+                <option value="">— Select Academic Year —</option>
+                {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">
-                Cycle Number <span className="text-red-500">*</span>
+                Cycle Number
               </label>
-              <input
-                type="number" min={1} max={10}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
-                placeholder="e.g. 2"
-                value={yearForm.cycleNumber}
-                onChange={e => {
-                  setYearError("");
-                  const v = e.target.value.replace(/\D/g, "").slice(0, 2);
-                  setYearForm(f => ({ ...f, cycleNumber: v }));
-                }}
-              />
+              <div className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 flex items-center justify-between">
+                <div>
+                  <span className="text-lg font-bold text-gray-800">{yearForm.cycleNumber || "—"}</span>
+                  <p className="text-xs text-gray-400">Auto-calculated</p>
+                </div>
+                {yearForm.academicYear && yearForm.cycleNumber && (
+                  <span className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                    Cycle {yearForm.cycleNumber} of {yearForm.academicYear}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -473,12 +487,13 @@ if (cycleLoaded && cycleData === null) return (
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <h3 className="font-semibold text-lg mb-2 text-gray-800">Overview</h3>
         <p className="text-gray-600 text-sm">
-          Welcome to the HOD Management Portal. Use the sidebar to manage
+          Welcome to the HoD Portal. Use the sidebar to manage
           candidates and experts. Upload candidate data via CSV or add experts manually.
         </p>
       </div>
-
-      <SelectionStatusPanel role="HOD" />
+        {cycleData?.cycle && cycleData?.status !== "DRAFT" && (
+          <SelectionStatusPanel role="HOD" cycle={cycleData.cycle} />
+        )}
     </div>
   );
 }

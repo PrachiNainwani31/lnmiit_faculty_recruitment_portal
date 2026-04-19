@@ -111,46 +111,17 @@ exports.getHodCounts = async (req, res) => {
 /* =========================================================
    GET ALL EXPERTS (DOFA)
 ========================================================= */
+// ADD to hod.controller.js — replaces the router block above
 exports.getAllExperts = async (req, res) => {
   try {
-    if (req.user.role !== "DOFA")
-      return res.status(403).json({ message: "Access denied" });
-
-    const hods = await User.findAll({
-      where: { role: "HOD" },
-      attributes: ["id", "department"],
+    const { Expert, User } = require("../models");
+    const experts = await Expert.findAll({
+      include: [{ model: User, as: "uploadedBy", attributes: ["department", "name"] }],
+      order: [["createdAt", "DESC"]],
     });
-
-    let allExperts = [];
-
-    for (const hod of hods) {
-      const latestCycle = await RecruitmentCycle.findOne({
-        where: { hodId: hod.id },   // 🔥 KEY FIX
-        order: [["createdAt", "DESC"]],
-      });
-
-      if (!latestCycle) continue;
-
-      const experts = await Expert.findAll({
-        where: { cycle: latestCycle.cycle },
-        include: [
-          {
-            model: User,
-            as: "uploadedBy",
-            attributes: ["name", "department"],
-          },
-        ],
-        order: [["createdAt", "ASC"]],
-      });
-
-      allExperts.push(...experts);
-    }
-
-    res.json(allExperts);
-
+    res.json(experts);
   } catch (err) {
-    console.error("getAllExperts error:", err);
-    res.status(500).json({ message: "Failed to fetch experts" });
+    res.status(500).json({ message: "Failed" });
   }
 };
 
@@ -169,9 +140,7 @@ exports.uploadExpertsCSV = async (req, res) => {
 
     const hodId = req.user.id;
     const hodCycle = await getCurrentCycle(hodId);
-    if (!hodCycle) {
-      return res.status(400).json({ message: "No active cycle found" });
-    }
+    if (!hodCycle) return res.status(200).json({ candidates: 0, experts: 0 });
     const formattedExperts = experts.map(row => ({
       cycle: hodCycle.cycle,
       fullName: row["Full Name (with Salutation)"]?.trim(),
@@ -180,6 +149,7 @@ exports.uploadExpertsCSV = async (req, res) => {
       institute: row["Institute"]?.trim(),
       email: row["Email"]?.trim()?.toLowerCase(),
       specialization: row["Specialization"]?.trim(),
+      mobileNo: row["Mobile No. (Optional)"]?.trim() || null,
       uploadedById: hodId
     }));
 
@@ -198,6 +168,48 @@ exports.uploadExpertsCSV = async (req, res) => {
       count: formattedExperts.length
     });
 
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getHodLogs = async (req, res) => {
+  try {
+    const hodId = req.user.id;
+    const { Op } = require("sequelize");
+
+    // ← Fix: match cycles that are closed OR joining complete (not just status="CLOSED")
+    const cycles = await RecruitmentCycle.findAll({
+      where: {
+        hodId,
+        [Op.or]: [
+          { isClosed: true },
+          { joiningComplete: true },
+          { status: "CLOSED" },
+        ],
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    const logs = await Promise.all(cycles.map(async (rc) => {
+      const [candidates, experts] = await Promise.all([
+        Candidate.findAll({ where: { cycle: rc.cycle, hodId } }),
+        Expert.findAll({ where: { cycle: rc.cycle, uploadedById: hodId } }),
+      ]);
+      return {
+        id:           rc.id,
+        academicYear: rc.academicYear,
+        cycleNumber:  rc.cycleNumber,
+        cycle:        rc.cycle,
+        status:       rc.status,
+        isClosed:     rc.isClosed,
+        joiningComplete: rc.joiningComplete,
+        candidates,
+        experts,
+      };
+    }));
+
+    res.json(logs);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

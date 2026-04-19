@@ -16,6 +16,7 @@ export default function SidebarLayout({ children }) {
           <NavLink to="/hod/candidates" className="menu-item">Candidates</NavLink>
           <NavLink to="/hod/experts" className="menu-item">Experts</NavLink>
           <NavLink to="/comments" className="menu-item">Comments</NavLink>
+          <NavLink to="/hod/logs" className={({ isActive }) => `block px-5 py-3 ${isActive ? "bg-pink-200 font-semibold" : "hover:bg-pink-100"}`}>Logs</NavLink>
           <NavLink to="/hod/settings" className="menu-item">Settings</NavLink>
         </nav>
       </aside>

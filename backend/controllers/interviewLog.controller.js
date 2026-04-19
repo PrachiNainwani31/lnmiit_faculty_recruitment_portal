@@ -5,7 +5,12 @@ const {
   CandidateApplication, CandidateExperience,
 } = require("../models");
 const getCurrentCycle = require("../utils/getCurrentCycle");
-
+const safeDate = (d) => {
+  if (!d) return "";
+  const dt = new Date(d);
+  // Use local date parts to avoid UTC timezone shift (IST = UTC+5:30)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+};
 /* ════════════════════════════════════════════════════════
    HELPER: build candidateExperiences array for one HOD
    - Fetches selected + waitlisted candidates
@@ -43,19 +48,18 @@ async function buildCandidateExperiences(hodId,cycleString ,savedExperiences = [
     const rawExps = app?.experiences || [];
 
     // Group: Research, Teaching, Industry
-    const experiences = rawExps.map((e, i) => {
-      const key = `${cand.id}__${i}`;
-      return {
-        type:         e.type         || "Other",
-        organization: e.organization || "",
-        designation:  e.designation  || "",
-        fromDate:     e.fromDate ? e.fromDate.toString().slice(0,10) : "",
-        toDate:       e.toDate   ? e.toDate.toString().slice(0,10)   : "",
-        natureOfWork: e.natureOfWork || "",
-        // DOFA can edit this; persisted in the log
-        editedToDate: savedMap[key] !== undefined ? savedMap[key] : null,
-      };
-    });
+   const experiences = rawExps.map((e, i) => {
+    const key = `${cand.id}__${i}`;
+    return {
+      type:         e.type         || "Other",
+      organization: e.organization || "",
+      designation:  e.designation  || "",
+      fromDate:     safeDate(e.fromDate),   // ← was e.fromDate.toString().slice(0,10)
+      toDate:       safeDate(e.toDate),     // ← was e.toDate.toString().slice(0,10)
+      natureOfWork: e.natureOfWork || "",
+      editedToDate: savedMap[key] !== undefined ? savedMap[key] : null,
+    };
+  });
 
     result.push({
       candidateId:   cand.id,

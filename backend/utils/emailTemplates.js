@@ -180,13 +180,18 @@ exports.candidateResubmitted = ({ candidateName, department }) => ({
 /* ══════════════════════════════════════════════
    8a. Referee invitation when candidate adds referee
 ══════════════════════════════════════════════ */
-exports.refereeInvitation = ({ refereeName, candidateName, portalLink }) => ({
+exports.refereeInvitation = ({ refereeName, candidateName, portalLink, captcha }) => ({
   subject: `Reference Letter Request — ${candidateName}, LNMIIT`,
   html: wrap(`
     <p>Dear ${refereeName},</p>
-    <p><strong>${candidateName}</strong> has applied for the faculty position at LNMIIT, Jaipur and has 
-    listed you as a referee.</p>
-    <p>We request you to kindly submit your reference letter on official letterhead of your organization/institute using  the secure portal link below.</p>
+    <p><strong>${candidateName}</strong> has applied for the faculty position at LNMIIT and has listed you as a referee.</p>
+    <p>Please submit your reference letter using the secure portal link below.</p>
+    ${captcha ? `
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;padding:15px;border-radius:6px;margin:15px 0;text-align:center">
+      <p style="margin:0 0 8px;color:#0369a1;font-size:13px;font-weight:bold">YOUR ACCESS CODE</p>
+      <p style="margin:0;font-size:28px;font-weight:bold;letter-spacing:8px;color:#0c4a6e;font-family:monospace">${captcha}</p>
+      <p style="margin:8px 0 0;color:#64748b;font-size:12px">Enter this code on the referee portal to access your submission form</p>
+    </div>` : ""}
     ${btn("Submit Reference Letter", portalLink)}
     <p>This link is unique to you. Please do not share it.</p>
     <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
@@ -196,16 +201,38 @@ exports.refereeInvitation = ({ refereeName, candidateName, portalLink }) => ({
 /* ══════════════════════════════════════════════
    8b. Referee reminder
 ══════════════════════════════════════════════ */
-exports.refereeReminder = ({ refereeName, candidateName, portalLink }) => ({
-  subject: `Reminder — Reference Letter Pending for ${candidateName}`,
-  html: wrap(`
-    <p>Dear ${refereeName},</p>
-    <p>This is a gentle reminder that your reference letter for <strong>${candidateName}</strong>'s 
-    faculty application at LNMIIT is still pending.</p>
-    <p>We would appreciate if you could submit it at the earliest convenience.</p>
-    ${btn("Submit Reference Letter", portalLink)}
-    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
-  `),
+exports.refereeReminder = ({ refereeName, candidateName, portalLink,captcha }) => ({
+  subject: `Reminder: Reference Letter Request for ${candidateName}`,
+  html: `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
+      <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
+        <h2 style="margin:0">LNMIIT Recruitment Portal</h2>
+      </div>
+      <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
+        <p>Dear ${refereeName},</p>
+        <p>This is a reminder that <strong>${candidateName}</strong> has requested a reference letter from you.</p>
+        <p>Please submit your reference letter using the portal link below.</p>
+
+        <!--  Captcha box — same style as invitation email -->
+        <div style="background:#f8f4ff;border:2px dashed #7c3aed;border-radius:8px;padding:16px;margin:20px 0;text-align:center">
+          <p style="margin:0 0 8px;font-size:13px;color:#555">Your access code for this submission:</p>
+          <p style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#7c3aed;margin:0;font-family:monospace">
+            ${captcha}
+          </p>
+          <p style="margin:8px 0 0;font-size:11px;color:#999">Enter this code on the portal to verify your identity</p>
+        </div>
+
+        <div style="text-align:center;margin:25px 0">
+          <a href="${portalLink}"
+            style="background:#8b0000;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">
+            Submit Reference Letter
+          </a>
+        </div>
+        <p style="font-size:12px;color:#999">Or copy this link: ${portalLink}</p>
+        <p>Regards,<br><strong>LNMIIT Recruitment Team</strong></p>
+      </div>
+    </div>
+  `,
 });
 
 /* ══════════════════════════════════════════════

@@ -17,7 +17,7 @@ const { CandidateApplication,
 const CandidateStats     = require("./CandidateStats");
 const Comment            = require("./Comment");
 const Expert             = require("./Expert");
-const ExpertTravel       = require("./ExpertTravel");
+const ExpertTravel       = require("./Experttravel");
 const InterviewLog       = require("./InterviewLog");
 const Notification       = require("./Notification");
 const OnboardingRecord   = require("./OnboardingRecord");

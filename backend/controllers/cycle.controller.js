@@ -11,8 +11,6 @@ const { toCode } = require("../utils/deptMap");
    GET CURRENT CYCLE
 ════════════════════════════════════ */
 exports.getCurrentCycle = async (req, res) => {
-  // ✅ Return the most recent non-complete cycle for this HOD
-  // If all cycles are complete, return the latest one anyway so HOD can see history
   const cycle = await RecruitmentCycle.findOne({
     where:  { hodId: req.user.id },
     order:  [["createdAt", "DESC"]],
@@ -21,7 +19,7 @@ exports.getCurrentCycle = async (req, res) => {
 };
 
 /* ════════════════════════════════════
-   SUBMIT TO DOFA  (first submission — candidates + experts)
+   SUBMIT TO DOFA
 ════════════════════════════════════ */
 exports.submitToDofa = async (req, res) => {
   try {
@@ -35,51 +33,54 @@ exports.submitToDofa = async (req, res) => {
 
     await RecruitmentCycle.update(
       { status: "SUBMITTED", isFrozen: true },
-      { where: { id: cycle.id } }   // ✅ FIXED (no CYCLE)
+      { where: { id: cycle.id } }
     );
+
+    // ── Fetch updated cycle to return ──────────────────────────────
+    const updated = await RecruitmentCycle.findByPk(cycle.id);
 
     const hod = await User.findByPk(req.user.id);
 
     const candidateCount = await Candidate.count({
-      where: { cycle: cycle.cycle, hodId: req.user.id }, // ✅ FIXED
+      where: { cycle: cycle.cycle, hodId: req.user.id },
     });
 
     const expertCount = await Expert.count({
-      where: { cycle: cycle.cycle, uploadedById: req.user.id }, // ✅ FIXED
+      where: { cycle: cycle.cycle, uploadedById: req.user.id },
     });
 
     const dofaUsers = await User.findAll({ where: { role: "DOFA" } });
 
+    // ── Send emails ONCE (not twice) ───────────────────────────────
     if (isResubmit) {
-      const tmpl = templates.hodResubmittedToDofa({
-        department: hod?.department,
-      });
-
+      const tmpl = templates.hodResubmittedToDofa({ department: hod?.department });
       for (const u of dofaUsers) {
-        await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
+        await sendEmail(u.email, tmpl.subject, tmpl.html).catch(e =>
+          console.error("Email failed for", u.email, e.message)
+        );
       }
 
       await createNotification({
-        cycle: cycle.cycle,   // ✅ FIXED
+        cycle: cycle.cycle,
         role: "DOFA",
         title: "HOD Resubmitted After Query",
         message: `${hod?.department} HOD has addressed the query and resubmitted.`,
         type: "STATUS",
       });
-
     } else {
       const tmpl = templates.hodSubmittedToDofa({
         department: hod?.department,
         candidateCount,
         expertCount,
       });
-
       for (const u of dofaUsers) {
-        await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
+        await sendEmail(u.email, tmpl.subject, tmpl.html).catch(e =>
+          console.error("Email failed for", u.email, e.message)
+        );
       }
 
       await createNotification({
-        cycle: cycle.cycle,   // ✅ FIXED
+        cycle: cycle.cycle,
         role: "DOFA",
         title: "Cycle Submitted",
         message: `${hod?.department} HOD submitted candidate and expert lists.`,
@@ -87,28 +88,26 @@ exports.submitToDofa = async (req, res) => {
       });
     }
 
-    await log({
+    log({
       user: req.user,
       action: "CYCLE_SUBMITTED_TO_DOFA",
       entity: "RecruitmentCycle",
       entityId: cycle.id,
-      description: `Cycle submitted to DoFA for department ${hod?.department || req.user.department}`, // ✅ SAFE
+      description: `Cycle submitted to DoFA for department ${hod?.department || req.user.department}`,
       req,
-    });
+    }).catch(e => console.error("log error:", e.message));
 
-    res.json(cycle);
+    // ── FIX: only ONE res.json ─────────────────────────────────────
+    res.json(updated);
 
   } catch (err) {
     console.error("submitToDofa error:", err);
     res.status(500).json({ message: err.message });
   }
 };
+
 /* ════════════════════════════════════
    SUBMIT APPEARED CANDIDATES TO DOFA
-   Second submission: HOD calls this after marking
-   appeared candidates post-interview.
-   → Freezes the cycle again.
-   → If ALL active HODs have submitted, notifies DOFA.
 ════════════════════════════════════ */
 exports.submitAppearedToDofa = async (req, res) => {
   try {
@@ -173,14 +172,13 @@ exports.raiseQuery = async (req, res) => {
 
     await RecruitmentCycle.update(
       { status: "QUERY", isFrozen: false, dofaComment: comment },
-      { where: { id:cycle.id } }
+      { where: { id: cycle.id } }
     );
-    
-    // Email this specific HOD only
+
     const hod = await User.findByPk(hodId);
     await Comment.create({
       message: comment, fromRole: "DOFA", toRole: "HOD",
-      cycle: cycle.cycle, targetUserId: hodId,fromDepartment:toCode(hod?.department)
+      cycle: cycle.cycle, targetUserId: hodId, fromDepartment: toCode(hod?.department)
     });
 
     if (hod?.email) {
@@ -218,47 +216,45 @@ exports.raiseQuery = async (req, res) => {
    APPROVE
 ════════════════════════════════════ */
 exports.approveCycle = async (req, res) => {
-  try{
-  const { hodId } = req.body;
-  const cycle = await getCurrentCycle(hodId);
-  if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" }); 
+  try {
+    const { hodId } = req.body;
+    const cycle = await getCurrentCycle(hodId);
+    if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" });
 
-  await RecruitmentCycle.update(
-    { status: "APPROVED", isFrozen: true },
-    { where: { id:cycle.id } }
-  );
+    await RecruitmentCycle.update(
+      { status: "APPROVED", isFrozen: true },
+      { where: { id: cycle.id } }
+    );
 
-  const hod = await User.findByPk(hodId);
+    const hod = await User.findByPk(hodId);
 
-  await createNotification({
-    cycle:   cycle.cycle,
-    role:    "HOD",
-    title:   "Cycle Approved",
-    message: "DoFA has approved your submission.",
-    type:    "STATUS",
-    targetUserId: hodId,
-  });
+    await createNotification({
+      cycle:   cycle.cycle,
+      role:    "HOD",
+      title:   "Cycle Approved",
+      message: "DoFA has approved your submission.",
+      type:    "STATUS",
+      targetUserId: hodId,
+    });
 
-  await log({
-  user:        req.user,
-  action:      "CYCLE_APPROVED",
-  entity:      "RecruitmentCycle",
-  entityId:    cycle.id,
-  description: `Cycle approved for department ${hod?.department || hodId}`,
-  req,
-});
+    await log({
+      user:        req.user,
+      action:      "CYCLE_APPROVED",
+      entity:      "RecruitmentCycle",
+      entityId:    cycle.id,
+      description: `Cycle approved for department ${hod?.department || hodId}`,
+      req,
+    });
 
-  res.json(cycle);
-}catch (err) {
-  console.error("approveCycle error:", err);
-  res.status(500).json({ message: "Failed to approve cycle" });
-}};
+    res.json(cycle);
+  } catch (err) {
+    console.error("approveCycle error:", err);
+    res.status(500).json({ message: "Failed to approve cycle" });
+  }
+};
 
 /* ════════════════════════════════════
    SET INTERVIEW DATES
-   DOFA enters teachingInteractionDate and interviewDate per HOD.
-   ✅ FIX: Also unfreezes cycle so HOD can mark appeared candidates.
-   Status → "INTERVIEW_SET"
 ════════════════════════════════════ */
 exports.setInterviewDates = async (req, res) => {
   try {
@@ -273,13 +269,12 @@ exports.setInterviewDates = async (req, res) => {
         message: "Dates can only be set after the cycle is approved",
       });
 
-    // ✅ FIX: Unfreeze so HOD can mark appeared candidates
     await RecruitmentCycle.update(
       {
         teachingInteractionDate: teachingInteractionDate || null,
         interviewDate:           interviewDate           || null,
         status:                  "INTERVIEW_SET",
-        isFrozen:                false,   // ← UNLOCK for HOD to mark appeared
+        isFrozen:                false,
       },
       { where: { id: cycle.id } }
     );
@@ -295,9 +290,7 @@ exports.setInterviewDates = async (req, res) => {
       });
     }
 
-    const updated = await RecruitmentCycle.findOne({
-      where: { id: cycle.id },
-    });
+    const updated = await RecruitmentCycle.findOne({ where: { id: cycle.id } });
 
     await log({
       user:        req.user,
@@ -322,16 +315,14 @@ exports.unfreezeCycle = async (req, res) => {
   const cycle = await getCurrentCycle(req.user.id);
   if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" });
   await RecruitmentCycle.update(
-      { status: "DRAFT", isFrozen: false },
-      { where: { id: cycle.id } }
-    );
-
+    { status: "DRAFT", isFrozen: false },
+    { where: { id: cycle.id } }
+  );
   res.json({ success: true, message: "Cycle unfrozen (DEV mode)" });
 };
 
 /* ════════════════════════════════════
    DOFA DASHBOARD
-   Returns per-department stats for DOFA review portal.
 ════════════════════════════════════ */
 exports.getDofaDashboard = async (req, res) => {
   const cycles = await RecruitmentCycle.findAll({
@@ -345,7 +336,7 @@ exports.getDofaDashboard = async (req, res) => {
 
   const activeCycleStrings = cycles.map(c => c.cycle);
   const candidates = await Candidate.findAll({
-    where:   { cycle:activeCycleStrings},
+    where:   { cycle: activeCycleStrings },
     include: [{ model: User, as: "hod", attributes: ["id", "department", "email"] }],
   });
 
@@ -353,17 +344,9 @@ exports.getDofaDashboard = async (req, res) => {
   candidates.forEach(c => {
     const dept = c.hod?.department;
     if (!dept) return;
-
     if (!deptMap[dept]) {
-      deptMap[dept] = {
-        department: dept,
-        hodId:      c.hod.id,
-        hodEmail:   c.hod.email,
-        candidates: 0,
-        appeared:   0,
-      };
+      deptMap[dept] = { department: dept, hodId: c.hod.id, hodEmail: c.hod.email, candidates: 0, appeared: 0 };
     }
-
     deptMap[dept].candidates++;
     if (c.appearedInInterview) deptMap[dept].appeared++;
   });
@@ -405,8 +388,8 @@ exports.getDofaDashboard = async (req, res) => {
         status:                  hodCycle?.status                  || "DRAFT",
         isFrozen:                hodCycle?.isFrozen                 || false,
         submittedDate:           hodCycle?.updatedAt                || null,
-        academicYear:            hodCycle?.academicYear             || null,   // ✅ add
-        cycleNumber:             hodCycle?.cycleNumber              || null,   // ✅ add
+        academicYear:            hodCycle?.academicYear             || null,
+        cycleNumber:             hodCycle?.cycleNumber              || null,
         teachingInteractionDate: hodCycle?.teachingInteractionDate  || null,
         interviewDate:           hodCycle?.interviewDate             || null,
       };
@@ -416,41 +399,29 @@ exports.getDofaDashboard = async (req, res) => {
 
 /* ════════════════════════════════════
    DOFA OFFICE DASHBOARD
-   Separate summary for DOFA_OFFICE role
-   (ExpertTravel + SelectedCandidates stats)
 ════════════════════════════════════ */
 exports.getDofaOfficeDashboard = async (req, res) => {
   try {
     const { ExpertTravel, SelectedCandidate } = require("../models");
-    const { Op } = require("sequelize");
     const cycles = await RecruitmentCycle.findAll({ order: [["createdAt", "DESC"]] });
     const activeCycleStrings = cycles.map(c => c.cycle);
     const totalExperts = await Expert.count({ where: { cycle: activeCycleStrings } });
 
-    // ExpertTravel stats
     const travels = await ExpertTravel.findAll({ where: { cycle: activeCycleStrings } });
+    const confirmedExperts = travels.filter(t => t.confirmed).length;
+    const attendingOffline = travels.filter(t => t.presenceStatus === "Offline" && t.confirmed).length;
+    const attendingOnline  = travels.filter(t => t.presenceStatus === "Online"  && t.confirmed).length;
+    const quotesPending    = travels.filter(t => t.quoteStatus === "PENDING").length;
 
-    const confirmedExperts   = travels.filter(t => t.confirmed).length;
-    const attendingOffline   = travels.filter(t => t.presenceStatus === "Offline" && t.confirmed).length;
-    const attendingOnline    = travels.filter(t => t.presenceStatus === "Online"  && t.confirmed).length;
-    const quotesPending      = travels.filter(t => t.quoteStatus === "PENDING").length;
-
-    // Selected / appeared candidates (DOFA Office's "TOTAL CANDIDATES" view)
     const totalCandidates = await Candidate.count({ where: { cycle: activeCycleStrings } });
     const appearedCount   = await Candidate.count({
       where: { cycle: activeCycleStrings, appearedInInterview: true },
     });
-    const selectedCount   = await SelectedCandidate.count({ where: { cycle: activeCycleStrings } });
+    const selectedCount = await SelectedCandidate.count({ where: { cycle: activeCycleStrings } });
 
     res.json({
-      totalCandidates,
-      appearedCount,
-      selectedCount,
-      totalExperts,
-      confirmedExperts,
-      attendingOffline,
-      attendingOnline,
-      quotesPending,
+      totalCandidates, appearedCount, selectedCount,
+      totalExperts, confirmedExperts, attendingOffline, attendingOnline, quotesPending,
     });
   } catch (err) {
     console.error("getDofaOfficeDashboard error:", err.message);
@@ -458,11 +429,13 @@ exports.getDofaOfficeDashboard = async (req, res) => {
   }
 };
 
+/* ════════════════════════════════════
+   INITIATE CYCLE
+════════════════════════════════════ */
 exports.initiateCycle = async (req, res) => {
   try {
     const { academicYear, cycleNumber } = req.body;
 
-    // Validation
     if (!academicYear || !/^\d{4}-\d{2}$/.test(academicYear))
       return res.status(400).json({ message: "Invalid academic year format (YYYY-YY)" });
 
@@ -470,7 +443,6 @@ exports.initiateCycle = async (req, res) => {
     if (!cn || cn < 1 || cn > 10)
       return res.status(400).json({ message: "Cycle number must be 1–10" });
 
-    // Check not already initiated for this HOD + year + cycle
     const existing = await RecruitmentCycle.findOne({
       where: { hodId: req.user.id, academicYear, cycleNumber: cn },
     });
@@ -480,12 +452,12 @@ exports.initiateCycle = async (req, res) => {
       });
 
     const cycle = await RecruitmentCycle.create({
-      cycle:        `${academicYear}-C${cn}`,   // e.g. "2025-26-C1"
-      hodId:        req.user.id,
+      cycle:       `${academicYear}-C${cn}`,
+      hodId:       req.user.id,
       academicYear,
-      cycleNumber:  cn,
-      status:       "DRAFT",
-      isFrozen:     false,
+      cycleNumber: cn,
+      status:      "DRAFT",
+      isFrozen:    false,
     });
 
     await log({
@@ -504,15 +476,22 @@ exports.initiateCycle = async (req, res) => {
   }
 };
 
+/* ════════════════════════════════════
+   NEXT CYCLE NUMBER
+════════════════════════════════════ */
 exports.getNextCycleNumber = async (req, res) => {
   try {
-    const cycles = await RecruitmentCycle.findAll({
-      where: { hodId: req.user.id },
-      order: [["cycleNumber", "DESC"]],
+    const hodId = req.user.id;
+    const { academicYear } = req.query;
+
+    if (!academicYear) return res.json({ nextNumber: 1 });
+
+    const count = await RecruitmentCycle.count({
+      where: { hodId, academicYear },
     });
-    const last = cycles[0]?.cycleNumber || 0;
-    res.json({ nextNumber: last + 1 });
+
+    res.json({ nextNumber: count + 1 });
   } catch (err) {
-    res.status(500).json({ message: "Failed" });
+    res.status(500).json({ message: err.message });
   }
 };

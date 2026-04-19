@@ -165,7 +165,6 @@ function AddExpertPanel({ onAdded }) {
  
   const handleAdd = async () => {
     if (!form.fullName || !form.email) return alert("Full name and email are required");
-    if (!form.department) return alert("Please select a department");
     try {
       setSaving(true);
       // ✅ department code (e.g. "CSE") is sent — backend maps to HOD by exact match
@@ -212,16 +211,11 @@ function AddExpertPanel({ onAdded }) {
             </div>
             {/* ✅ FIX: Department is now a dropdown with code mapping */}
             <div>
-              <label className={lbl}>Department</label>
-              <select className={inputCls} value={form.department}
-                onChange={e => setForm(f => ({ ...f, department: e.target.value }))}>
-                <option value="">-- Select Department --</option>
-                {DEPT_OPTIONS.map(d => (
-                  <option key={d.code} value={d.code}>
-                    {d.label} ({d.code})
-                  </option>
-                ))}
-              </select>
+              <label className={lbl}>Department (of the Expert)</label>
+              <input className={inputCls} placeholder="e.g. CSE, Physics, IIT Delhi Dept..."
+                value={form.department}
+                onChange={e => setForm(f => ({ ...f, department: e.target.value }))} />
+              <p className="text-xs text-gray-400 mt-0.5">External expert's own department — not necessarily from this institute</p>
             </div>
             <div>
               <label className={lbl}>Institute</label>
@@ -349,63 +343,109 @@ export default function DofaExperts() {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+  API.get("/hod/experts/all")
+    .then(res => setExperts(Array.isArray(res.data) ? res.data : []))
+    .catch(console.error);
+}, []);
 
-  // ✅ FIX: group by uploadedBy.department
-  // (getAllExperts only fetches attributes: ["name","department"] — no id)
-  const grouped = {};
-  allExperts.forEach(e => {
-    const dept = e.uploadedBy?.department || "Unknown";
-    if (!grouped[dept]) grouped[dept] = [];
-    grouped[dept].push(e);
-  });
+  // Show all experts flat — filter by dept param only if present
+  const visible = deptFilter
+    ? allExperts.filter(e => e.uploadedBy?.department === deptFilter)
+    : allExperts;
 
-  const allDepts     = Object.keys(grouped).sort();
-  // Apply URL dept filter
-  const visibleDepts = deptFilter
-    ? allDepts.filter(d => d === deptFilter)
-    : allDepts;
-
-  const totalVisible = visibleDepts.reduce((n, d) => n + grouped[d].length, 0);
-
-  if (loading)
-    return <p className="text-gray-400 text-sm p-6">Loading experts…</p>;
+  if (loading) return <p className="text-gray-400 text-sm p-6">Loading experts…</p>;
 
   return (
     <div className="space-y-5">
-
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-800">
-          {deptFilter ? `${deptFilter} — Experts` : "Experts Uploaded by HODs"}
-        </h2>
-        <p className="text-sm text-gray-400 mt-0.5">
-          {totalVisible} expert{totalVisible !== 1 ? "s" : ""}
-          {!deptFilter && ` across ${visibleDepts.length} department(s)`}
-          {deptFilter && (
-            <a href="/dofa/experts" className="ml-3 text-blue-500 hover:underline text-xs">
-              ← All departments
-            </a>
-          )}
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">Experts</h2>
+          <p className="text-xs text-gray-400 mt-1">{experts.length} total across all departments</p>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {visible.length} expert{visible.length !== 1 ? "s" : ""}
+            {deptFilter && (
+              <a href="/dofa/experts" className="ml-3 text-blue-500 hover:underline text-xs">
+                ← All experts
+              </a>
+            )}
+          </p>
+        </div>
+        {visible.length > 0 && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => downloadAsCSV(
+                visible.map(e => ({
+                  fullName: e.fullName, email: e.email,
+                  designation: e.designation, department: e.department,
+                  institute: e.institute, specialization: e.specialization || "",
+                  uploadedByDept: e.uploadedBy?.department || "",
+                })),
+                `all_experts.csv`
+              )}
+              className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-1.5 rounded-lg transition font-medium"
+            >
+              ↓ Download All CSV
+            </button>
+            <button
+              onClick={() => setModal({ allExperts: visible })}
+              className="text-xs bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg transition font-medium"
+            >
+              Email All
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Add Expert panel */}
       <AddExpertPanel onAdded={load} />
 
-      {/* Per-dept cards */}
-      {visibleDepts.map(dept => (
-        <DeptCard
-          key={dept}
-          department={dept}
-          experts={grouped[dept]}
-          onEmail={setModal}
-        />
-      ))}
+      {/* Single flat table — no grouping by HOD dept */}
+      {visible.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  {["Sr", "Name", "Email", "Designation", "Department", "Institute", "Specialization", "Action"].map(h => (
+                    <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((e, i) => (
+                  <tr key={e.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition">
+                    <td className="px-3 py-2.5 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-3 py-2.5 font-medium text-gray-800 whitespace-nowrap">{e.fullName}</td>
+                    <td className="px-3 py-2.5 text-blue-600 text-xs">{e.email}</td>
+                    <td className="px-3 py-2.5 text-gray-600 text-xs">{e.designation}</td>
+                    <td className="px-3 py-2.5 text-gray-600 text-xs">{e.department}</td>
+                    <td className="px-3 py-2.5 text-gray-500 text-xs">{e.institute}</td>
+                    <td className="px-3 py-2.5 text-gray-500 text-xs">{e.specialization || "—"}</td>
+                    <td className="px-3 py-2.5 text-xs text-gray-600">{e.department || "—"}</td>
+                    <td className="px-3 py-2.5 text-xs">
+                      <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded-full text-xs">
+                        {e.uploadedBy?.department || "Manual"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        onClick={() => setModal({ expert: e })}
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition"
+                      >
+                        Send Email
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-      {visibleDepts.length === 0 && (
+      {visible.length === 0 && (
         <div className="bg-white rounded-xl border p-14 text-center text-gray-400">
-          <p className="text-4xl mb-3">👨‍🏫</p>
-          <p>{deptFilter ? `No experts uploaded by ${deptFilter} HOD yet` : "No experts uploaded yet"}</p>
+          <p>{deptFilter ? `No experts for ${deptFilter} yet` : "No experts uploaded yet"}</p>
         </div>
       )}
 

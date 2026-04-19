@@ -7,7 +7,7 @@ const {
 getDocumentTracking,
 updateDocumentVerdict,
 sendReminder,
-downloadCandidateDocs,downloadByCandidate
+downloadCandidateDocs,downloadByCandidate,
 }=require("../controllers/dofaDocument.controller")
 
 router.get(

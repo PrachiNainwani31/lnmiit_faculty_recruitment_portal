@@ -12,6 +12,7 @@ const DOCS = [
   { key: "phdCourseWork",      label: "PhD Course Work Certificate" },
   { key: "phdProvisional",     label: "PhD Provisional Certificate" },
   { key: "phdDegree",          label: "PhD Degree Certificate" },
+  { key: "thesisSubmission",   label: "Thesis Submission Certificate" },
 ];
 
 // Multi-file docs shown separately
@@ -161,7 +162,6 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
   const [localRemarks, setLocalRemarks] = useState({});
   const [toast, setToast]         = useState(null);
   const [downloading, setDownloading] = useState(false);
-  const [overallRemark, setOverallRemark] = useState(candidate.verdicts?.["_overall"]?.remark || "");
 
   const handleDownloadZip = async (e) => {
     e.stopPropagation(); // don't toggle open
@@ -214,6 +214,11 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
 
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-800">{candidate.name}</p>
+          {candidate.acceptance === false && (
+            <span className="text-xs bg-red-100 text-red-600 border border-red-200 px-2 py-0.5 rounded-full font-medium ml-2">
+              Declined Interview
+            </span>
+          )}
           <p className="text-xs text-gray-400 mt-0.5">
             {candidate.email}
             {candidate.phone && <> · {candidate.phone}</>}
@@ -314,6 +319,27 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                   </tr>
                 );
               })}
+              {candidate.documents?.dateOfDefense && (
+                <tr className="border-b border-gray-100">
+                  <td className="py-3 pr-4 text-gray-400 text-xs align-middle">
+                    {DOCS.length + 1}
+                  </td>
+                  <td className="py-3 pr-4 font-medium text-gray-700 align-middle">
+                    Date of Defense
+                  </td>
+                  <td className="py-3 pr-4 align-middle">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-gray-700 text-xs">
+                      📅 {new Date(candidate.documents.dateOfDefense).toLocaleDateString("en-GB", {
+                        day: "numeric", month: "short", year: "numeric"
+                      })}
+                    </span>
+                  </td>
+                  <td className="py-3 pr-4 align-middle">
+                    <span className="text-xs text-gray-400 italic">— (date field)</span>
+                  </td>
+                  <td className="py-3 align-middle"></td>
+                </tr>
+              )}
             </tbody>
           </table>
           {/* ── Multi-file documents ── */}
@@ -327,7 +353,7 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {files.map((f, i) => {
-                    // ✅ handle both string paths and {file, name} objects
+                    // handle both string paths and {file, name} objects
                     const filePath = typeof f === "string" ? f : f?.file;
                     const fileName = typeof f === "object" && f?.name ? f.name : `File ${i + 1}`;
                     if (!filePath) return null;
@@ -437,26 +463,12 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
           )}
 
           {/* Footer: overall remark + send reminder */}
-          <div className="mt-5 flex items-end gap-6">
-            <div className="flex-1">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                Overall Remark for {candidate.name?.split(" ")[0]}
-              </label>
-              <textarea
-                    rows={2}
-                    value={overallRemark}
-                    placeholder="Overall observation..."
-                    className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-300 bg-white resize-none"
-                    onChange={e => setOverallRemark(e.target.value)}
-                    onBlur={e => onVerdictChange(candidate.id, "_overall", "Note", e.target.value)}
-                  />
-            </div>
-
+          <div className="mt-5 flex justify-end">
             <button
               onClick={() => onReminderClick(candidate)}
-              className="shrink-0 bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition"
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition"
             >
-              📨 Send Reminder
+              Send Reminder
             </button>
           </div>
         </div>

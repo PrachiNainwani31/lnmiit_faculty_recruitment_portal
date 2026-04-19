@@ -69,6 +69,8 @@ roomHandoverNotes:    { type: DataTypes.TEXT,          allowNull: true },
   // Joining complete (freezes record)
   joiningComplete:    { type: DataTypes.BOOLEAN, defaultValue: false },
   joiningCompletedAt: { type: DataTypes.DATE,    allowNull: true     },
+  notJoined:       { type: DataTypes.BOOLEAN,     defaultValue: false },
+  notJoinedReason: { type: DataTypes.STRING(500), allowNull: true     },
 }, { tableName: "onboarding_records" });
 
 module.exports = OnboardingRecord;

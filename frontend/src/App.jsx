@@ -6,11 +6,14 @@ import ForgotPassword from "./pages/ForgotPassword";
 import OtpVerify      from "./pages/OtpVerify";
 import ResetPassword  from "./pages/ResetPassword";
 
+import ToastProvider from "./components/ui/Toast";
+
 import HodLayout    from "./components/layouts/HodLayout";
 import HodDashboard from "./pages/hod/Dashboard";
 import Candidates   from "./pages/hod/Candidates";
 import Experts      from "./pages/hod/Experts";
 import Comments     from "./pages/hod/Comments";
+import HodLogs from "./pages/hod/Logs";
 
 import DofaLayout            from "./components/layouts/DofaLayout";
 import DofaDashboard         from "./pages/dofa/Dashboard";
@@ -19,6 +22,7 @@ import DofaExperts           from "./pages/dofa/Experts";
 import DofaComments          from "./pages/dofa/Comments";
 import DocumentTracking      from "./pages/dofa/DocumentTracking";
 import QuoteApproval         from "./pages/dofa/Quoteapproval";
+import DofaLogs from "./pages/dofa/Logs";
 
 import DofaOfficeLayout     from "./components/layouts/Dofaofficelayout";
 import DofaOfficeDashboard  from "./pages/dofa-office/DofaOfficedashboard";
@@ -41,6 +45,10 @@ import { EstablishmentLayout, EstateLayout, LucsLayout } from "./components/layo
 import EstablishmentPage from "./pages/Establishmentpage";
 import { EstatePage }    from "./pages/Estateandlucspage";
 import { LucsPage }      from "./pages/Estateandlucspage";
+import EstablishmentDashboard from "./pages/EstablishmentDashboard";
+import EstablishmentOnboarding from "./pages/Establishmentpage";
+import EstablishmentRoomView from "./pages/EstablishmentRoomView";
+
 
 import CandidateDashboard from "./pages/candidate/CandidateDashboard";
 import RefereePage        from "./pages/Referee/RefereePage";
@@ -48,6 +56,7 @@ import ProtectedRoute     from "./components/ProtectedRoute";
 
 export default function App() {
   return (
+    <><ToastProvider />
     <Routes>
 
       {/* Root */}
@@ -65,10 +74,11 @@ export default function App() {
 
       {/* HOD */}
       <Route path="/hod" element={<ProtectedRoute role="HOD"><HodLayout /></ProtectedRoute>}>
-        <Route index             element={<HodDashboard />} />
+        <Route index element={<HodDashboard />} />
         <Route path="candidates" element={<Candidates />} />
         <Route path="experts"    element={<Experts />} />
         <Route path="comments"   element={<Comments />} />
+        <Route path="logs" element={<HodLogs />} />
       </Route>
 
       {/* DOFA */}
@@ -79,6 +89,7 @@ export default function App() {
         <Route path="comments"          element={<DofaComments />} />
         <Route path="document-tracking" element={<DocumentTracking />} />
         <Route path="quote-approval"    element={<QuoteApproval />} />
+        <Route path="logs" element={<DofaLogs />} />
       </Route>
 
       {/* Candidate */}
@@ -101,6 +112,7 @@ export default function App() {
         <Route path="comments"           element={<DofaComments />} />
         <Route path="logs"       element={<InterviewLogs/>}/>
         <Route path="registration" element={<Registration />} />
+        <Route path="cycle-logs" element={<DofaLogs/>}/>
       </Route>
 
       {/* Travel */}
@@ -116,9 +128,9 @@ export default function App() {
 
       {/* Establishment */}
       <Route path="/establishment" element={<ProtectedRoute role="ESTABLISHMENT"><EstablishmentLayout /></ProtectedRoute>}>
-        <Route index             element={<EstablishmentPage />} />
-        <Route path="onboarding" element={<EstablishmentPage />} />
-        <Route path="room-allotment" element={<EstablishmentPage />} />
+        <Route index              element={<EstablishmentDashboard />} />
+        <Route path="onboarding"      element={<EstablishmentOnboarding />} />
+        <Route path="room-allotment"  element={<EstablishmentRoomView />} />
       </Route>
 
       {/* Estate */}
@@ -132,5 +144,6 @@ export default function App() {
       </Route>
 
     </Routes>
+    </>
   );
 }

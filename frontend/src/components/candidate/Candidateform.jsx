@@ -1,5 +1,5 @@
 // components/candidate/CandidateForm.jsx
-import { useRef } from "react";
+import { useRef,useState } from "react";
 import FileUpload      from "../FileUpload";
 import MultiFileUpload from "../MultiFileUpload";
 import RefereeStatus   from "../RefereeStatus";
@@ -45,7 +45,6 @@ export function fmtDuration(months) {
 }
 
 const EMPTY_REFEREE = { name:"", designation:"", department:"", institute:"", email:"" };
-
 export default function Candidateform({
   application, setApplication,
   files, setFiles,
@@ -60,6 +59,7 @@ export default function Candidateform({
   buildPayload,
   saveNow,
 }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const personalRef = useRef(null);
   const docsRef     = useRef(null);
   const expRef      = useRef(null);
@@ -114,31 +114,28 @@ export default function Candidateform({
     saveNow({ experiences: updated });
   };
 
-  // Add after handleExpBlur
-const handleCertUpload = async (index, file) => {
-  if (!file) return;
-  // Save first to ensure experiences get DB ids
-  const saved = await saveNow();
-  const freshExps = saved?.experiences || experiences;
-  const exp = freshExps[index];
+  const handleCertUpload = async (index, file) => {
+    if (!file) return;
+    const saved = await saveNow();
+    const freshExps = saved?.experiences || experiences;
+    const exp = freshExps[index];
 
-  if (!exp?.id) {
-    alert("Could not save experience. Please try again.");
-    return;
-  }
+    if (!exp?.id) {
+      alert("Could not save experience. Please try again.");
+      return;
+    }
 
-  const fd = new FormData();
-  fd.append("file", file);
-  try {
-    const res = await API.post(`/candidate/experience/${exp.id}/certificate`, fd);
-    // Update local state with the certificate path
-    setExperiences(prev => prev.map((e, i) =>
-      i === index ? { ...e, id: exp.id, certificate: res.data.path } : e
-    ));
-  } catch {
-    alert("Certificate upload failed");
-  }
-};
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await API.post(`/candidate/experience/${exp.id}/certificate`, fd);
+      setExperiences(prev => prev.map((e, i) =>
+        i === index ? { ...e, id: exp.id, certificate: res.data.path } : e
+      ));
+    } catch {
+      alert("Certificate upload failed");
+    }
+  };
 
   /* ── Referee ── */
   const handleRefereeChange = (i, field, value) => {
@@ -149,7 +146,6 @@ const handleCertUpload = async (index, file) => {
   const expByType = calcExperience(experiences);
   const expTotal  = expByType.research + expByType.teaching + expByType.industrial;
 
-  /* ── Sidebar section links (injected from parent scrollTo refs) ── */
   const sections = [
     { label:"Personal Info",  ref: personalRef },
     { label:"Documents",      ref: docsRef     },
@@ -198,99 +194,104 @@ const handleCertUpload = async (index, file) => {
           {/* Full Name */}
           <div>
             <label className={labelCls}>Full Name</label>
-            <input
-              value={application.name || ""}
-              placeholder="Enter Full Name"
-              className={inputCls}
-              disabled={isReadOnly}
-              onKeyPress={e => { if (/\d/.test(e.key)) e.preventDefault(); }}
-              onChange={e => setApplication(a => ({ ...a, name: e.target.value }))}
-              onBlur={() => !isReadOnly && saveNow()}
-            />
-            <FieldError msg={validateName(application.name)} />
+            <div className="border p-2 rounded w-full text-sm bg-gray-50 text-gray-700">
+              {application.name || <span className="text-gray-400 italic">Loading...</span>}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Auto-filled from your registered profile</p>
           </div>
 
-          {/* Email */}
+          {/* ── FIX: Email — auto-filled, read-only, shows placeholder until loaded ── */}
           <div>
             <label className={labelCls}>Email</label>
-            <input
-              type="email"
-              value={application.email || ""}
-              placeholder="Enter Email"
-              className={inputCls}
-              disabled={isReadOnly}
-              onChange={e => setApplication(a => ({ ...a, email: e.target.value }))}
-              onBlur={() => !isReadOnly && saveNow()}
-            />
-            <FieldError msg={validateEmail(application.email)} />
+            <div className="border p-2 rounded w-full text-sm bg-gray-50 text-gray-700 min-h-[36px]">
+              {application.email
+                ? application.email
+                : <span className="text-gray-400 italic">Loading...</span>
+              }
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Auto-filled from your registered profile</p>
           </div>
 
           {/* Contact */}
           <div>
-            <label className={labelCls}>Contact Number</label>
+            <label className={labelCls}>Contact Number <span className="text-red-500">*</span></label>
             <div className="flex gap-2">
               <select
                 value={application.countryCode || "+91"}
                 disabled={isReadOnly}
                 onChange={e => setApplication(a => ({ ...a, countryCode: e.target.value }))}
                 onBlur={() => !isReadOnly && saveNow()}
-                className={`border p-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-red-300 w-24 ${isReadOnly ? "bg-gray-50 text-gray-500" : ""}`}
+                className={`border p-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-red-300 w-32 ${isReadOnly ? "bg-gray-50 text-gray-500" : ""}`}
               >
-                <option value="+91">🇮🇳 +91</option>
-                <option value="+1">🇺🇸 +1</option>
-                <option value="+44">🇬🇧 +44</option>
-                <option value="+61">🇦🇺 +61</option>
-                <option value="+971">🇦🇪 +971</option>
-                <option value="+65">🇸🇬 +65</option>
-                <option value="+49">🇩🇪 +49</option>
-                <option value="+33">🇫🇷 +33</option>
-                <option value="+86">🇨🇳 +86</option>
-                <option value="+81">🇯🇵 +81</option>
+                <option value="+91">+91 (India)</option>
+                <option value="+1">+1 (USA/Canada)</option>
+                <option value="+44">+44 (UK)</option>
+                <option value="+61">+61 (Australia)</option>
+                <option value="+971">+971 (UAE)</option>
+                <option value="+65">+65 (Singapore)</option>
+                <option value="+49">+49 (Germany)</option>
+                <option value="+33">+33 (France)</option>
+                <option value="+86">+86 (China)</option>
+                <option value="+81">+81 (Japan)</option>
+                <option value="other">Other</option>
               </select>
-              <div className="flex-1">
-                <input
-                  value={application.contact || ""}
-                  placeholder="10-digit number"
-                  className={inputCls}
-                  disabled={isReadOnly}
-                  maxLength={10}
-                  onChange={e => {
-                    const v = e.target.value.replace(/\D/g, "").slice(0, 10);
-                    setApplication(a => ({ ...a, contact: v }));
-                  }}
-                  onBlur={() => !isReadOnly && saveNow()}
-                />
-                <FieldError msg={validatePhone(application.contact)} />
-              </div>
+
+              {(application.countryCode === "+91" || !application.countryCode) ? (
+                <div className="flex-1">
+                  <input
+                    value={application.contact || ""}
+                    placeholder="10-digit number"
+                    className={inputCls}
+                    disabled={isReadOnly}
+                    maxLength={10}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setApplication(a => ({ ...a, contact: v }));
+                    }}
+                    onBlur={() => !isReadOnly && saveNow()}
+                  />
+                  {application.contact && application.contact.length !== 10 && (
+                    <p className="text-red-500 text-xs mt-1">Must be exactly 10 digits</p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex-1">
+                  <input
+                    value={application.contact || ""}
+                    placeholder="Enter number (digits only)"
+                    className={inputCls}
+                    disabled={isReadOnly}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      setApplication(a => ({ ...a, contact: v }));
+                    }}
+                    onBlur={() => !isReadOnly && saveNow()}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Department */}
+          {/* ── FIX: Department — read-only, pre-filled from HOD's department ── */}
           <div>
             <label className={labelCls}>Department Applied For</label>
-            <select value={application.department} className={inputCls} disabled={isReadOnly}
-              onChange={e => setApplication(a => ({ ...a, department: e.target.value }))}
-              onBlur={() => !isReadOnly && saveNow()}>
-              <option value="">-- Select Department --</option>
-              <option>Communication and Computer Engineering</option>
-              <option>Computer Science and Engineering</option>
-              <option>Electronics and Communication Engineering</option>
-              <option>Mechanical-Mechatronics Engineering</option>
-              <option>Physics</option>
-              <option>Mathematics</option>
-              <option>Humanities and Social Sciences</option>
-            </select>
-            {!application.department && !isReadOnly && (
-              <p className="text-amber-500 text-xs mt-1">Please select a department</p>
-            )}
+            <div className="border p-2 rounded w-full text-sm bg-gray-50 text-gray-700 min-h-[36px] flex items-center">
+              {application.department
+                ? application.department
+                : <span className="text-gray-400 italic">Loading...</span>
+              }
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Pre-filled based on the department that uploaded your application
+            </p>
           </div>
         </div>
 
-        {/* Referee email validation inline */}
+        {/* Acceptance */}
         <div>
-          <label className={labelCls}>Letter of Acceptance</label>
+          <label className={labelCls}>Acceptance to attend Interview <span className="text-red-500">*</span></label>
           <div className="flex gap-6">
-            {[{label:"Yes, I accept",val:true},{label:"No, I decline",val:false}].map(({label,val})=>(
+            {[{label:"Yes, I accept", val:true}, {label:"No, I decline", val:false}].map(({label,val}) => (
               <label key={label} className="flex items-center gap-2 cursor-pointer text-sm">
                 <input type="radio" name="acceptance" disabled={isReadOnly}
                   checked={application.acceptance === val}
@@ -300,12 +301,29 @@ const handleCertUpload = async (index, file) => {
             ))}
           </div>
         </div>
+
+        {/* If declined — show only submit button */}
+        {application.acceptance === false && !isReadOnly && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-center space-y-3">
+            <p className="text-sm text-amber-700 font-medium">
+              You have declined the interview. Your response will be recorded.
+            </p>
+            <p className="text-xs text-amber-600">No further documents are required.</p>
+            <button onClick={onSubmit}
+              className="bg-red-600 text-white px-8 py-2.5 rounded-xl text-sm font-medium hover:bg-red-700">
+              Submit Response
+            </button>
+          </div>
+        )}
       </div>
+
+      {application.acceptance !== false && (
+      <>
       {/* ── DOCUMENTS ── */}
       <div ref={docsRef} className="bg-white p-6 rounded shadow space-y-6">
-        <h2 className="font-semibold text-lg border-b pb-2">Document Uploads</h2>
+        <h2 className="font-semibold text-lg border-b pb-2">Upload Documents</h2>
         <div className="grid grid-cols-2 gap-6">
-          <FileUpload label="CV" file={files.docCv} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docCv")} />
+          <FileUpload label="Resume" file={files.docCv} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docCv")} />
           <FileUpload label="Teaching Statement" file={files.docTeachingStatement} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docTeachingStatement")} />
           <div className="col-span-2">
             <FileUpload label="Research Statement" file={files.docResearchStatement} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docResearchStatement")} />
@@ -314,40 +332,74 @@ const handleCertUpload = async (index, file) => {
         <div>
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Academic Certificates</h3>
           <div className="grid grid-cols-2 gap-6">
-            <FileUpload label="10th Marksheet" file={files.docMarks10} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docMarks10")} />
-            <FileUpload label="12th Marksheet" file={files.docMarks12} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docMarks12")} />
-            <FileUpload label="Graduation Certificate" file={files.docGraduation} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docGraduation")} />
-            <FileUpload label="Post Graduation Certificate" file={files.docPostGraduation} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPostGraduation")} />
+            <FileUpload label="10th Marksheet & Passing Certificate(Single File)" file={files.docMarks10} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docMarks10")} />
+            <FileUpload label="12th Marksheet & Passing Certificate(Single File)" file={files.docMarks12} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docMarks12")} />
+            <FileUpload label="Graduation Marksheet & Passing Certificate(Single File)" file={files.docGraduation} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docGraduation")} />
+            <FileUpload label="Post Graduation Marksheet & Passing Certificate(Single File)" file={files.docPostGraduation} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPostGraduation")} />
           </div>
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">PhD Documents</h3>
-          <div className="grid grid-cols-2 gap-6">
-            <FileUpload label="PhD Course Work Certificate" file={files.docPhdCourseWork} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPhdCourseWork")} />
+          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
+            PhD Documents <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+          </h3>
+          <div className="space-y-4">
+            <FileUpload label="PhD Course Work Certificate (Optional)"
+              file={files.docPhdCourseWork} disabled={isReadOnly}
+              onUpload={f => !isReadOnly && handleUpload(f, "docPhdCourseWork")} />
+
             <div>
-              <label className={labelCls}>Date of PhD Defense</label>
-              <input type="date" value={files.docDateOfDefense||""} className={inputCls} disabled={isReadOnly}
-                onChange={e=>{ const u={...files,docDateOfDefense:e.target.value}; setFiles(u); if(!isReadOnly) saveNow({documents:u}); }} />
+              <label className={labelCls}>PhD Thesis Status</label>
+              <select
+                value={application.phdStatus || ""}
+                disabled={isReadOnly}
+                onChange={e => { setApplication(a => ({...a, phdStatus: e.target.value})); saveNow(); }}
+                className={inputCls}
+              >
+                <option value="">-- Select PhD Status --</option>
+                <option value="defended">Thesis Defended</option>
+                <option value="submitted">Thesis Submitted</option>
+              </select>
             </div>
-            <FileUpload label="Provisional PhD Degree" file={files.docPhdProvisional} disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPhdProvisional")} />
-            <FileUpload label="PhD Degree Certificate"  file={files.docPhdDegree}      disabled={isReadOnly} onUpload={f=>!isReadOnly&&handleUpload(f,"docPhdDegree")} />
+
+            {application.phdStatus === "defended" && (
+              <div className="space-y-4 pl-4 border-l-2 border-indigo-200">
+                <div>
+                  <label className={labelCls}>Date of Defense <span className="text-red-500">*</span></label>
+                  <input type="date" value={files.docDateOfDefense || ""} className={inputCls}
+                    disabled={isReadOnly}
+                    onChange={e => { const u={...files,docDateOfDefense:e.target.value}; setFiles(u); if(!isReadOnly) saveNow({documents:u}); }} />
+                </div>
+                <FileUpload label="Provisional PhD Degree (Required)" file={files.docPhdProvisional}
+                  disabled={isReadOnly} onUpload={f => !isReadOnly && handleUpload(f, "docPhdProvisional")} />
+                <FileUpload label="PhD Degree Certificate (Optional)" file={files.docPhdDegree}
+                  disabled={isReadOnly} onUpload={f => !isReadOnly && handleUpload(f, "docPhdDegree")} />
+              </div>
+            )}
+
+            {application.phdStatus === "submitted" && (
+              <div className="pl-4 border-l-2 border-amber-200">
+                <FileUpload label="Thesis Submission Certificate (Required)"
+                  file={files.docThesisSubmission} disabled={isReadOnly}
+                  onUpload={f => !isReadOnly && handleUpload(f, "docThesisSubmission")} />
+              </div>
+            )}
           </div>
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Five Best Papers</h3>
-          <MultiFileUpload label="Five Best Papers (Max 100 MB each)" maxFiles={5} maxMB={100}
+          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Five Best Publications</h3>
+          <MultiFileUpload label="Five Best Papers" maxFiles={5}
             existingFiles={files.docBestPapers} disabled={isReadOnly}
             onUpload={f=>!isReadOnly&&handleMultiUpload(f,"docBestPapers")} />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Post-Doc Documents</h3>
-          <MultiFileUpload label="Post-Doc Documents (if applicable)" maxFiles={5} maxMB={10}
+          <MultiFileUpload label="Post-Doc Documents" maxFiles={5}
             existingFiles={files.docPostDocDocs} disabled={isReadOnly}
             onUpload={f=>!isReadOnly&&handleMultiUpload(f,"docPostDocDocs")} />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Salary Slips</h3>
-          <MultiFileUpload label="Current/Previous Month Salary Slip" maxFiles={3} maxMB={10}
+          <MultiFileUpload label="Current/Previous Month Salary Slip" maxFiles={3}
             existingFiles={files.docSalarySlips} disabled={isReadOnly}
             onUpload={f=>!isReadOnly&&handleMultiUpload(f,"docSalarySlips")} />
         </div>
@@ -358,9 +410,7 @@ const handleCertUpload = async (index, file) => {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <h2 className="font-semibold text-lg">Post-PhD Experience</h2>
-            <p className="text-xs text-gray-400 mt-1">Minimum 1 entry required. Upload certificate at the bottom of each entry.</p>
           </div>
-          {/* Total experience badges */}
           {expTotal > 0 && (
             <div className="flex gap-2 flex-wrap">
               {expByType.teaching   > 0 && <div className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-center"><div className="font-bold">{fmtDuration(expByType.teaching)}</div><div>Teaching</div></div>}
@@ -371,9 +421,8 @@ const handleCertUpload = async (index, file) => {
           )}
         </div>
 
-        {/* Experience type flags */}
         <div>
-          <label className={labelCls}>Select experience types (check all that apply)</label>
+          <label className={labelCls}>Select experience types (check all that apply) — Optional</label>
           <div className="flex gap-6 mt-2">
             {[
               { key:"research",   label:"Research Experience"   },
@@ -384,8 +433,14 @@ const handleCertUpload = async (index, file) => {
                 <input type="checkbox" disabled={isReadOnly} checked={expTypes[key]}
                   onChange={e => {
                     if(isReadOnly) return;
-                    const u={...expTypes,[key]:e.target.checked};
-                    setExpTypes(u); saveNow({experienceTypes:u});
+                    const u = { ...expTypes, [key]: e.target.checked };
+                    setExpTypes(u);
+                    if (e.target.checked) {
+                      setExperiences(prev => [...prev, { ...EMPTY_EXP, type: key.charAt(0).toUpperCase() + key.slice(1) }]);
+                    } else {
+                      setExperiences(prev => prev.filter(exp => exp.type?.toLowerCase() !== key));
+                    }
+                    saveNow({ experienceTypes: u });
                   }} />
                 {label}
               </label>
@@ -393,40 +448,45 @@ const handleCertUpload = async (index, file) => {
           </div>
         </div>
 
-        {experiences.map((exp, i) => (
-          <div key={i} onBlur={handleExpBlur}>
-            <ExperienceEntry exp={exp} index={i} onChange={handleExpChange}
-              onRemove={removeExperience} isReadOnly={isReadOnly} total={experiences.length} 
-              onCertUpload={(file)=>handleCertUpload(i, file)} />
-          </div>
-        ))}
-
-        {!isReadOnly && (
-          <button onClick={addExperience}
-            className="border border-red-500 text-red-500 px-4 py-2 rounded text-sm hover:bg-red-50">
-            + Add Experience
-          </button>
-        )}
+        {["Research", "Teaching", "Industrial"].map(type => {
+          if (!expTypes[type.toLowerCase()]) return null;
+          const typeExps = experiences.filter(e => e.type === type);
+          return (
+            <div key={type} className="border border-gray-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-700">{type} Experience</h4>
+                {!isReadOnly && (
+                  <button onClick={() => setExperiences(prev => [...prev, { ...EMPTY_EXP, type }])}
+                    className="text-xs text-indigo-600 border border-indigo-200 px-3 py-1 rounded-lg hover:bg-indigo-50">
+                    + Add {type} Entry
+                  </button>
+                )}
+              </div>
+              {typeExps.map((exp, i) => {
+                const globalIdx = experiences.indexOf(exp);
+                return (
+                  <div key={i} onBlur={handleExpBlur}>
+                    <ExperienceEntry
+                      exp={exp} index={globalIdx}
+                      onChange={handleExpChange}
+                      onRemove={removeExperience}
+                      isReadOnly={isReadOnly}
+                      total={typeExps.length}
+                      onCertUpload={(file) => handleCertUpload(globalIdx, file)}
+                      hideNatureOfWork={type === "Teaching"}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
-
-      {/* ── PUBLICATIONS ── */}
-      <div className="bg-white p-6 rounded shadow space-y-4">
-        <h2 className="font-semibold text-lg border-b pb-2">Five Best Publications</h2>
-        {[0,1,2,3,4].map(i => (
-          <div key={i}>
-            <label className={labelCls}>Publication {i+1}</label>
-            <input placeholder={`Enter publication ${i+1} (title, journal, year...)`}
-              className={inputCls} disabled={isReadOnly}
-              defaultValue={publications[i]||""}
-              onBlur={e => { if(!isReadOnly){ const a=[...publications]; a[i]=e.target.value; setPublications(a); saveNow({publications:a}); }}} />
-          </div>
-        ))}
-      </div>
-
       {/* ── OTHER DOCS ── */}
       <div ref={otherRef} className="bg-white p-6 rounded shadow space-y-4">
         <h2 className="font-semibold text-lg border-b pb-2">Other Documents</h2>
-        <MultiFileUpload label="Upload Additional Documents" maxFiles={5} maxMB={10}
+        <span>Any other Documents required for selection process</span>
+        <MultiFileUpload label="Upload Additional Documents" maxFiles={5}
           existingFiles={files.docOtherDocs || []}
           disabled={isReadOnly}
           onUpload={f => !isReadOnly && handleMultiUpload(f, "docOtherDocs")} />
@@ -453,7 +513,7 @@ const handleCertUpload = async (index, file) => {
               {[
                 { field:"salutation", label:"Salutation", span:1 },{field:"name",label:"Full Name",span:1},{field:"designation",label:"Designation",span:1},
                 {field:"department",label:"Department",span:1},{field:"institute",label:"Institute",span:1},
-                {field:"email",label:"Email",span:2},
+                {field:"email",label:"Email",span:1},
               ].map(({ field, label, span }) => (
                 <div key={field} className={span === 2 ? "col-span-2" : ""}>
                   <label className={labelCls}>{label}{i < 3 && <span className="text-red-500"> *</span>}</label>
@@ -489,9 +549,9 @@ const handleCertUpload = async (index, file) => {
 
       {/* ── ACCOMMODATION ── */}
       <div ref={accRef} className="bg-white p-6 rounded shadow space-y-3">
-        <h2 className="font-semibold text-lg border-b pb-2">Accommodation Requirement</h2>
+        <h2 className="font-semibold text-lg border-b pb-2">Institute Accommodation Requirement (Accommodation will be provided based on Availability)</h2>
         <div className="flex gap-6">
-          {[{label:"Yes — accommodation required",val:true},{label:"No",val:false}].map(({label,val})=>(
+          {[{label:"Yes",val:true},{label:"No",val:false}].map(({label,val})=>(
             <label key={label} className="flex items-center gap-2 cursor-pointer text-sm">
               <input type="radio" name="acc" disabled={isReadOnly}
                 checked={application.accommodation===val}
@@ -508,12 +568,20 @@ const handleCertUpload = async (index, file) => {
           <button onClick={onSaveDraft} className="border px-6 py-2 rounded text-sm hover:bg-gray-50">
             Save Draft
           </button>
-          <button onClick={onSubmit}
-            className="bg-red-600 text-white px-6 py-2 rounded text-sm hover:bg-red-700">
-            Submit Application
+          <button
+            onClick={async () => {
+              setIsSubmitting(true);
+              await onSubmit();
+              setIsSubmitting(false);
+            }}
+            disabled={isSubmitting}
+            className="bg-red-600 text-white px-6 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-60"
+          >
+            {isSubmitting ? "Submitting…" : "Submit Application"}
           </button>
         </div>
       )}
+    </>)}
     </div>
   );
 }

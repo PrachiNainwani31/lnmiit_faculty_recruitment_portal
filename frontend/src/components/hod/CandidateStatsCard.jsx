@@ -29,11 +29,11 @@ export default function CandidateStatsCard({ cycle, onSaved }) {
   };
 
   const handleSave = async () => {
+    if ([form.totalApplications, form.dlscShortlisted, form.ilscShortlisted].some(v => Number(v) < 0)) {
+      alert("Values cannot be negative"); return;
+    }
     setLoading(true);
-    await saveCandidateStats({
-      cycle,
-      ...form,
-    });
+    await saveCandidateStats({ cycle, ...form });
     setLoading(false);
     onSaved(form.ilscShortlisted);
   };
@@ -48,32 +48,36 @@ export default function CandidateStatsCard({ cycle, onSaved }) {
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input
-          type="number"
-          name="totalApplications"
-          placeholder="Total Applications Received"
-          className="border rounded px-3 py-2"
-          value={form.totalApplications}
-          onChange={handleChange}
-        />
-
-        <input
-          type="number"
-          name="dlscShortlisted"
-          placeholder="Shortlisted in DLSC"
-          className="border rounded px-3 py-2"
-          value={form.dlscShortlisted}
-          onChange={handleChange}
-        />
-
-        <input
-          type="number"
-          name="ilscShortlisted"
-          placeholder="Shortlisted in ILSC"
-          className="border rounded px-3 py-2"
-          value={form.ilscShortlisted}
-          onChange={handleChange}
-        />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-gray-600">Total Applications Received</label>
+          <input
+            type="number" name="totalApplications" min="0"
+            placeholder="e.g. 120"
+            className="border rounded px-3 py-2"
+            value={form.totalApplications}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-gray-600">Shortlisted in DLSC</label>
+          <input
+            type="number" name="dlscShortlisted" min="0"
+            placeholder="e.g. 30"
+            className="border rounded px-3 py-2"
+            value={form.dlscShortlisted}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-gray-600">Shortlisted in ILSC</label>
+          <input
+            type="number" name="ilscShortlisted" min="0"
+            placeholder="e.g. 10"
+            className="border rounded px-3 py-2"
+            value={form.ilscShortlisted}
+            onChange={handleChange}
+          />
+        </div>
       </div>
 
       <div className="mt-4 text-right">

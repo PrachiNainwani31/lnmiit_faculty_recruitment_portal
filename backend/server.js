@@ -26,6 +26,7 @@ app.use("/api/interview-logs", require("./routes/interviewLog.routes"));
 app.use("/api/registration", require("./routes/registration.routes"));
 app.use("/api/activity-logs", require("./routes/activityLog.routes"));
 app.use("/api/deadline", require("./routes/deadline.routes"));
+app.use("/api/logs", require("./routes/logs.routes"));
 async function startServer() {
   try {
     // Connect MySQL

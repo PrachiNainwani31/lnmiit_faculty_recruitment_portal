@@ -109,7 +109,7 @@ export default function DofaOfficeDashboard() {
         ))}
       </div>
 
-      <SelectionStatusPanel role="DOFA_OFFICE" />
+      <SelectionStatusPanel role="DOFA_OFFICE" cycle={cycleLabel}/>
     </div>
   );
 }

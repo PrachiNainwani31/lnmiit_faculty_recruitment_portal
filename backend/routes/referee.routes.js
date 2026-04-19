@@ -8,6 +8,7 @@ const {
   uploadReferenceLetter,
   getRefereeStatus,
   sendRefereeReminder,
+  verifyCaptcha,
 } = require("../controllers/referee_controller");
 
 /* ─────────────────────────────────────────────
@@ -25,10 +26,6 @@ router.post(
   uploadReferenceLetter
 );
 
-/* ─────────────────────────────────────────────
-   CANDIDATE-PROTECTED routes
-───────────────────────────────────────────── */
-
 // Candidate checks status of all their referees
 router.get("/status", auth(["CANDIDATE"]), getRefereeStatus);
 
@@ -38,5 +35,7 @@ router.post(
   auth(["CANDIDATE"]),
   sendRefereeReminder
 );
+
+router.post("/verify-captcha", verifyCaptcha);
 
 module.exports = router;

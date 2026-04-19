@@ -286,13 +286,13 @@ export default function SelectCandidates() {
                         onChange={e => setExtra(c.id, "employmentType", e.target.value)}>
                         <option value="">Select type…</option>
                         <option value="Regular">Regular</option>
-                        <option value="Contract">Contract</option>
+                        <option value="Contract">Contractual</option>
                         <option value="Visiting">Visiting</option>
                         <option value="Adjunct">Adjunct</option>
                       </select>
                     </div>
 
-                    {/* ✅ Waitlist priority — only for waitlisted */}
+                    {/* Waitlist priority — only for waitlisted */}
                     {isWaitlisted && (
                       <div className="col-span-2">
                         <label className={lbl}>
@@ -326,20 +326,23 @@ export default function SelectCandidates() {
         </div>
       ))}
 
-      <div className="flex justify-end gap-3 pb-6">
-        {interviewDone ? (
-          <button
-            onClick={() => alert("Interview already complete. Selection is locked.")}
-            className="bg-gray-400 cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium">
-              Selection Locked
-          </button>
-        ) : (
-          <button onClick={handlePublish} disabled={saving || !dofaApproved}
-            className="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
-            {saving ? "Publishing…" : published ? "Update Selection" : "Publish Selection"}
-          </button>
-        )}
-      </div>
+      <div className="flex justify-end gap-3 pb-6 flex-wrap items-center">
+      {published && !interviewDone && (
+        <div className="flex-1 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 text-sm text-indigo-700">
+          Selection published. Now mark the interview as complete to send the list to the Establishment section.
+        </div>
+      )}
+      {interviewDone ? (
+        <button className="bg-gray-400 cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium">
+          Selection Locked
+        </button>
+      ) : (
+        <button onClick={handlePublish} disabled={saving || !dofaApproved}
+          className="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
+          {saving ? "Publishing…" : published ? "Update Selection" : "Publish Selection"}
+        </button>
+      )}
+    </div>
     </div>
   );
 }

@@ -82,7 +82,7 @@ export default function ExpertTravelPage() {
       {filter !== "online" && offline.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="px-5 py-3 bg-blue-600 flex items-center justify-between">
-            <p className="text-white font-semibold text-sm">🚗 Car Arrangement — Offline Experts</p>
+            <p className="text-white font-semibold text-sm">Car Arrangement — Offline Experts</p>
             <span className="text-blue-200 text-xs">{offline.length} expert{offline.length !== 1 ? "s" : ""}</span>
           </div>
           <div className="overflow-x-auto">

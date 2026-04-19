@@ -46,13 +46,9 @@ export default function Experts() {
   /* ---------------- Download Template ---------------- */
   const downloadTemplate = () => {
     const headers = [
-      "Sr. No.",
-      "Full Name (with Salutation)",
-      "Designation",
-      "Department",
-      "Institute",
-      "Email",
-      "Specialization",
+      "Sr. No.", "Full Name (with Salutation)", "Designation",
+      "Department", "Institute", "Email",
+      "Specialization", "Mobile No. (Optional)"
     ];
 
     const csvContent =
@@ -80,51 +76,57 @@ export default function Experts() {
 
   if (loading) return null;
 
-  return (
-    <div className="space-y-6">
+  return (<div className={`space-y-6 relative ${isFrozen ? "pointer-events-none select-none" : ""}`}>
+    {isFrozen && <div className="absolute inset-0 bg-white/50 z-10 rounded-xl" />}
       <div className="flex gap-4">
-  <input disabled={isFrozen}
-    type="file"
-    accept=".csv"
-    onChange={handleUpload}
-    className="border p-2 rounded"
-  />
+        <input disabled={isFrozen}
+          type="file"
+          accept=".csv"
+          onChange={handleUpload}
+          className="border p-2 rounded"
+        />
 
-  <button disabled={isFrozen}
-    onClick={downloadTemplate}
-    className="bg-blue-600 text-white px-4 py-2 rounded"
-  >
-    Download Template
-  </button>
+          <button disabled={isFrozen}
+          onClick={downloadTemplate}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Download Template
+        </button>
 
-  <button disabled={isFrozen}
-    onClick={handleClear}
-    className="bg-red-600 text-white px-4 py-2 rounded"
-  >
-    Delete All Experts
-  </button>
-</div>
+        <button disabled={isFrozen}
+          onClick={handleClear}
+          className="bg-red-600 text-white px-4 py-2 rounded"
+        >
+          Delete All Experts
+        </button>
+      </div>
 
       {/* Experts Table */}
       <div className="overflow-x-auto">
         <table className="w-full border text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2">Name</th>
-              <th className="border p-2">Email</th>
-              <th className="border p-2">Designation</th>
-              <th className="border p-2">Department</th>
-              <th className="border p-2">Institute</th>
-            </tr>
+          <thead>
+          <tr>
+            <th className="border p-2">Sr. No.</th>
+            <th className="border p-2">Full Name</th>
+            <th className="border p-2">Designation</th>
+            <th className="border p-2">Department</th>
+            <th className="border p-2">Institute</th>
+            <th className="border p-2">Email</th>
+            <th className="border p-2">Specialization</th>
+            <th className="border p-2">Mobile No.</th>
+          </tr>
           </thead>
           <tbody>
             {experts.map((exp) => (
               <tr key={exp.id}>
+                <td className="border p-2">{exp.srNo}</td>
                 <td className="border p-2">{exp.fullName}</td>
-                <td className="border p-2">{exp.email}</td>
                 <td className="border p-2">{exp.designation}</td>
                 <td className="border p-2">{exp.department}</td>
                 <td className="border p-2">{exp.institute}</td>
+                <td className="border p-2">{exp.email}</td>
+                <td className="border p-2">{exp.specialization || "—"}</td>
+                <td className="border p-2">{exp.mobileNo || "—"}</td>
               </tr>
             ))}
           </tbody>

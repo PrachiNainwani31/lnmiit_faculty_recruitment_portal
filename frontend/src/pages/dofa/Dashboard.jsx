@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import SummaryCard from "../../components/ui/SummaryCard";
 import CommentModal from "../../components/dofa/CommentModal";
 import SelectionStatusPanel from "../../components/Selectionstatuspanel";
+import { showToast, showConfirm } from "../../components/ui/Toast";
 
 /* ── All possible stages in order ── */
 const STAGES = [
@@ -56,7 +57,7 @@ function DateInputRow({ dept, onSaved }) {
       onSaved();
       setOpen(false);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save dates");
+      showToast(err.response?.data?.message || "Failed to save dates", "error");
     } finally {
       setSaving(false);
     }
@@ -104,9 +105,13 @@ function DateInputRow({ dept, onSaved }) {
         {/* Edit toggle */}
         <button
           onClick={() => setOpen(v => !v)}
-          className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
+          className={`text-xs px-4 py-1.5 rounded-lg font-medium transition border ${
+            open
+              ? "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+              : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
+          }`}
         >
-          {open ? "▲ Close" : `✏ ${hasDates ? "Edit" : "Set"} Dates`}
+          {open ? "✕ Close" : `${hasDates ? "Edit Dates" : "Set Interview Dates"}`}
         </button>
       </div>
 
@@ -132,7 +137,7 @@ function DateInputRow({ dept, onSaved }) {
               <label className="block text-xs text-gray-500 mb-1">
                 Interview Date{" "}
                 <span className="text-indigo-500 font-medium">
-                  (unlocks HOD's "Mark Appeared")
+                  (unlocks HoD's Mark Appeared feature)
                 </span>
               </label>
               <input
@@ -329,7 +334,8 @@ export default function Dashboard() {
                     </button>
                     <button
                       onClick={async () => {
-                        if (!window.confirm(`Approve ${d.department} submission?`)) return;
+                        const ok = await showConfirm("Approve the details submitted for interview?");
+                        if (!ok) return; 
                         try { await approveCycle(d.hodId); load(); }
                         catch { alert("Failed to approve"); }
                       }}

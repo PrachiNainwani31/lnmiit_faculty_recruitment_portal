@@ -258,18 +258,9 @@ function LucsCard({ record, onRefresh }) {
           <CheckItem checked={form.wifiProvided} onChange={v => set("wifiProvided", v)}
             label="WiFi password provided" savedDone={!!record.lucsWifiProvided} />
 
-          {/* ── Item 4: Website login (✅ renamed from ERP/LMS) ── */}
+          {/* ── Item 4: Website login (renamed from ERP/LMS) ── */}
           <CheckItem checked={form.websiteLogin} onChange={v => set("websiteLogin", v)}
-            label="Website login credentials provided" savedDone={!!record.lucsWebsiteLogin}>
-            {form.websiteLogin && (
-              <>
-                <p className="text-xs text-gray-400 mb-1">Enter portal URLs and credential details:</p>
-                <textarea rows={3} className={`${inputSm} resize-none`}
-                  placeholder="e.g. ERP: erp.lnmiit.ac.in · LMS: lms.lnmiit.ac.in · Faculty portal: faculty.lnmiit.ac.in · Credentials shared via email"
-                  value={form.websiteLoginNote} onChange={e => set("websiteLoginNote", e.target.value)} />
-              </>
-            )}
-          </CheckItem>
+            label="Website login credentials provided" savedDone={!!record.lucsWebsiteLogin} />
 
           {/* ── Item 5: Other — with textbox ── */}
           <CheckItem checked={form.otherDone} onChange={v => set("otherDone", v)}
@@ -278,7 +269,7 @@ function LucsCard({ record, onRefresh }) {
               <>
                 <p className="text-xs text-gray-400 mb-1">Describe additional items or tasks:</p>
                 <textarea rows={3} className={`${inputSm} resize-none`}
-                  placeholder="e.g. Access card issued, Library membership registered, Parking sticker issued..."
+                  placeholder=""
                   value={form.otherNote} onChange={e => set("otherNote", e.target.value)} />
               </>
             )}

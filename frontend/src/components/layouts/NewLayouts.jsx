@@ -20,9 +20,15 @@ export function EstablishmentLayout() {
           <p className="text-white/50 text-xs mt-0.5">LNMIIT Recruitment & Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
-          <NavLink to="/establishment"           end className={({ isActive }) => mk(isActive)}>Dashboard</NavLink>
-          <NavLink to="/establishment/onboarding"    className={({ isActive }) => mk(isActive)}>Offer & Joining Letters</NavLink>
-          <NavLink to="/establishment/room-allotment" className={({ isActive }) => mk(isActive)}>Room Allotment</NavLink>
+          <NavLink to="/establishment" end className={({ isActive }) => mk(isActive)}>
+            Dashboard
+          </NavLink>
+          <NavLink to="/establishment/onboarding" className={({ isActive }) => mk(isActive)}>
+            Offer & Joining Letters
+          </NavLink>
+          <NavLink to="/establishment/room-allotment" className={({ isActive }) => mk(isActive)}>
+            Room Allotment
+          </NavLink>
         </nav>
         <button onClick={() => { localStorage.clear(); navigate("/login"); }}
           className="m-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 border border-white/20 transition">

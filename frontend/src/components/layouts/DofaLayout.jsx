@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "/dofa/document-tracking", label: "Document Tracking" },
   { to: "/dofa/quote-approval",    label: "Quote Approval" },
   { to: "/dofa/comments",          label: "Comments" },
+  { to: "/dofa/logs", label: "Logs" },
 ];
 
 export default function DofaLayout() {

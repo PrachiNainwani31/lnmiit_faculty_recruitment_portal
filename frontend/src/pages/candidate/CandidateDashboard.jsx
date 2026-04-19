@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import logo       from "../../assets/lnmiit_logo.png";
 import CandidateHome from "../../components/candidate/Candidatehome";
 import CandidateForm from "../../components/candidate/Candidateform";
+import { showToast, showConfirm } from "../../components/ui/Toast";
 
 // Add at the top of CandidateDashboard.jsx after imports:
 const validateEmail = (v) => v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
@@ -39,14 +40,27 @@ export default function CandidateDashboard() {
   const navigate = useNavigate();
   const [view, setView] = useState("home");
 
-  const [application, setApplication] = useState({
-    name:"", email:"", contact:"", department:"",
-    acceptance:false, accommodation:false, status:"DRAFT",
-  });
+  // const [application, setApplication] = useState({
+  //   name:"", email:"", contact:"", department:"",
+  //   acceptance:null, accommodation:false, status:"DRAFT",phdStatus:"",
+  // });
+const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+const [application, setApplication] = useState({
+  name:          storedUser.name  || "",   // ← pre-fill immediately
+  email:         storedUser.email || "",   // ← pre-fill immediately
+  contact:       "",
+  department:    storedUser.department || "",
+  acceptance:    null,
+  accommodation: false,
+  status:        "DRAFT",
+  phdStatus:     "",
+});
   const [files,        setFiles]        = useState({
     docCv:null, docTeachingStatement:null, docResearchStatement:null,
     docMarks10:null, docMarks12:null, docGraduation:null, docPostGraduation:null,
     docPhdCourseWork:null, docPhdProvisional:null, docPhdDegree:null,
+    docThesisSubmission: null,docDateOfDefense: "", 
     docResearchExpCerts:[], docTeachingExpCerts:[], docIndustryExpCerts:[],
     docBestPapers:[], docPostDocDocs:[], docSalarySlips:[],docOtherDocs:[],
   });
@@ -84,15 +98,22 @@ export default function CandidateDashboard() {
   useEffect(() => {
     API.get("/candidate/me").then(res => {
       const app = res.data || {};
-      setApplication({
-        name:          app.name          || "",
-        email:         app.email         || "",
-        contact:       app.contact       || app.phone || "",
-        department:    app.department    || "",
-        acceptance:    app.acceptance    || false,
-        accommodation: app.accommodation || false,
-        status:        app.status        || "DRAFT",
-      });
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const resolvedEmail = app.email || user.email || "";
+      const resolvedName  = app.name  || user.name  || "";
+      const resolvedDept  = app.department || user.department || "";
+
+      setApplication(prev => ({
+        ...prev,
+        name:          resolvedName,
+        email:         resolvedEmail,
+        contact:       app.contact || app.phone || "",
+        department:    resolvedDept,
+        acceptance:    app.acceptance  ?? null,
+        accommodation: app.accommodation ?? false,
+        status:        app.status || "DRAFT",
+        phdStatus:     app.phdStatus || "",
+      }));
       const docKeys = Object.keys(files);
       const docData = {};
       docKeys.forEach(k => { if (app[k] != null) docData[k] = app[k]; });
@@ -107,7 +128,7 @@ export default function CandidateDashboard() {
         setExperiences(app.experiences.map(e => ({ ...EMPTY_EXP, ...e,ongoing:!e.todate })));
       if (app.referees?.length > 0)
         setReferees(normalizeReferees(app.referees));
-      setAppLoaded(true);
+        setAppLoaded(true);
     }).catch(console.error);
   }, []);
 
@@ -121,26 +142,65 @@ export default function CandidateDashboard() {
   const saveDraft = async () => { await saveNow(); alert("Draft saved"); };
 
   const submitApplication = async () => {
-  // Validate required fields
-  if (!application.name?.trim()) { alert("Please enter your full name"); return; }
-  if (validateEmail(application.email)) { alert("Please enter a valid email address"); return; }
-  if (validatePhone(application.contact)) { alert("Please enter a valid 10-digit phone number"); return; }
-  if (!application.department) { alert("Please select a department"); return; }
+   if (!application.name?.trim())      { alert("Full name is required");            return; }
+  if (!application.email?.trim())     { alert("Email is required");                return; }
+  if (validateEmail(application.email)) { alert("Please enter a valid email");     return; }
+  if (!application.contact?.trim())   { alert("Contact number is required");       return; }
+  if (validatePhone(application.contact)) { alert("Phone must be exactly 10 digits"); return; }
+  if (!application.department)        { alert("Department is required");           return; }
+  if (application.acceptance === null){ alert("Please select interview acceptance"); return; }
 
+  // ── If declined, skip document checks ──
+  if (application.acceptance !== false) {
+    // Core documents
+    if (!files.docCv)                  { alert("Resume is required");              return; }
+    if (!files.docTeachingStatement)   { alert("Teaching Statement is required");  return; }
+    if (!files.docResearchStatement)   { alert("Research Statement is required");  return; }
+    if (!files.docMarks10)             { alert("10th Marksheet is required");      return; }
+    if (!files.docMarks12)             { alert("12th Marksheet is required");      return; }
+    if (!files.docGraduation)          { alert("Graduation Certificate is required"); return; }
+    if (!files.docPostGraduation)      { alert("Post Graduation Certificate is required"); return; }
+
+    // PhD status compulsory
+    if (!application.phdStatus)        { alert("Please select PhD Thesis Status"); return; }
+
+    // PhD status — conditional required docs (course work is optional, skipped)
+    if (application.phdStatus === "defended") {
+      if (!files.docDateOfDefense)     { alert("Date of Defense is required");     return; }
+      if (!files.docPhdProvisional)    { alert("Provisional PhD Degree is required"); return; }
+    }
+    if (application.phdStatus === "submitted") {
+      if (!files.docThesisSubmission)  { alert("Thesis Submission Certificate is required"); return; }
+    }
+
+    // Best papers
+    if (!files.docBestPapers?.length)  { alert("Please upload at least 1 best paper"); return; }
+
+    // Salary slips
+    if (!files.docSalarySlips?.length) { alert("Please upload at least 1 salary slip"); return; }
+
+    // Accommodation must be selected
+    if (application.accommodation === null || application.accommodation === undefined) {
+      alert("Please select accommodation preference"); return;
+    }
+  }
+
+  // ── Referees ──
   const filled = referees.filter(r => r.name && r.email);
-  if (filled.length < 3) { alert("Please fill in at least 3 complete referee details."); return; }
+  if (filled.length < 3)             { alert("Please fill in at least 3 complete referee details"); return; }
+  const badRef = filled.find(r => validateEmail(r.email));
+  if (badRef)                        { alert(`Invalid email for referee: ${badRef.name}`); return; }
 
-  // Validate referee emails
-  const badRefereeEmail = filled.find(r => validateEmail(r.email));
-  if (badRefereeEmail) { alert(`Invalid email for referee: ${badRefereeEmail.name}`); return; }
-
-  await saveNow();
-  await API.post("/candidate/submit");
-  setApplication(a => ({ ...a, status: "SUBMITTED" }));
-  alert("Application submitted successfully!");
-  setView("home");
+  try {
+    await saveNow();
+    await API.post("/candidate/submit");
+    setApplication(a => ({ ...a, status: "SUBMITTED" }));
+    showToast("Application submitted successfully!");
+    setView("home");
+  } catch (err) {
+    showToast(err.response?.data?.message || "Submission failed", "error");
+  }
 };
-
   const handleLogout = () => { localStorage.clear(); navigate("/login"); };
 
   return (
@@ -148,7 +208,7 @@ export default function CandidateDashboard() {
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white shadow-md z-10 flex flex-col">
         <div className="p-5 border-b flex flex-col items-center gap-2">
           <img src={logo} alt="LNMIIT" className="w-28 object-contain" />
-          <span className="text-sm font-semibold text-gray-700">Institute Portal</span>
+          <span className="text-sm font-semibold text-gray-700">LNMIIt Faculty & Recruitment Portal</span>
         </div>
         <nav className="p-4 space-y-1 text-gray-700 text-sm flex-1">
           {[
@@ -195,7 +255,7 @@ export default function CandidateDashboard() {
           </div>
         )}
 
-        {view === "home" && (
+        {view === "home" && (appLoaded&&
           <CandidateHome application={application} onOpenForm={() => setView("form")} />
         )}
         {view === "form" && (

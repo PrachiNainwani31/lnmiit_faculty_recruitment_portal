@@ -7,17 +7,19 @@ import {
 
 // All 11 CSV columns — shown as a hint so HOD knows what to fill
 const CSV_COLUMNS = [
-  { name: "srNo",                required: true },
-  { name: "fullName",            required: true },
-  { name: "email",               required: true },
-  { name: "secondaryEmail",      required: false },   // NEW — optional
-  { name: "phone",               required: true },
-  { name: "qualification",       required: true },
-  { name: "specialization",      required: true },
-  { name: "appliedPosition",     required: true },    // NEW
-  { name: "recommendedPosition", required: true },    // NEW
-  { name: "reviewerObservation", required: false },
-  { name: "ilscComments",        required: false },
+  { name: "Sr. No.",               required: true  },
+  { name: "Full Name",             required: true  },
+  { name: "Primary Email",         required: true  },
+  { name: "Secondary Email",       required: false },
+  { name: "Phone No.",             required: false },
+  { name: "Qualification",         required: true  },
+  { name: "Specialization",        required: true  },
+  { name: "Applied Position",      required: true  },
+  { name: "Recommended Position",  required: true  },
+  { name: "DLSC Recommendation",   required: false },
+  { name: "ILSC Recommendation",   required: false },
+  { name: "DLSC Remarks",          required: false },
+  { name: "ILSC Remarks",          required: false },
 ];
 
 export default function CandidateUploadCard({
@@ -103,7 +105,7 @@ export default function CandidateUploadCard({
           onClick={() => setShowCols(v => !v)}
           className="text-xs text-blue-600 hover:underline flex items-center gap-1"
         >
-          {showCols ? "▲ Hide" : "▼ Show"} CSV column reference (11 columns)
+          {showCols ? "▲ Hide" : "▼ Show"} CSV column reference (13 columns)
         </button>
 
         {showCols && (
@@ -128,7 +130,7 @@ export default function CandidateUploadCard({
         <div>
           <p className="font-medium text-sm">Step 1: Download Template</p>
           <p className="text-xs text-gray-500">
-            Pre-filled with {ilscCount} rows · 11 columns
+            Pre-filled with {ilscCount} rows · 13 columns
           </p>
         </div>
 
