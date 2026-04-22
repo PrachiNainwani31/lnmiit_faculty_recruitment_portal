@@ -86,26 +86,14 @@ exports.clearExperts = async (req, res) => {
 ========================================================= */
 exports.getHodCounts = async (req, res) => {
   const hodCycle = await getCurrentCycle(req.user.id);
-  const cycleStr = hodCycle?.cycle;
-  if (!hodCycle) return res.status(400).json({ message: "No active cycle. Please initiate a cycle first." });
-  const candidateCount = await Candidate.count({
-    where: {
-      cycle: cycleStr,
-      hodId: req.user.id
-    }
-  });
+  
+  // ✅ Check FIRST before using it
+  if (!hodCycle) return res.json({ candidates: 0, experts: 0 }); // ← return 0s not 400
 
-  const expertCount = await Expert.count({
-    where: {
-      cycle: cycleStr,
-      uploadedById: req.user.id
-    }
-  });
-
-  res.json({
-    candidates: candidateCount,
-    experts: expertCount,
-  });
+  const cycleStr = hodCycle.cycle;
+  const candidateCount = await Candidate.count({ where: { cycle: cycleStr, hodId: req.user.id } });
+  const expertCount    = await Expert.count({    where: { cycle: cycleStr, uploadedById: req.user.id } });
+  res.json({ candidates: candidateCount, experts: expertCount });
 };
 
 /* =========================================================

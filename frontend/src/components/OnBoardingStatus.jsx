@@ -60,9 +60,9 @@ export default function OnboardingStatus() {
         : "Establishment will confirm your joining date",
       color:  "blue",
     },
-    // ✅ Joining letter intentionally excluded — internal document only
+    // Joining letter intentionally excluded — internal document only
     {
-      label:  "Room allotment",
+      label:  "office allotment",
       done:   !!r?.roomNumber,
       detail: r?.roomNumber
         ? `${r.roomBuilding} — Room ${r.roomNumber}${r.roomNotes ? ` · ${r.roomNotes}` : ""}`

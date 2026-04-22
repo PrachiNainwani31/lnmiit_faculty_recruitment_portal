@@ -343,11 +343,11 @@ export default function DofaExperts() {
   };
 
   useEffect(() => { load(); }, []);
-  useEffect(() => {
-  API.get("/hod/experts/all")
-    .then(res => setExperts(Array.isArray(res.data) ? res.data : []))
-    .catch(console.error);
-}, []);
+//   useEffect(() => {
+//   API.get("/hod/experts/all")
+//     .then(res => setAllExperts(Array.isArray(res.data) ? res.data : []))
+//     .catch(console.error);
+// }, []);
 
   // Show all experts flat — filter by dept param only if present
   const visible = deptFilter
@@ -361,7 +361,7 @@ export default function DofaExperts() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Experts</h2>
-          <p className="text-xs text-gray-400 mt-1">{experts.length} total across all departments</p>
+          <p className="text-xs text-gray-400 mt-1">{allExperts.length} total across all departments</p>
           <p className="text-sm text-gray-400 mt-0.5">
             {visible.length} expert{visible.length !== 1 ? "s" : ""}
             {deptFilter && (
@@ -406,7 +406,7 @@ export default function DofaExperts() {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {["Sr", "Name", "Email", "Designation", "Department", "Institute", "Specialization", "Action"].map(h => (
+                  {["Sr", "Name", "Email", "Designation", "Department", "Institute", "Specialization", "Action","Uploaded by"].map(h => (
                     <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>

@@ -19,14 +19,14 @@ The LNM Institute of Information Technology, Jaipur`;
 
 // ── FIX: DEPARTMENTS must be outside DEFAULT_BODY (was incorrectly inside the template string) ──
 const DEPARTMENTS = [
-  "Computer Science and Engineering",
-  "Electronics and Communication Engineering",
-  "Communication and Computer Engineering",
-  "Mechanical-Mechatronics Engineering",
+  "CSE",
+  "ECE",
+  "CCE",
+  "MME",
   "Physics",
   "Mathematics",
-  "Humanities and Social Sciences",
-  "Artificial Intelligence and Data Science",
+  "HSS",
+  "AI&DS",
 ];
 
 function loadTemplate() {
@@ -165,7 +165,7 @@ function EmailModal({ candidate, allCandidates, onClose, activeCycle, existingDe
           }`}>
             <div className="flex items-center justify-between flex-wrap gap-2">
               <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                📅 Application Deadline
+                Application Deadline
               </label>
 
               {hasDeadline ? (
@@ -234,7 +234,7 @@ function EmailModal({ candidate, allCandidates, onClose, activeCycle, existingDe
 /* ── Main page ── */
 export default function DofaCandidates() {
   const [params]  = useSearchParams();
-  const navigate  = useNavigate();                       // FIX: was missing
+  const navigate  = useNavigate();    
   const deptParam = params.get("dept");                  // FIX: was called `dept` below
 
   // FIX: remove duplicate state declarations — each declared exactly once
@@ -407,7 +407,9 @@ export default function DofaCandidates() {
                   specialization:      c.specialization,
                   appliedPosition:     c.appliedPosition      || "",
                   recommendedPosition: c.recommendedPosition  || "",
+                  dlscRecommendation: c.dlscRecommendation,
                   dlscRemarks:         c.dlscRemarks          || "",
+                  ilscRecommendation: c.ilscRecommendation,
                   ilscRemarks:         c.ilscRemarks          || "",
                   appearedInInterview: c.appearedInInterview ? "Yes" : "No",
                 })),
@@ -435,8 +437,8 @@ export default function DofaCandidates() {
               {[
                 "Sr", "Name", "Email", "Secondary Email", "Phone",
                 "Qualification", "Specialization",
-                "Applied Position", "Recommended Position",
-                "DLSC Remarks", "ILSC Remarks",
+                "Applied Position", "Recommended Position","DLSC Recommendation",
+                "DLSC Remarks", "ILSC Recommendation","ILSC Remarks",
                 "Appeared", "Action",
               ].map(h => (
                 <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
@@ -457,9 +459,11 @@ export default function DofaCandidates() {
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.specialization}</td>
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.appliedPosition || "—"}</td>
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.recommendedPosition || "—"}</td>
+                <td className="px-3 py-2.5 text-gray-600 text-xs">{c.dlscRecommendation}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 max-w-[150px]">
                   <span className="line-clamp-2" title={c.dlscRemarks}>{c.dlscRemarks || "—"}</span>
                 </td>
+                <td className="px-3 py-2.5 text-gray-600 text-xs">{c.ilscRecommendation}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 max-w-[130px]">
                   <span className="line-clamp-2" title={c.ilscRemarks}>{c.ilscRemarks || "—"}</span>
                 </td>

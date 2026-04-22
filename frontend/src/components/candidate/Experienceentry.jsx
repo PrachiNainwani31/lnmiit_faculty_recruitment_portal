@@ -4,7 +4,7 @@ import API from "../../api/api";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-export default function Experienceentry({ exp, index, onChange, onRemove, isReadOnly, total, onCertUpload,hideNatureOfWork=false }) {
+export default function Experienceentry({ exp, index,displayNumber, onChange, onRemove, isReadOnly, total, onCertUpload,hideNatureOfWork=false }) {
   const certRef = useRef();
 
   const uploadCert = (file)=>onCertUpload?.(file);
@@ -16,7 +16,7 @@ export default function Experienceentry({ exp, index, onChange, onRemove, isRead
     <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <p className="text-sm font-semibold text-gray-600">Experience {index + 1}</p>
+        <p className="text-sm font-semibold text-gray-600">Experience {displayNumber ?? index + 1}</p>
         <div className="flex items-center gap-3">
           {/* Ongoing / Past toggle */}
           {!isReadOnly && (

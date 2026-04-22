@@ -33,7 +33,6 @@ export default function TravelPortalLayout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b px-6 h-14 flex items-center justify-between shadow-sm shrink-0">
           <h2 className="font-semibold text-gray-800">Travel Portal</h2>
-          <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full font-medium">Establishment</span>
         </header>
         <main className="flex-1 overflow-y-auto p-6"><Outlet /></main>
       </div>

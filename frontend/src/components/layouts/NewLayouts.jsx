@@ -17,7 +17,7 @@ export function EstablishmentLayout() {
       <aside className="w-60 bg-[#7c4a03] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <p className="text-white font-semibold text-sm">Establishment</p>
-          <p className="text-white/50 text-xs mt-0.5">LNMIIT Recruitment & Onboarding Portal</p>
+          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment and Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
           <NavLink to="/establishment" end className={({ isActive }) => mk(isActive)}>
@@ -27,7 +27,10 @@ export function EstablishmentLayout() {
             Offer & Joining Letters
           </NavLink>
           <NavLink to="/establishment/room-allotment" className={({ isActive }) => mk(isActive)}>
-            Room Allotment
+            office Allotment
+          </NavLink>
+          <NavLink to="/establishment/logs" className={({ isActive }) => mk(isActive)}>
+            Logs
           </NavLink>
         </nav>
         <button onClick={() => { localStorage.clear(); navigate("/login"); }}
@@ -56,10 +59,11 @@ export function EstateLayout() {
       <aside className="w-60 bg-[#6b1a5a] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <p className="text-white font-semibold text-sm">Estate Section</p>
-          <p className="text-white/50 text-xs mt-0.5">LNMIIT Recruitment & Onboarding Portal</p>
+          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment and Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
-          <NavLink to="/estate" end className={({ isActive }) => mk(isActive)}>Room Handovers</NavLink>
+          <NavLink to="/estate" end className={({ isActive }) => mk(isActive)}>Office Handovers</NavLink>
+          <NavLink to="/estate/logs" className={({ isActive }) => mk(isActive)}>Logs</NavLink>
         </nav>
         <button onClick={() => { localStorage.clear(); navigate("/login"); }}
           className="m-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 border border-white/20 transition">
@@ -87,10 +91,11 @@ export function LucsLayout() {
       <aside className="w-60 bg-[#085041] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <p className="text-white font-semibold text-sm">LUCS</p>
-          <p className="text-white/50 text-xs mt-0.5">LNMIIT Recruitment & Onboarding Portal</p>
+          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment and Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
           <NavLink to="/lucs" end className={({ isActive }) => mk(isActive)}>IT Asset Assignment</NavLink>
+          <NavLink to="/lucs/logs" className={({ isActive }) => mk(isActive)}>Logs</NavLink>
         </nav>
         <button onClick={() => { localStorage.clear(); navigate("/login"); }}
           className="m-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 border border-white/20 transition">

@@ -53,6 +53,7 @@ export default function Candidateform({
   experiences, setExperiences,
   referees, setReferees,
   isReadOnly,
+  isQuery,
   onBack,
   onSaveDraft,
   onSubmit,
@@ -118,7 +119,12 @@ export default function Candidateform({
     if (!file) return;
     const saved = await saveNow();
     const freshExps = saved?.experiences || experiences;
-    const exp = freshExps[index];
+    const localExp = experiences[index];
+    const exp = freshExps.find(e =>
+      e.type         === localExp.type &&
+      e.organization === localExp.organization &&
+      e.designation  === localExp.designation
+    ) || freshExps[index];
 
     if (!exp?.id) {
       alert("Could not save experience. Please try again.");
@@ -179,11 +185,6 @@ export default function Candidateform({
 
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Candidate Application</h1>
-        {!isReadOnly && (
-          <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full font-medium">
-            Draft — auto-saved every 15s
-          </span>
-        )}
       </div>
 
       {/* ── PERSONAL INFO ── */}
@@ -468,6 +469,7 @@ export default function Candidateform({
                   <div key={i} onBlur={handleExpBlur}>
                     <ExperienceEntry
                       exp={exp} index={globalIdx}
+                      displayNumber={i + 1}
                       onChange={handleExpChange}
                       onRemove={removeExperience}
                       isReadOnly={isReadOnly}
@@ -577,7 +579,7 @@ export default function Candidateform({
             disabled={isSubmitting}
             className="bg-red-600 text-white px-6 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-60"
           >
-            {isSubmitting ? "Submitting…" : "Submit Application"}
+            {isSubmitting ? "Submitting…" : "Submit Documents"}
           </button>
         </div>
       )}

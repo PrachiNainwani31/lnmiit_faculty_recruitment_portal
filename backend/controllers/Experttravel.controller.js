@@ -69,24 +69,56 @@ function toNestedShape(t) {
 
 exports.getAllExpertTravel = async (req, res) => {
   try {
-    const experts = await Expert.findAll({
-      include: [{ model: User, as: "uploadedBy", attributes: ["name", "department", "role"] }],
+    const { RecruitmentCycle } = require("../models");
+
+    const activeCycles = await RecruitmentCycle.findAll({
+      attributes: ["cycle", "hodId"],
+      where: { [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }] },
     });
-    const travels  = await ExpertTravel.findAll();
+    const activeHodIds = new Set(activeCycles.map(c => c.hodId).filter(Boolean));
+    const activeCycleStrings = [...new Set(activeCycles.map(c => c.cycle))];
+
+    // ✅ Get HOD-uploaded experts from active cycles
+    const hodExperts = activeCycleStrings.length ? await Expert.findAll({
+      where: {
+        cycle: activeCycleStrings,
+        uploadedById: { [Op.in]: [...activeHodIds] },
+      },
+      include: [{ model: User, as: "uploadedBy", attributes: ["name", "department", "role"] }],
+    }) : [];
+
+    // ✅ Get DOFA-manually-added experts from active cycles (uploadedById is DOFA user)
+    const dofaUsers = await User.findAll({
+      where: { role: { [Op.in]: ["DOFA", "ADOFA", "DOFA_OFFICE"] } },
+      attributes: ["id"],
+    });
+    const dofaUserIds = dofaUsers.map(u => u.id);
+
+    const dofaExperts = activeCycleStrings.length && dofaUserIds.length ? await Expert.findAll({
+      where: {
+        cycle: activeCycleStrings,
+        uploadedById: { [Op.in]: dofaUserIds },
+      },
+      include: [{ model: User, as: "uploadedBy", attributes: ["name", "department", "role"] }],
+    }) : [];
+
+    const allExperts = [...hodExperts, ...dofaExperts];
+
+    const travels = await ExpertTravel.findAll();
     const travelMap = {};
     travels.forEach(t => { travelMap[t.expertId] = t; });
 
-    const result = experts.map(e => ({
+    const result = allExperts.map(e => ({
       expert: e,
       travel: toNestedShape(travelMap[e.id]) || null,
     }));
+
     res.json(result);
   } catch (err) {
     console.error("getAllExpertTravel error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
-
 /* ── Save confirmation + travel details (#10a) ── */
 exports.saveConfirmation = async (req, res) => {
   try {

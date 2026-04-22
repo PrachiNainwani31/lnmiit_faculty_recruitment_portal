@@ -24,35 +24,43 @@ export default function SelectionStatusPanel({ role,cycle }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      API.get("/establishment/records").catch(() => ({ data: [] })),
-      API.get(cycle ? `/selected-candidates?cycle=${cycle}` : "/selected-candidates").catch(() => ({ data: [] })),
-    ]).then(([recRes, selRes]) => {
-      const selMap = {};
-      selRes.data.forEach(s => {
-        const id = s.candidate?.id || s.candidateId;
-        if (id) selMap[id] = s;
-      });
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  Promise.all([
+    API.get("/establishment/records").catch(() => ({ data: [] })),
+    // API.get(cycle ? `/selected-candidates?cycle=${cycle}` : "/selected-candidates").catch(() => ({ data: [] })),
+    API.get("/selected-candidates").catch(() => ({ data: [] })), 
+  ]).then(([recRes, selRes]) => {
+    const selMap = {};
+    selRes.data.forEach(s => {
+      const id = s.candidate?.id || s.candidateId;
+      if (id) selMap[id] = s;
+    });
 
-      const deptMap = {};
-      recRes.data.forEach(({ department, records }) => {
-        if (!records?.length) return;
-        deptMap[department] = records.map(r => ({
-          ...r,
-          designation:       r.designation      || "",
-          employmentType:    r.employmentType    || "",
-          selectionStatus:   r.selectionStatus  || null,
-          waitlistPriority:  r.waitlistPriority || null,   
-          interviewComplete: r.interviewComplete || false,
-          notJoined:         !!r.notJoined,
-          notJoinedReason:   r.notJoinedReason  || "",
-        }));
-      });
+    const deptMap = {};
+    recRes.data.forEach(({ department, records }) => {
+      if (!records?.length) return;
+      if (role === "HOD" && user.department && department !== user.department) return;
+      
+      // Filter out closed cycle records
+      const activeRecords = records.filter(r => !r.isCycleClosedFlag);
+      if (!activeRecords.length) return;  // skip dept if all records are from closed cycles
 
-      setDepts(Object.entries(deptMap));
-    }).catch(console.error)
-      .finally(() => setLoading(false));
-  }, [cycle]);
+      deptMap[department] = activeRecords.map(r => ({
+        ...r,
+        designation:       r.designation      || "",
+        employmentType:    r.employmentType    || "",
+        selectionStatus:   r.selectionStatus  || null,
+        waitlistPriority:  r.waitlistPriority || null,
+        interviewComplete: r.interviewComplete || false,
+        notJoined:         !!r.notJoined,
+        notJoinedReason:   r.notJoinedReason  || "",
+      }));
+    });
+
+    setDepts(Object.entries(deptMap));
+  }).catch(console.error)
+    .finally(() => setLoading(false));
+}, [cycle]);
 
   if (loading) return <p className="text-gray-400 text-sm">Loading selection status…</p>;
   if (depts.length === 0) return null;
@@ -69,35 +77,42 @@ export default function SelectionStatusPanel({ role,cycle }) {
     </div>
 
     {depts.map(([dept, records]) => {
-      const selectedCount   = records.filter(r => r.selectionStatus === "SELECTED").length;
-      const waitlistedCount = records.filter(r => r.selectionStatus === "WAITLISTED").length;
+  const selectedCount   = records.filter(r => r.selectionStatus === "SELECTED").length;
+  const waitlistedCount = records.filter(r => r.selectionStatus === "WAITLISTED").length;
+  const firstRecord = records[0]; // ← get cycle info from first record
 
-      return (
-        <div key={dept} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
-          {/* ── Dept header ── */}
-          <div className="bg-indigo-600 px-5 py-3 flex items-center justify-between">
-            <p className="text-white font-medium text-sm">{dept}</p>
-            <div className="flex items-center gap-2">
-              {selectedCount > 0 && (
-                <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2.5 py-0.5 rounded-full font-semibold">
-                  ✓ {selectedCount} selected
-                </span>
-              )}
-              {waitlistedCount > 0 && (
-                <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
-                  ⟳ {waitlistedCount} waitlisted
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* ── Candidate rows ── */}
-          {records.map(r => (
-            <CandidateStatusRow key={r.id} record={r} role={role} />
-          ))}
+  return (
+    <div key={dept} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+      <div className="bg-indigo-600 px-5 py-3 flex items-center justify-between">
+        <div>
+          <p className="text-white font-medium text-sm">{dept}</p>
+          {/* ✅ Show cycle info */}
+          {firstRecord?.cycle && (
+            <p className="text-indigo-200 text-xs mt-0.5">
+              {firstRecord.cycle}
+              {/* parse academicYear and cycleNumber from cycle string e.g. "2026-27-C2" */}
+            </p>
+          )}
         </div>
-      );
-    })}
+        <div className="flex items-center gap-2">
+          {selectedCount > 0 && (
+            <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2.5 py-0.5 rounded-full font-semibold">
+              {selectedCount} selected
+            </span>
+          )}
+          {waitlistedCount > 0 && (
+            <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
+              {waitlistedCount} waitlisted
+            </span>
+          )}
+        </div>
+      </div>
+      {records.map(r => (
+        <CandidateStatusRow key={r.id} record={r} role={role} />
+      ))}
+    </div>
+  );
+})}
   </div>
 );
 } 
@@ -151,12 +166,12 @@ function CandidateStatusRow({ record, role }) {
       detail: record.rfidSentToCandidate ? "Sent to candidate" : null,
     },
     {
-      label: "Room allotted",
+      label: "Office allotted",
       done: !!record.roomNumber,
       detail: record.roomNumber ? `Room ${record.roomNumber}` : null,
     },
     {
-      label: "Room handover",
+      label: "Office handover",
       done: !!record.roomHandedOver,
       detail: record.roomHandedOver
         ? new Date(record.roomHandoverDate).toLocaleDateString("en-GB")

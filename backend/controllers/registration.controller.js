@@ -68,7 +68,7 @@ exports.registerUser = async (req, res) => {
     const loginUrl = `${FRONTEND_URL}/login`;
     await sendEmail(
       email,
-      "Welcome to LNMIIT Recruitment & Onboarding Portal — Your Login Credentials",
+      "Welcome to LNMIIT Faculty Recruitment and Onboarding Portal — Your Login Credentials",
       _credentialsEmail({ name, email, password: plainPassword, role: finalRole, loginUrl })
     ).catch(console.error);
 
@@ -152,7 +152,7 @@ exports.forgotPassword = async (req, res) => {
     const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
     await sendEmail(
       email,
-      "Password Reset Request — LNMIIT Recruitment Portal",
+      "Password Reset Request — LNMIIT Faculty Recruitment Portal",
       _resetEmail({ name: user.name, resetUrl })
     );
 
@@ -221,7 +221,7 @@ exports.resetPassword = async (req, res) => {
 const wrap = (body) => `
 <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:30px">
   <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-    <h2 style="margin:0;font-size:18px">LNMIIT Recruitment & Onboarding Portal</h2>
+    <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
   </div>
   <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;line-height:1.7;color:#333">
     ${body}
@@ -234,7 +234,7 @@ const wrap = (body) => `
 function _credentialsEmail({ name, email, password, role, loginUrl }) {
   return wrap(`
     <p>Dear <strong>${name}</strong>,</p>
-    <p>You have been registered on the <strong>LNMIIT Recruitment & Onboarding Portal</strong> 
+    <p>You have been registered on the <strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong> 
     with the role of <strong>${role}</strong>.</p>
     <p>Your login credentials are:</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
@@ -267,7 +267,7 @@ function _credentialsEmail({ name, email, password, role, loginUrl }) {
 function _resetEmail({ name, resetUrl }) {
   return wrap(`
     <p>Dear <strong>${name}</strong>,</p>
-    <p>We received a request to reset your password for the LNMIIT Recruitment & Onboarding Portal.</p>
+    <p>We received a request to reset your password for the LNMIIT Faculty Recruitment and Onboarding Portal.</p>
     <p>Click the button below to reset your password. This link is valid for <strong>1 hour</strong>.</p>
     <div style="margin:20px 0">
       <a href="${resetUrl}" style="background:#8b0000;color:#fff;padding:10px 24px;border-radius:5px;text-decoration:none;font-weight:bold">
@@ -277,6 +277,6 @@ function _resetEmail({ name, resetUrl }) {
     <p style="color:#888;font-size:13px">
       If you did not request this, please ignore this email. Your password will not change.
     </p>
-    <p>Regards,<br><strong>LNMIIT Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment Portal</strong></p>
   `);
 }

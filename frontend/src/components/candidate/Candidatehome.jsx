@@ -14,7 +14,7 @@ export default function Candidatehome({ application = {}, onOpenForm }) {
         <h1 className="text-2xl font-bold text-gray-800">
           Welcome{firstName ? `, ${firstName}` : ""}!
         </h1>
-        <p className="text-sm text-gray-500 mt-1">LNMIIT Recruitment & Onboarding Portal</p>
+        <p className="text-sm text-gray-500 mt-1">LNMIIT Faculty Recruitment and Onboarding Portal</p>
       </div>
 
       <div className="grid grid-cols-2 gap-5">
@@ -46,7 +46,7 @@ export default function Candidatehome({ application = {}, onOpenForm }) {
                 ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 : "bg-red-600 text-white hover:bg-red-700"
             }`}>
-            {isSubmitted ? "View Submitted Application" : "Open Application Form →"}
+            {isSubmitted ? "View Submitted Application" : "Open Document Submission Form →"}
           </button>
         </div>
 
@@ -54,7 +54,7 @@ export default function Candidatehome({ application = {}, onOpenForm }) {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
           <div className="flex items-start gap-3">
             <div>
-              <h2 className="font-semibold text-gray-800">Selection & Onboarding</h2>
+              <h2 className="font-semibold text-gray-800">Selection and Onboarding</h2>
               <p className="text-xs text-gray-400 mt-0.5">Track your selection and onboarding progress</p>
             </div>
           </div>

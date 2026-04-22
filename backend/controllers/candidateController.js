@@ -23,8 +23,8 @@ const COLUMN_MAP = {
   appliedposition:       "appliedPosition",
   recommendedposition:   "recommendedPosition",
   dlscrecommendation:    "dlscRecommendation",
-  ilscrecommendation:    "ilscRecommendation",
   dlscremarks:           "dlscRemarks",
+  ilscrecommendation:    "ilscRecommendation",
   ilscremarks:           "ilscRemarks",
   // legacy fallbacks
   reviewerobservation:   "dlscRemarks",
@@ -87,8 +87,8 @@ exports.uploadCandidates = async (req, res) => {
         appliedPosition:     r.appliedPosition     || null,
         recommendedPosition: r.recommendedPosition || null,
         dlscRecommendation:  r.dlscRecommendation  || null,
-        ilscRecommendation:  r.ilscRecommendation  || null,
         dlscRemarks:         r.dlscRemarks         || null,
+        ilscRecommendation:  r.ilscRecommendation  || null,
         ilscRemarks:         r.ilscRemarks         || null,
         hodId,
         appearedInInterview: false,
@@ -151,7 +151,10 @@ exports.getCandidatesByCycle = async (req, res) => {
 
     const cyclePerHod = await Promise.all(
       hods.map(h => RecruitmentCycle.findOne({
-        where: { hodId: h.id },
+        where: {
+          hodId: h.id,
+          [Op.or]: [{ isClosed: false }, { isClosed: null }], // ✅ active only
+        },
         order: [["createdAt", "DESC"]],
       }))
     );
@@ -300,18 +303,17 @@ exports.downloadTemplate = async (req, res) => {
   if (!stats) return res.status(400).json({ message: "Stats not found" });
 
   const fields = [
-  "Sr. No.", "Full Name", "Primary Email", "Secondary Email",
-  "Phone No.", "Qualification", "Specialization",
+  "Sr. No.", "Full Name", "Primary Email", "Secondary Email","Phone No.",
+  "Qualification", "Specialization",
   "Applied Position", "Recommended Position",
-  "DLSC Recommendation", "ILSC Recommendation",
-  "DLSC Remarks", "ILSC Remarks"
+  "DLSC Recommendation","DLSC Remarks","ILSC Recommendation", "ILSC Remarks"
 ];
 
   const rows = Array.from({ length: stats.ilscShortlisted }).map((_, i) => ({
     srNo: i + 1, fullName: "", email: "", secondaryEmail: "", phone: "",
     qualification: "", specialization: "",
     appliedPosition: "", recommendedPosition: "",
-    reviewerObservation: "", ilscComments: "",
+    dlscRecommendation: "", dlscRemarks: "",ilscRecommendation:"",ilscRemarks:"",
   }));
 
   const parser = new Parser({ fields });
@@ -386,14 +388,11 @@ exports.uploadResumes = async (req, res) => {
  
     // Move uploaded temp file → correct location
     fs.renameSync(req.file.path, destFile);
+    const dbPath = `uploads/resumes/${cycleFolder}/${dept}/resumes.zip`;
 
     await RecruitmentCycle.update(
-      {
-        resumesZip: `uploads/resumes/${cycle.cycle}/${dept}/resumes.zip`
-      },
-      {
-        where: { cycle: cycle.cycle, hodId: req.user.id }
-      }
+      { resumesZip: dbPath },
+      { where: { id: cycle.id } }
     );
     res.json({ message: "Resume ZIP uploaded successfully", path: destFile });
   } catch (err) {
@@ -406,30 +405,19 @@ exports.uploadResumes = async (req, res) => {
 exports.getUploadedResumes = async (req, res) => {
   try {
     const cycle = await getCurrentCycle(req.user.id);
-    if (!cycle) {
-      return res.status(400).json({ message: "No active cycle found" });
-    }
-    const { User } = require("../models");
-    const hod  = await User.findByPk(req.user.id);
-    const dept = (hod?.department || "UNKNOWN").toUpperCase().replace(/\s+/g, "_");
+    if (!cycle) return res.json([]);
 
-    // Reconstruct the exact path where the file is saved
-    const cycleFolder = cycle.cycle.replace(/[^a-zA-Z0-9_\-]/g, "_");
-    const filePath = path.join(__dirname, "../uploads/resumes", cycleFolder, dept, "resumes.zip");
-
-    // FIX: Physically check the server's hard drive. No database queries needed!
-    if (fs.existsSync(filePath)) {
+    // Read from DB — not filesystem
+    if (cycle.resumesZip) {
       return res.json([{
         name: "resumes.zip",
-        url: `/uploads/resumes/${cycle.cycle}/${dept}/resumes.zip` 
+        url:  `/${cycle.resumesZip}`,
       }]);
     }
 
-    // File not found on disk
     return res.json([]);
-
   } catch (err) {
-    console.error("Error fetching resumes:", err);
+    console.error("getUploadedResumes error:", err);
     return res.json([]);
   }
 };

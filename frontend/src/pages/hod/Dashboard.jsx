@@ -288,9 +288,9 @@ if (cycleLoaded && cycleData === null) return (
           Auto-calculated based on previous cycles in {yearForm.academicYear || "selected year"}
         </p>
       </div>
-      <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700 text-xl font-bold">
+      {/* <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700 text-xl font-bold">
         {yearForm.cycleNumber || "?"}
-      </div>
+      </div> */}
     </div>
 
     <button

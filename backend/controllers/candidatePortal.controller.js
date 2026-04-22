@@ -115,16 +115,34 @@ exports.saveDraft = async (req, res) => {
       
       for (const r of incoming) {
         if (r.id) {
-          // ── UPDATE existing referee — preserve ID so portal link stays valid ──
-          await CandidateReferee.update({
-            salutation:  r.salutation  || null,
-            name:        r.name        || null,
-            designation: r.designation || null,
-            department:  r.department  || null,
-            institute:   r.institute   || null,
-            email:       r.email       || null,
-          }, { where: { id: r.id, applicationId: app.id } });
-        } else {
+        // Check if email changed — if so, clear captcha so they get re-invited on next submit
+        const existing = await CandidateReferee.findByPk(r.id);
+        const emailChanged = existing && r.email && 
+          existing.email?.toLowerCase() !== r.email.trim().toLowerCase();
+
+        const updateFields = {
+          salutation:  r.salutation  || null,
+          name:        r.name        || null,
+          designation: r.designation || null,
+          department:  r.department  || null,
+          institute:   r.institute   || null,
+          email:       r.email       || null,
+        };
+
+        // If email changed, reset captcha + status so they get fresh invite
+        if (emailChanged) {
+          updateFields.captchaCode = null;
+          updateFields.status      = "PENDING";
+          updateFields.letter      = null;
+          updateFields.signedName  = null;
+          updateFields.submittedAt = null;
+        }
+
+        await CandidateReferee.update(updateFields, { 
+          where: { id: r.id, applicationId: app.id } 
+        });
+      }
+ else {
           // ── INSERT only truly new referees (no id yet) ──
           // Deduplicate by email before inserting
           if (r.email) {
@@ -148,15 +166,20 @@ exports.saveDraft = async (req, res) => {
 
       // ── DELETE only referees the user explicitly removed ──
       // (those with an id that no longer appear in the incoming list)
-      const incomingIds = incoming.filter(r => r.id).map(r => r.id);
+      const incomingIds    = incoming.filter(r => r.id).map(r => r.id);
+      const incomingEmails = incoming
+        .map(r => r.email?.trim().toLowerCase())
+        .filter(Boolean);
+
       const allExisting = await CandidateReferee.findAll({
         where: { applicationId: app.id },
-        attributes: ["id", "status"],
       });
       for (const existing of allExisting) {
-        // Never delete a referee who already submitted their letter
         if (existing.status === "SUBMITTED") continue;
-        if (!incomingIds.includes(existing.id)) {
+        const matchedById    = existing.id    && incomingIds.includes(existing.id);
+        const matchedByEmail = existing.email && incomingEmails.includes(existing.email.toLowerCase());
+        // ── Only delete if this referee isn't in the incoming list at all ──
+        if (!matchedById && !matchedByEmail) {
           await CandidateReferee.destroy({ where: { id: existing.id } });
         }
       }
@@ -216,7 +239,37 @@ exports.submitApplication = async (req, res) => {
     const { User } = require("../models");
 
     if (isResubmit) {
-      // Email #7 — candidate resubmitted after remark
+      // Only send emails to NEW referees or referees whose email changed
+      const currentReferees = await CandidateReferee.findAll({
+        where: { applicationId: app.id, status: "PENDING" }
+      });
+
+      const frontendUrl = process.env.FRINTEND_URL || 
+        (req.headers.origin ? req.headers.origin : `${req.protocol}://${req.get("host")}`);
+
+      for (const referee of currentReferees) {
+        if (!referee.email) continue;
+        
+        // Only send if captchaCode is null (never emailed) or was just added
+        if (referee.captchaCode) continue; // already has a code = already emailed
+        
+        const captcha = crypto.randomBytes(3).toString("hex").toUpperCase();
+        await CandidateReferee.update(
+          { captchaCode: captcha },
+          { where: { id: referee.id } }
+        );
+        const portalLink = `${frontendUrl}referee/${referee.id}`;
+        const tmpl = templates.refereeInvitation({
+          refereeName:   `${referee.salutation || ""} ${referee.name}`.trim(),
+          candidateName: app.name,
+          portalLink,
+          captcha,
+        });
+        await sendEmail(referee.email, tmpl.subject, tmpl.html)
+          .catch(err => console.error(`Referee email failed for ${referee.email}:`, err.message));
+      }
+
+      // Notify DOFA Office
       const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
       const tmpl = templates.candidateResubmitted({
         candidateName: app.name, department: app.department,
@@ -224,25 +277,21 @@ exports.submitApplication = async (req, res) => {
       for (const u of dofaOfficeUsers) {
         await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
       }
+
       const { RecruitmentCycle } = require("../models");
-      const latestCycle = await RecruitmentCycle.findOne({
-        order: [["createdAt", "DESC"]],
-      });
+      const latestCycle = await RecruitmentCycle.findOne({ order: [["createdAt", "DESC"]] });
       const cycleStr = latestCycle?.cycle || "SYSTEM";
-            await createNotification({
-              cycle: cycleStr, role: "DOFA_OFFICE",
-              title: "Candidate Resubmitted Application",
-              message: `${app.name} has resubmitted after document corrections.`,
-              type: "STATUS",
-            });
+      await createNotification({
+        cycle: cycleStr, role: "DOFA_OFFICE",
+        title: "Candidate Resubmitted Application",
+        message: `${app.name} has resubmitted after document corrections.`,
+        type: "STATUS",
+      });
 
       await log({
-        user:        req.user,
-        action:      "APPLICATION_RESUBMITTED",
-        entity:      "CandidateApplication",
-        entityId:    app.id,
-        description: `Application resubmitted for candidate ${app.candidateUserId}`,
-        req,
+        user: req.user, action: "APPLICATION_RESUBMITTED",
+        entity: "CandidateApplication", entityId: app.id,
+        description: `Application resubmitted for candidate ${app.candidateUserId}`, req,
       });
       return res.json({ message: "Application resubmitted successfully." });
     }

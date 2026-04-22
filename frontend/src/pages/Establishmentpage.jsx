@@ -175,6 +175,7 @@ function CandidateRecord({ record, onRefresh }) {
       </div>
 
       {open && (
+        <>
         <div className="px-5 pb-6 bg-gray-50 border-t border-gray-100 space-y-6 pt-5">
 
           {/* Step 1: Offer letter */}
@@ -182,9 +183,9 @@ function CandidateRecord({ record, onRefresh }) {
             <div className={numCls(step1Done, true)}>{step1Done ? "✓" : "1"}</div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-700">Offer letter</p>
-              {!interviewComplete && !step1Done ? (
+              {!record.selectionStatus || record.selectionStatus === "NOT_SELECTED" ? (
                 <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
-                   Locked — DOFA Office must mark interview as complete first
+                  Locked — DOFA Office must publish selection first
                 </div>
               ) : step1Done ? (
                 <a href={`${BASE}/${record.offerLetterPath}`} target="_blank" rel="noreferrer"
@@ -362,9 +363,9 @@ function CandidateRecord({ record, onRefresh }) {
           <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Downstream status (read-only)</p>
             {[
-              { label: "Room allotment (DOFA Office)", done: !!record.roomNumber,
+              { label: "Office allotment (DOFA Office)", done: !!record.roomNumber,
                 detail: record.roomNumber ? `${record.roomBuilding} — Room ${record.roomNumber}` : "Pending" },
-              { label: "Room handover (Estate)",        done: !!record.roomHandedOver,
+              { label: "Office handover (Estate)",        done: !!record.roomHandedOver,
                 detail: record.roomHandedOver ? `Confirmed ${new Date(record.roomHandoverDate).toLocaleDateString("en-GB")}` : "Pending" },
               { label: "IT assets & email (LUCS)",      done: !!record.lucsConfirmedById, detail:record.lucsItAssetsIssued?
                 "Confirmed by LUCS" :"Pending" },
@@ -381,52 +382,48 @@ function CandidateRecord({ record, onRefresh }) {
             ))}
           </div>
         </div>
-      )}
-      {step5Done && !record.joiningComplete && (
-        <div className="border-t border-gray-100 pt-4">
-          <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-green-800">All steps completed</p>
-              <p className="text-xs text-green-600 mt-0.5">
-                Mark joining as complete to freeze this record and notify HOD, DOFA, and DOFA Office.
-              </p>
-            </div>
-            <button
-              onClick={async () => {
-                if (!window.confirm(`Mark joining complete for ${c.fullName}? This will freeze the record.`)) return;
-                try {
-                  setSaving(true);
-                  await API.post("/establishment/joining-complete", { candidateId: c.id });
-                  alert("Joining marked complete. All parties notified.");
-                  onRefresh();
-                } catch (err) {
-                  alert(err.response?.data?.message || "Failed");
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              disabled={saving}
-              className="shrink-0 bg-green-700 hover:bg-green-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition"
-            >
-              ✓ Mark Joining Complete
-            </button>
-          </div>
-        </div>
-      )}
-
-      {record.joiningComplete && (
-        <div className="border-t border-gray-100 pt-4">
-          <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-3 flex items-center gap-3">
-            <div>
-              <p className="text-sm font-semibold text-gray-700">Joining Complete — Record Frozen</p>
-              {record.joiningCompletedAt && (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Completed on {new Date(record.joiningCompletedAt).toLocaleDateString("en-GB")}
+      {step5Done && !record.joiningComplete && !record.notJoined && (
+            <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-green-800">All steps completed</p>
+                <p className="text-xs text-green-600 mt-0.5">
+                  Mark joining as complete to freeze this record and notify HOD, DOFA, and DOFA Office.
                 </p>
-              )}
+              </div>
+              <button
+                onClick={async () => {
+                  if (!window.confirm(`Mark joining complete for ${c.fullName}? This will freeze the record.`)) return;
+                  try {
+                    setSaving(true);
+                    await API.post("/establishment/joining-complete", { candidateId: c.id });
+                    alert("Joining marked complete. All parties notified.");
+                    onRefresh();
+                  } catch (err) {
+                    alert(err.response?.data?.message || "Failed");
+                  } finally { setSaving(false); }
+                }}
+                disabled={saving}
+                className="shrink-0 bg-green-700 hover:bg-green-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition"
+              >
+                ✓ Mark Joining Complete
+              </button>
             </div>
-          </div>
-        </div>
+          )}
+
+          {record.joiningComplete && (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-3 flex items-center gap-3">
+              <span className="text-green-600 text-lg">✓</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-700">Joining Complete — Record Frozen</p>
+                {record.joiningCompletedAt && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Completed on {new Date(record.joiningCompletedAt).toLocaleDateString("en-GB")}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -464,7 +461,7 @@ export default function EstablishmentPage() {
             selectionStatus: selMap[r.candidate?.id]?.status || "NOT_SELECTED",
             waitlistPriority: selMap[r.candidate?.id]?.waitlistPriority || null,
           })),
-        }));
+        })).filter(dept => dept.records.length > 0);
 
         setDepts(merged);
       })
@@ -526,11 +523,13 @@ export default function EstablishmentPage() {
         </div>
       )}
 
-      {depts.map(({ department, records }) => (
+      {depts.map(({ department, records }) => {
+        const isClosed = records.some(r => r.isCycleClosedFlag);
+        return (
         <div key={department} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="bg-amber-600 px-5 py-3 flex items-center justify-between">
             <p className="text-white font-medium text-sm">{department}</p>
-            <div className="flex gap-3 text-xs">
+            <div className="flex gap-3 text-xs items-center">
               <span className="text-green-200 font-semibold">
                 ✓ {records.filter(r => r.selectionStatus === "SELECTED").length} selected
               </span>
@@ -538,28 +537,34 @@ export default function EstablishmentPage() {
                 <span className="text-amber-200 font-semibold">
                   ⟳ {records.filter(r => r.selectionStatus === "WAITLISTED").length} waitlisted
                 </span>
-              )}        
-              <button
-                onClick={async () => {
-                  if (!window.confirm("Close this cycle permanently? No further edits will be allowed by anyone.")) return;
-                  // Get hodId from first record
-                  const hodId = depts[0]?.records[0]?.hodId;
-                  if (!hodId) return alert("No active cycle found");
-                  await API.post("/establishment/close-cycle", { hodId });
-                  alert("Cycle closed.");
-                  load();
-                }}
-                className="text-xs bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                 Close Cycle
-              </button>
+              )}
+              {isClosed ? (
+                <span className="text-xs bg-gray-200 text-gray-600 px-4 py-2 rounded-lg font-medium cursor-not-allowed">
+                  ✓ Cycle Closed
+                </span>
+              ) : (
+                <button
+                  onClick={async () => {
+                    if (!window.confirm("Close this cycle permanently? No further edits will be allowed by anyone.")) return;
+                    const hodId = records[0]?.hodId;
+if (!hodId) return alert("No active cycle found");
+                    if (!hodId) return alert("No active cycle found");
+                    await API.post("/establishment/close-cycle", { hodId });
+                    load();
+                  }}
+                  className="text-xs bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium"
+                >
+                  Close Cycle
+                </button>
+              )}
             </div>
           </div>
           {records.map(r => (
             <CandidateRecord key={r.id} record={r} onRefresh={load} />
           ))}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

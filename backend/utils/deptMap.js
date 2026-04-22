@@ -10,6 +10,7 @@ const DEPT_TO_CODE = {
   "Physics":                                   "Physics",
   "Mathematics":                               "Mathematics",
   "Chemical Engineering":                      "Chemical Engineering",
+  "Artifical Intelligence and Data Science":     "AI&DS",
 };
 
 const CODE_TO_DEPT = Object.fromEntries(

@@ -467,8 +467,13 @@ function ExpertCard({ item, onSaved }) {
 
           <div className="flex justify-end">
             <button onClick={handleSave} disabled={saving}
-              className="bg-[#6b0f1a] hover:bg-rose-800 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60">
-              {saving ? "Saving..." : form.presenceStatus === "Offline" ? "Save & Notify Registrar Office" : "Save"}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60 ${
+                success ? "bg-green-700 text-white" : "bg-[#6b0f1a] hover:bg-rose-800 text-white"
+              }`}>
+              {saving ? "Saving..." 
+              : success ? "Saved"
+              : form.presenceStatus === "Offline" ? "Save & Notify Registrar Office" 
+              : "Save"}
             </button>
           </div>
         </div>
@@ -521,7 +526,14 @@ export default function ExpertConfirmation() {
         </div>
       </div>
 
-      {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([groupKey, { isHod, items }]) => (
+      {Object.entries(grouped)
+  .sort(([, a], [, b]) => {
+    // Get cycle from first item
+    const cycleA = a.items[0]?.expert?.cycle || "";
+    const cycleB = b.items[0]?.expert?.cycle || "";
+    return cycleB.localeCompare(cycleA); // newest first
+  })
+  .map(([groupKey, { isHod, items }]) => (
         <div key={groupKey} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className={`px-5 py-3 flex items-center justify-between ${isHod ? "bg-[#6b0f1a]" : "bg-indigo-600"}`}>
             <div>

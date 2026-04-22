@@ -19,13 +19,12 @@ export default function MultiFileUpload({ label, maxFiles = 5, maxMB = 10, onUpl
     <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-gray-700">{label}</p>
-        <span className="text-xs text-gray-400">PDF · Max {maxMB} MB · Up to {maxFiles} files</span>
+        <span className="text-xs text-gray-400">PDF · Up to {maxFiles} files</span>
       </div>
 
       {/* Existing server files */}
       {existingFiles.filter(Boolean).map((f, i) => (
         <div key={i} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-3 py-2">
-          <span className="text-green-600 text-xs font-medium">📄</span>
           <span className="text-xs text-green-700 truncate flex-1">{typeof f === "string" ? f.split(/[/\\]/).pop() : f.name}</span>
           <span className="text-xs text-green-500">Saved</span>
         </div>
@@ -34,7 +33,6 @@ export default function MultiFileUpload({ label, maxFiles = 5, maxMB = 10, onUpl
       {/* Newly selected files */}
       {files.map((f, i) => (
         <div key={i} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-3 py-2">
-          <span className="text-blue-600 text-xs font-medium">📄</span>
           <span className="text-xs text-blue-700 truncate flex-1">{f.name}</span>
           <button onClick={() => removeFile(i)} className="text-red-500 text-xs hover:underline">✕</button>
         </div>

@@ -56,7 +56,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
     const deadlineBlock = deadlineAt
       ? `<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:20px 24px;margin:24px 0;text-align:center">
           <p style="margin:0 0 8px;font-size:12px;font-weight:bold;color:#92400e;text-transform:uppercase;letter-spacing:1px">
-            📅 Application Deadline
+            Application Deadline
           </p>
           <p style="margin:0;font-size:22px;font-weight:bold;color:#92400e">
             ${new Date(deadlineAt).toLocaleDateString("en-GB", {
@@ -77,7 +77,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
     const credentialBlock = portalCreated
       ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:20px 24px;margin:24px 0">
           <p style="margin:0 0 14px;font-weight:bold;color:#166534;font-size:14px">
-            🔐 Your Portal Login Credentials
+            Your Portal Login Credentials
           </p>
           <table style="border-collapse:collapse;width:100%;font-size:14px">
             <tr>
@@ -103,7 +103,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
           </table>
           <div style="margin-top:14px;padding:10px 14px;background:#fef9c3;border:1px solid #fde047;
                       border-radius:6px;font-size:12px;color:#713f12">
-            ⚠ <strong>Important:</strong> Please log in immediately and change your password using
+            <strong>Important:</strong> Please log in immediately and change your password using
             the <strong>"Forgot Password"</strong> link on the login page.
           </div>
         </div>`
@@ -117,7 +117,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
         <!-- Header -->
         <div style="background:#8b0000;padding:24px 30px;text-align:center">
           <h2 style="margin:0;color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:0.5px">
-            LNMIIT Recruitment & Onboarding Portal
+            LNMIIT Faculty Recruitment and Onboarding Portal
           </h2>
           <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px">
             The LNM Institute of Information Technology, Jaipur
@@ -153,7 +153,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
         <!-- Footer -->
         <div style="background:#f9f9f9;border-top:1px solid #eeeeee;padding:16px 30px;text-align:center">
           <p style="margin:0;font-size:11px;color:#999999">
-            This is an automated message from the LNMIIT Recruitment & Onboarding Portal.<br>
+            This is an automated message from the LNMIIT Faculty Recruitment and Onboarding Portal.<br>
             Please do not reply directly to this email.
           </p>
         </div>
@@ -203,7 +203,7 @@ router.post("/send-expert-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req, re
       subject,
       `<div style="font-family:Arial,sans-serif;max-width:650px;margin:auto;padding:30px">
         <div style="background:#8b0000;color:#fff;padding:15px;text-align:center;border-radius:6px 6px 0 0">
-          <h2 style="margin:0">LNMIIT Recruitment & Onboarding Portal</h2>
+          <h2 style="margin:0">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
         </div>
         <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;
              white-space:pre-wrap;font-size:14px;line-height:1.7;color:#333">

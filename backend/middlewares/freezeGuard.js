@@ -1,6 +1,10 @@
 // middlewares/freezeGuard.js — replace the isFrozen check
+const getCurrentCycle = require("../utils/getCurrentCycle");  
 module.exports = async function freezeGuard(req, res, next) {
   try {
+     if (!req.user || !req.user.id) {
+      return next(); // or return 401 if you want strict auth
+    }
     const cycle = await getCurrentCycle(req.user.id);
 
     if (!cycle) return next();

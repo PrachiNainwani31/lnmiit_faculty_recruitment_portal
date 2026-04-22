@@ -73,21 +73,49 @@ async function streamDocsAsZip(app, res) {
 
 exports.getDocumentTracking = async (req, res) => {
   try {
-    const applications = await CandidateApplication.findAll({
-      where: {
-        status: {
-          [Op.in]: ["SUBMITTED", "QUERY"]
-        }
-      }, 
-      include: [
-        { model: CandidateReferee,    as: "referees",    required: false },
-        { model: CandidateExperience, as: "experiences", required: false },
-      ],
+    const { Op } = require("sequelize");
+    const { RecruitmentCycle, Candidate, User } = require("../models");
+
+    const activeCycles = await RecruitmentCycle.findAll({
+      where: { [Op.or]: [{ isClosed: false }, { isClosed: null },{isClosed:0}] },
+      order: [["createdAt", "DESC"]],
     });
+    const activeCycleStrings = activeCycles.map(c => c.cycle);
+    const activeHodIds = [...new Set(activeCycles.map(c => c.hodId).filter(Boolean))];
+    if (!activeHodIds.length) return res.json([]);
 
+    const activeCandidates = await Candidate.findAll({
+  where: { cycle: activeCycleStrings, hodId: activeHodIds }, // ← scope to active HODs
+  attributes: ["email", "hodId"],
+});
+
+// Map email → hodId so we can check if HOD is active
+const emailToHodId = {};
+activeCandidates.forEach(c => { if (c.email) emailToHodId[c.email] = c.hodId; });
+const candidateEmails = Object.keys(emailToHodId);
+
+const applications = await CandidateApplication.findAll({
+  where: {
+    status: { [Op.in]: ["SUBMITTED", "QUERY"] },
+    ...(candidateEmails.length ? { email: { [Op.in]: candidateEmails } } : { id: -1 }),
+  },
+  include: [
+    { model: CandidateReferee,    as: "referees",    required: false },
+    { model: CandidateExperience, as: "experiences", required: false },
+  ],
+});
+
+// ── FIX: only keep applications whose HOD's cycle is NOT closed ──
+const filteredApplications = applications.filter(app => {
+  const hodId = emailToHodId[app.email];
+  if (!hodId) return false;
+  // Check this specific HOD's cycle is active
+  const hodCycle = activeCycles.find(c => c.hodId === hodId);
+  return !!hodCycle; // only include if HOD has an active (non-closed) cycle
+});
+    // ← rest is exactly your existing deptMap building code, unchanged:
     const deptMap = {};
-
-    applications
+    filteredApplications
       .filter(app => app.name || app.email)
       .forEach(app => {
         const dept = app.department || "General";

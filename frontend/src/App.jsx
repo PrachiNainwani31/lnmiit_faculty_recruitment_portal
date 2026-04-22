@@ -43,12 +43,12 @@ import TravelPickup       from "./pages/travel/TravelPickup";
 
 import { EstablishmentLayout, EstateLayout, LucsLayout } from "./components/layouts/NewLayouts";
 import EstablishmentPage from "./pages/Establishmentpage";
-import { EstatePage }    from "./pages/Estateandlucspage";
+import { EstatePage,EstateLogsPage,LucsLogsPage }    from "./pages/Estateandlucspage";
 import { LucsPage }      from "./pages/Estateandlucspage";
 import EstablishmentDashboard from "./pages/EstablishmentDashboard";
 import EstablishmentOnboarding from "./pages/Establishmentpage";
 import EstablishmentRoomView from "./pages/EstablishmentRoomView";
-
+import EstablishmentLogsPage from "./pages/EstablishmentLogsPage";
 
 import CandidateDashboard from "./pages/candidate/CandidateDashboard";
 import RefereePage        from "./pages/Referee/RefereePage";
@@ -131,16 +131,19 @@ export default function App() {
         <Route index              element={<EstablishmentDashboard />} />
         <Route path="onboarding"      element={<EstablishmentOnboarding />} />
         <Route path="room-allotment"  element={<EstablishmentRoomView />} />
+        <Route path= "logs"  element={ <EstablishmentLogsPage />}/>
       </Route>
 
       {/* Estate */}
       <Route path="/estate" element={<ProtectedRoute role="ESTATE"><EstateLayout /></ProtectedRoute>}>
         <Route index element={<EstatePage />} />
+        <Route path="logs" element={<EstateLogsPage/>}/>
       </Route>
 
       {/* LUCS */}
       <Route path="/lucs" element={<ProtectedRoute role="LUCS"><LucsLayout /></ProtectedRoute>}>
         <Route index element={<LucsPage />} />
+        <Route path="logs" element={<LucsLogsPage/>}/>
       </Route>
 
     </Routes>

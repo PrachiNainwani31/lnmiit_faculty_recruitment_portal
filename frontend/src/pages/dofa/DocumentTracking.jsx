@@ -29,10 +29,10 @@ const MULTI_DOCS = [
 const REFEREE_FIELDS = ["name", "designation", "department", "institute", "email"];
 
 const VERDICT_CONFIG = {
-  Correct:   { icon: "✔", bg: "bg-green-100",  text: "text-green-700",  border: "border-green-200"  },
-  Incorrect: { icon: "✗", bg: "bg-red-100",    text: "text-red-700",    border: "border-red-200"    },
-  Missing:   { icon: "⚠", bg: "bg-yellow-100", text: "text-yellow-700", border: "border-yellow-200" },
-  Pending:   { icon: "⏳", bg: "bg-blue-50",   text: "text-blue-600",   border: "border-blue-200"   },
+  Correct:   { bg: "bg-green-100",  text: "text-green-700",  border: "border-green-200"  },
+  Incorrect: { bg: "bg-red-100",    text: "text-red-700",    border: "border-red-200"    },
+  Missing:   { bg: "bg-yellow-100", text: "text-yellow-700", border: "border-yellow-200" },
+  Pending:   { bg: "bg-blue-50",   text: "text-blue-600",   border: "border-blue-200"   },
 };
 
 function getCounts(verdicts = {}) {
@@ -81,7 +81,7 @@ We noticed that the following document(s) require your attention:
 
 ${issues.map(d => `• ${d.label} — ${candidate.verdicts?.[d.key]?.status}`).join("\n")}
 
-Please rectify the above at the earliest on the LNMIIT Recruitment Portal.
+Please rectify the above at the earliest on the LNMIIT Faculty Recruitment and onBoarding Portal.
 
 Best regards,
 DOFA Office

@@ -23,13 +23,12 @@ export function EstatePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-800">Room Handover Confirmation</h1>
-        <p className="text-sm text-gray-500 mt-1">Confirm physical room handover for each candidate.</p>
+        <h1 className="text-xl font-semibold text-gray-800">Office Handover Confirmation</h1>
+        <p className="text-sm text-gray-500 mt-1">Confirm physical office handover for each candidate.</p>
       </div>
       {records.length === 0 && (
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
-          <p className="text-4xl mb-3">🏠</p>
-          <p>No room allotments pending handover.</p>
+          <p>No office allotments pending handover.</p>
         </div>
       )}
       {records.map(r => <EstateCard key={r.id} record={r} onRefresh={load} />)}
@@ -93,7 +92,7 @@ function EstateCard({ record, onRefresh }) {
           } catch { alert("Failed"); }
           finally { setSaving(false); }
         }} className="bg-pink-700 hover:bg-pink-800 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
-          {saving ? "Saving..." : "Confirm Room Handover"}
+          {saving ? "Saving..." : "Confirm Office Handover"}
         </button>
       </div>
     </div>
@@ -128,7 +127,6 @@ export function LucsPage() {
       </div>
       {records.length === 0 && (
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
-          <p className="text-4xl mb-3">💻</p>
           <p className="font-medium">No candidates available yet</p>
           <p className="text-xs mt-2">
             This section becomes active after Establishment uploads the joining letter for each candidate.
@@ -156,7 +154,7 @@ function LucsCard({ record, onRefresh }) {
   });
   const [saving, setSaving] = useState(false);
 
-  // ✅ Gate: locked if joining letter not yet uploaded
+  // Gate: locked if joining letter not yet uploaded
   const isLocked    = !record.joiningLetterPath;
   const allCoreDone = form.emailAssigned && form.itAssetsIssued && form.wifiProvided && form.websiteLogin;
   const isComplete  = !!(record.lucsConfirmedAt);
@@ -204,7 +202,7 @@ function LucsCard({ record, onRefresh }) {
         )}
       </div>
 
-      {/* ✅ Locked state — joining letter not yet uploaded */}
+      {/* Locked state — joining letter not yet uploaded */}
       {isLocked ? (
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-4 text-center space-y-1">
           <p className="text-sm font-medium text-amber-800">Locked — Joining letter not uploaded yet</p>
@@ -305,6 +303,149 @@ function CheckItem({ checked, onChange, label, savedDone, children }) {
         )}
       </label>
       {children && <div className="ml-7">{children}</div>}
+    </div>
+  );
+}
+
+export function EstateLogsPage() {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    API.get("/onboarding/estate/logs")
+      .then(r => setRecords(r.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="text-gray-400 text-sm p-6">Loading...</p>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-gray-800">Office Handover Logs</h1>
+        <p className="text-sm text-gray-500 mt-1">Completed cycles — office handover records.</p>
+      </div>
+      {records.length === 0 && (
+        <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
+          <p>No closed cycle records found.</p>
+        </div>
+      )}
+      {records.map(r => {
+        const c = r.candidate;
+        return (
+          <div key={r.id} className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-pink-700 text-xs font-bold">
+                  {c?.fullName?.split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{c?.fullName}</p>
+                  <p className="text-xs text-gray-400">{r.department} · {r.cycle}</p>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {r.roomNumber && (
+                  <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full font-medium">
+                    Room {r.roomNumber}
+                  </span>
+                )}
+                {r.roomHandedOver ? (
+                  <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-medium">
+                    ✓ Handed over {new Date(r.roomHandoverDate).toLocaleDateString("en-GB")}
+                  </span>
+                ) : (
+                  <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-2.5 py-1 rounded-full font-medium">
+                    Not handed over
+                  </span>
+                )}
+              </div>
+            </div>
+            {r.roomHandoverNotes && (
+              <p className="text-xs text-gray-500 mt-3 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                Notes: {r.roomHandoverNotes}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   LUCS LOGS PAGE
+══════════════════════════════════════ */
+export function LucsLogsPage() {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    API.get("/onboarding/lucs/logs")
+      .then(r => setRecords(r.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="text-gray-400 text-sm p-6">Loading...</p>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-gray-800">IT Assignment Logs</h1>
+        <p className="text-sm text-gray-500 mt-1">Completed cycles — IT asset records.</p>
+      </div>
+      {records.length === 0 && (
+        <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
+          <p>No closed cycle records found.</p>
+        </div>
+      )}
+      {records.map(r => {
+        const c = r.candidate;
+        return (
+          <div key={r.id} className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 text-xs font-bold">
+                  {c?.fullName?.split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{c?.fullName}</p>
+                  <p className="text-xs text-gray-400">{r.department} · {r.cycle}</p>
+                </div>
+              </div>
+              {r.lucsConfirmedAt ? (
+                <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-medium">
+                  ✓ Completed {new Date(r.lucsConfirmedAt).toLocaleDateString("en-GB")}
+                </span>
+              ) : (
+                <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full font-medium">
+                  Incomplete
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {[
+                { label: "Email Assigned", done: r.lucsEmailAssigned, detail: r.lucsEmailId },
+                { label: "IT Assets",      done: r.lucsItAssetsIssued, detail: r.lucsItAssetsNote },
+                { label: "WiFi",           done: r.lucsWifiProvided },
+                { label: "Website Login",  done: r.lucsWebsiteLogin },
+              ].map(({ label, done, detail }) => (
+                <div key={label} className="flex items-start gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                  <span className={done ? "text-green-600" : "text-gray-300"}>
+                    {done ? "✓" : "○"}
+                  </span>
+                  <div>
+                    <p className={done ? "text-gray-700 font-medium" : "text-gray-400"}>{label}</p>
+                    {detail && <p className="text-gray-400 mt-0.5">{detail}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

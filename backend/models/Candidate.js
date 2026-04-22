@@ -73,12 +73,12 @@ const Candidate = sequelize.define(
       type:      DataTypes.STRING(200),
       allowNull: true,
     },
-    ilscRecommendation: {
-      type:      DataTypes.STRING(200),
-      allowNull: true,
-    },
     dlscRemarks: {
       type:      DataTypes.TEXT,
+      allowNull: true,
+    },
+    ilscRecommendation: {
+      type:      DataTypes.STRING(200),
       allowNull: true,
     },
     ilscRemarks: {

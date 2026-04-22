@@ -21,10 +21,14 @@ exports.getSelectedCandidates = async (req, res) => {
       const hods = await User.findAll({ where: { role: "HOD" }, attributes: ["id"] });
       const cyclePerHod = await Promise.all(
         hods.map(h => RecruitmentCycle.findOne({
-          where: { hodId: h.id },
+          where: {
+            hodId: h.id,
+            [Op.or]: [{ isClosed: false }, { isClosed: null }],
+          },
           order: [["createdAt", "DESC"]],
         }))
       );
+
       const validCycles = cyclePerHod
         .filter(Boolean)
         .map(rc => rc.cycle);
@@ -99,7 +103,8 @@ exports.publishSelection = async (req, res) => {
     if (selectedCount > 0 || waitlistedCount > 0) {
       // Email #11 — Establishment only
       const estUsers = await User.findAll({ where: { role: "ESTABLISHMENT" } });
-      const tmpl = templates.selectionPublishedToEstablishment({ selectedCount, waitlistedCount });
+      const departments = [...new Set(selections.map(s => s.department).filter(Boolean))];
+      const tmpl = templates.selectionPublishedToEstablishment({ selectedCount, waitlistedCount, department: departments.join(", ") });
       for (const u of estUsers) {
         await sendEmail(u.email, tmpl.subject, tmpl.html).catch(console.error);
       }
@@ -195,31 +200,34 @@ exports.markInterviewComplete = async (req, res) => {
 
 exports.addManualExpert = async (req, res) => {
   try {
+    const { Expert } = require("../models");
     const { fullName, designation, department, institute, email, phone, specialization } = req.body;
     if (!fullName || !email)
       return res.status(400).json({ message: "Full name and email are required" });
 
-    const dept = (department || "").trim();  // ← no .toUpperCase() forced
-    
-    // Find any HOD to get a cycle, or use MANUAL if none
-    const { Expert, User, RecruitmentCycle } = require("../models");
-    const anyHod = await User.findOne({ where: { role: "HOD" } });
-    const hodCycle = anyHod ? await getCurrentCycle(anyHod.id) : null;
-    
+    const activeCycle = await RecruitmentCycle.findOne({
+      where: {
+        [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }],
+      },
+      order: [["createdAt", "DESC"]],
+    });
+    if (!activeCycle) return res.status(404).json({ message: "No active cycle found" });
+
     const expert = await Expert.create({
       fullName,
-      designation: designation || null,
-      department:  dept || "External",
-      institute:   institute  || null,
+      designation:    designation    || "",
+      department:     (department    || "GENERAL").toUpperCase(),
+      institute:      institute      || "",
       email,
-      phone:           phone || null,
-      specialization:  specialization || null,
-      cycle:           hodCycle?.cycle || "MANUAL",
-      uploadedById:    req.user.id,   // ← DOFA's own id
+      phone:          phone          || null,
+      specialization: specialization || null,
+      cycle:          activeCycle.cycle,
+      uploadedById:   req.user.id,
     });
+
     res.json({ success: true, expert });
   } catch (err) {
     console.error("addManualExpert error:", err);
-    res.status(500).json({ message: "Failed to add expert" });
+    res.status(500).json({ message: err.message || "Failed to add expert" });
   }
 };

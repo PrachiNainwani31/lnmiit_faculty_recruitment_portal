@@ -23,7 +23,7 @@ export default function EstablishmentDashboard() {
           ...r,
           selectionStatus:  selMap[r.candidate?.id]?.status || "SELECTED",
         })),
-      }));
+      })).filter(dept => dept.records.length > 0);
       setDepts(merged);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);

@@ -10,6 +10,7 @@ export default function DofaOfficeCandidates() {
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
+  // const { Op } = require("sequelize"); // backend handles this
   API.get("/hod/candidates")
     .then(res => {
       const data = Array.isArray(res.data)
@@ -52,7 +53,6 @@ export default function DofaOfficeCandidates() {
         <div>
           <h2 className="text-xl font-semibold text-gray-800">Candidates</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            {totalCount} candidate(s) ·{" "}
             {totalCount} candidate(s) · <span className="text-green-600 font-medium">{appearedCount} appeared</span>
           </p>
         </div>
@@ -79,6 +79,11 @@ export default function DofaOfficeCandidates() {
               <div className="flex items-center gap-3">
                 <span className="text-indigo-200 text-xs">{candidates.length} candidates</span>
                 <span className="text-green-300 text-xs font-medium">{deptAppeared} appeared</span>
+                {candidates[0]?.cycle && (
+                  <span className="text-white/60 text-xs bg-white/10 px-2 py-0.5 rounded-full">
+                    {candidates[0].cycle}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -93,8 +98,10 @@ export default function DofaOfficeCandidates() {
                     appliedPosition: c.appliedPosition || "",
                     recommendedPosition: c.recommendedPosition || "",
                     appeared: c.appearedInInterview ? "Yes" : "No",
-                    reviewerObservation: c.reviewerObservation,
-                    ilscComments: c.ilscComments,
+                    dlscRecommendation: c.dlscRecommendation,
+                    dlscRemarks: c.dlscRemarks,
+                    ilscRecommendation: c.ilscRecommendation,
+                    ilscRemarks: c.ilscRemarks,
                   })),
                   `candidates_${dept}.csv`
                 )}
@@ -199,8 +206,10 @@ function CandidateRow({ candidate: c, index }) {
               { label:"Specialization",      val: c.specialization      },
               { label:"Applied Position",    val: c.appliedPosition     },
               { label:"Recommended For",     val: c.recommendedPosition },
-              { label:"Reviewer Obs.",       val: c.reviewerObservation },
-              { label:"ILSC Comments",       val: c.ilscComments        },
+              { label:"DLSC Recommendation",     val: c.dlscRecommendation },
+              { label:"DLSC Remarks",     val: c.dlscRemarks },
+              { label:"ILSC Recommendation",     val: c.ilscRecommendation },
+              { label:"ILSC Remarks",     val: c.ilscRemarks },
               { label:"Appeared",            val: c.appearedInInterview ? "Yes" : "No" },
             ].map(({ label, val }) => val ? (
               <div key={label}>

@@ -15,7 +15,7 @@ export default function DofaOfficeLayout() {
       <aside className="w-60 bg-[#6b0f1a] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <p className="text-white font-semibold text-sm">DOFA Office</p>
-          <p className="text-white/50 text-xs mt-0.5">LNMIIT Recruitment & Onboarding Portal</p>
+          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment and Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5 overflow-y-auto">
           <NavLink to="/dofa-office"               end className={navStyle}>Dashboard</NavLink>
@@ -24,7 +24,7 @@ export default function DofaOfficeLayout() {
           <NavLink to="/dofa-office/experts"           className={navStyle}>External Experts</NavLink>
           <NavLink to="/dofa-office/pickup"            className={navStyle}>Pickup / Drop-off</NavLink>
           <NavLink to="/dofa-office/select-candidates" className={navStyle}>Select Candidates</NavLink>
-          <NavLink to="/dofa-office/room-allotment"    className={navStyle}>Room Allotment</NavLink>
+          <NavLink to="/dofa-office/room-allotment"    className={navStyle}>Office Allotment</NavLink>
           <NavLink to="/dofa-office/logs"              className={navStyle}>Interview Logs</NavLink>
           <NavLink to="/dofa-office/registration" className={navStyle}>Registration</NavLink>
           <NavLink to="/dofa-office/cycle-logs"        className={navStyle}>Logs</NavLink>

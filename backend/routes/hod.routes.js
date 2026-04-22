@@ -1,7 +1,8 @@
 // routes/hod.routes.js
 const express = require("express");
 const router = express.Router();
-
+const getCurrentCycle = require("../utils/getCurrentCycle");
+const { RecruitmentCycle } = require("../models");
 const freezeGuard   = require("../middlewares/freezeGuard");
 const resumeUpload  = require("../middlewares/resumeUpload");
 const auth          = require("../middlewares/auth");
@@ -59,7 +60,7 @@ router.post(
   uploadCandidates
 );
 
-// ✅ FIX: /resumes routes MUST come BEFORE /candidates/:cycle
+// FIX: /resumes routes MUST come BEFORE /candidates/:cycle
 // Otherwise Express matches :cycle="resumes" and calls getCandidatesByCycle instead
 router.post(
   "/candidates/resumes",
@@ -78,18 +79,19 @@ router.delete(
   freezeGuard,
   async (req, res) => {
     try {
-      const getCurrentCycle = require("../utils/getCurrentCycle");
-      const { User } = require("../models");
-
       const cycle = await getCurrentCycle(req.user.id);
       if (!cycle) return res.status(404).json({ message: "No active cycle" });
 
-      const hod  = await User.findByPk(req.user.id);
-      const dept = (hod?.department || "UNKNOWN").toUpperCase().replace(/\s+/g, "_");
-      const filePath = path.join(
-        __dirname, "../uploads/resumes", cycle.cycle, dept, req.params.filename
+      if (cycle.resumesZip) {
+        const filePath = path.resolve(__dirname, "..", cycle.resumesZip);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }
+
+      // Clear from DB
+      await RecruitmentCycle.update(
+        { resumesZip: null },
+        { where: { id: cycle.id } }
       );
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ message: "Delete failed" });

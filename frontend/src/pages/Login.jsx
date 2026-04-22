@@ -82,40 +82,63 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout>
-      <div className="text-center mb-6">
-        <img src={logo} className="mx-auto max-w-[220px] mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">
-          Welcome! Sign in to start your session
-        </h2>
+  <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
+
+    {/* Wrapper that constrains both header and card to same width */}
+    <div className="w-full max-w-xl">
+
+      {/* ── Portal header ── (unchanged) */}
+      <div className="flex items-center gap-4 mb-5">
+        <img src={logo} alt="LNMIIT" className="w-16 h-16 object-contain" />
+        <div>
+          <p className="text-gray-400 text-[13px] uppercase tracking-[0.18em] font-medium leading-tight">
+            The LNM Institute of Information Technology
+          </p>
+          <h1 className="text-gray-800 text-3xl font-bold leading-tight">
+            Faculty Recruitment and
+          </h1>
+          <h1 className="text-gray-800 text-3xl font-bold leading-tight">
+            Onboarding Portal
+          </h1>
+        </div>
       </div>
 
-      {error && (
-        <div className="bg-red-100 text-red-700 p-2 rounded text-sm mb-3">{error}</div>
-      )}
+      {/* ── Login card ── */}
+      <div className="bg-gray rounded-2xl shadow-2xl w-full px-8 py-8">
+        <h2 className="text-lg font-bold text-gray-800 mb-1">Sign In</h2>
+        <p className="text-sm text-gray-400 mb-6">Enter your credentials to continue</p>
 
-      <form className="space-y-4" onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border px-3 py-2 rounded"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-        />
+        {error && (
+          <div className="bg-red-50 text-red-700 text-xs px-3 py-2 rounded-lg mb-4 border border-red-100">
+            {error}
+          </div>
+        )}
 
-        <PwdField value={password} onChange={e => setPassword(e.target.value)} />
+        <form className="space-y-4" onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full border px-3 py-2 rounded"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+          />
+          <PwdField value={password} onChange={e => setPassword(e.target.value)} />
+          <button disabled={loading}
+            className="w-full bg-green-600 text-white py-2 rounded disabled:opacity-60">
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
+          <button type="button" onClick={() => navigate("/forgot-password")}
+            className="w-full bg-blue-600 text-white py-2 rounded">
+            Forgot Password
+          </button>
+        </form>
+      </div>
+    </div>
 
-        <button disabled={loading}
-          className="w-full bg-green-600 text-white py-2 rounded disabled:opacity-60">
-          {loading ? "Signing in..." : "Sign In"}
-        </button>
-
-        <button type="button" onClick={() => navigate("/forgot-password")}
-          className="w-full bg-blue-600 text-white py-2 rounded">
-          Forgot Password
-        </button>
-      </form>
-    </AuthLayout>
-  );
+    <p className="text-gray-400 text-xs mt-6">
+      © {new Date().getFullYear()} LNMIIT · All rights reserved
+    </p>
+  </div>
+); 
 }

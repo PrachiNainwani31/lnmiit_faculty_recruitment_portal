@@ -5,30 +5,26 @@ const getCurrentCycle = require("../utils/getCurrentCycle");
 exports.downloadDepartmentResumes = async (req, res) => {
   try {
     const { User, RecruitmentCycle } = require("../models");
-    const department = req.params.department.toUpperCase().replace(/\s+/g, "_");
+    const department = req.params.department.toUpperCase();
 
-    const hod = await User.findOne({ where: { role: "HOD", department: req.params.department.toUpperCase() } });
+    const hod = await User.findOne({ where: { role: "HOD", department } });
     if (!hod) return res.status(404).json({ message: "No HOD found for department" });
 
     const latestCycle = await RecruitmentCycle.findOne({
       where: { hodId: hod.id },
       order: [["createdAt", "DESC"]],
     });
-    if (!latestCycle) return res.status(404).json({ message: "No active cycle for this department" });
+    if (!latestCycle) return res.status(404).json({ message: "No cycle found" });
 
-    // ✅ Sanitize cycle string — colons and spaces break file paths
-    const cycleFolder = latestCycle.cycle.replace(/[^a-zA-Z0-9_\-]/g, "_");
+    // Use DB path directly
+    if (!latestCycle.resumesZip) {
+      return res.status(404).json({ message: "No resumes uploaded for this department" });
+    }
 
-    const filePath = path.join(
-      __dirname,
-      "../uploads/resumes",
-      cycleFolder,
-      department,
-      "resumes.zip"
-    );
+    const filePath = path.resolve(__dirname, "..", latestCycle.resumesZip);
 
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: "No resumes uploaded for this department" });
+      return res.status(404).json({ message: "Resume file not found on server" });
     }
 
     res.download(filePath, `${department}_resumes_${latestCycle.cycle}.zip`);

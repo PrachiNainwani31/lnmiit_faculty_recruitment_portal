@@ -31,9 +31,9 @@ export default function EstablishmentRoomView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-800">Room Allotment</h1>
+        <h1 className="text-xl font-semibold text-gray-800">Office Allotment</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Room allotments are managed by DOFA Office. This is a read-only view.
+          Office allotments are managed by DOFA Office. This is a read-only view.
         </p>
       </div>
 
@@ -94,7 +94,7 @@ export default function EstablishmentRoomView() {
       {withoutRooms.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="bg-gray-500 px-5 py-3">
-            <p className="text-white font-medium text-sm">{withoutRooms.length} Candidate(s) Without Room Allotment</p>
+            <p className="text-white font-medium text-sm">{withoutRooms.length} Candidate(s) Without Office Allotment</p>
           </div>
           <div className="divide-y divide-gray-50">
             {withoutRooms.map(r => (
@@ -114,7 +114,7 @@ export default function EstablishmentRoomView() {
 
       {records.length === 0 && (
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400 text-sm">
-          No room allotment data yet.
+          No office allotment data yet.
         </div>
       )}
     </div>

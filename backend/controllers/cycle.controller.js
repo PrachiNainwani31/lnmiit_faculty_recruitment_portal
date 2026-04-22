@@ -1,5 +1,6 @@
 // controllers/cycle.controller.js
 const { RecruitmentCycle, Expert, Comment, Candidate, User } = require("../models");
+const { Op } = require("sequelize");
 const { createNotification } = require("../utils/notify");
 const getCurrentCycle = require("../utils/getCurrentCycle");
 const templates = require("../utils/emailTemplates");
@@ -167,7 +168,11 @@ exports.raiseQuery = async (req, res) => {
   try {
     const { comment, hodId } = req.body;
     if (!comment) return res.status(400).json({ message: "Comment required" });
-    const cycle = await getCurrentCycle(hodId);
+    // const cycle = await getCurrentCycle(hodId);
+    const cycle = await RecruitmentCycle.findOne({
+      where: { hodId, status: "SUBMITTED" },
+      order: [["createdAt", "DESC"]],
+    });
     if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" });
 
     await RecruitmentCycle.update(
@@ -218,7 +223,10 @@ exports.raiseQuery = async (req, res) => {
 exports.approveCycle = async (req, res) => {
   try {
     const { hodId } = req.body;
-    const cycle = await getCurrentCycle(hodId);
+    const cycle = await RecruitmentCycle.findOne({
+      where: { hodId, status: "SUBMITTED" },
+      order: [["createdAt", "DESC"]],
+    });
     if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" });
 
     await RecruitmentCycle.update(
@@ -259,15 +267,18 @@ exports.approveCycle = async (req, res) => {
 exports.setInterviewDates = async (req, res) => {
   try {
     const { hodId, teachingInteractionDate, interviewDate } = req.body;
-    const cycle = await getCurrentCycle(hodId);
-    if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" });
+    if (!hodId) return res.status(400).json({ message: "hodId required" });
+    const cycle = await RecruitmentCycle.findOne({
+      where: {
+        hodId,
+        status: ["APPROVED", "INTERVIEW_SET", "APPEARED_SUBMITTED"],
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (!cycle) return res.status(404).json({ message: "No approved cycle found for this HOD" });
     if (!hodId)
       return res.status(400).json({ message: "hodId required" });
-
-    if (cycle.status !== "APPROVED" && cycle.status !== "APPEARED_SUBMITTED")
-      return res.status(400).json({
-        message: "Dates can only be set after the cycle is approved",
-      });
 
     await RecruitmentCycle.update(
       {
@@ -292,14 +303,14 @@ exports.setInterviewDates = async (req, res) => {
 
     const updated = await RecruitmentCycle.findOne({ where: { id: cycle.id } });
 
-    await log({
+    log({
       user:        req.user,
       action:      "INTERVIEW_DATES_SET",
       entity:      "RecruitmentCycle",
       entityId:    cycle.id,
       description: `Interview dates set for cycle ${cycle.id}`,
       req,
-    });
+    }).catch(e => console.error("log error:", e.message));
 
     res.json({ success: true, cycle: updated });
   } catch (err) {
@@ -326,12 +337,16 @@ exports.unfreezeCycle = async (req, res) => {
 ════════════════════════════════════ */
 exports.getDofaDashboard = async (req, res) => {
   const cycles = await RecruitmentCycle.findAll({
+    where: {
+      [Op.or]: [{ isClosed: false }, { isClosed: null }],
+    },
     order: [["createdAt", "DESC"]],
   });
 
   const cycleMap = {};
   cycles.forEach(c => {
-    if (c.hodId) cycleMap[c.hodId] = c;
+    if (!c.hodId) return;
+    if (!cycleMap[c.hodId]) cycleMap[c.hodId] = c;
   });
 
   const activeCycleStrings = cycles.map(c => c.cycle);
@@ -340,10 +355,14 @@ exports.getDofaDashboard = async (req, res) => {
     include: [{ model: User, as: "hod", attributes: ["id", "department", "email"] }],
   });
 
+  // Build set of HOD ids that have active cycles
+  const activeHodIds = new Set(Object.keys(cycleMap).map(Number));
+
   const deptMap = {};
   candidates.forEach(c => {
     const dept = c.hod?.department;
     if (!dept) return;
+    if (!activeHodIds.has(c.hod.id)) return; // ← skip closed cycle HODs
     if (!deptMap[dept]) {
       deptMap[dept] = { department: dept, hodId: c.hod.id, hodEmail: c.hod.email, candidates: 0, appeared: 0 };
     }
@@ -403,20 +422,37 @@ exports.getDofaDashboard = async (req, res) => {
 exports.getDofaOfficeDashboard = async (req, res) => {
   try {
     const { ExpertTravel, SelectedCandidate } = require("../models");
-    const cycles = await RecruitmentCycle.findAll({ order: [["createdAt", "DESC"]] });
-    const activeCycleStrings = cycles.map(c => c.cycle);
-    const totalExperts = await Expert.count({ where: { cycle: activeCycleStrings } });
+    // Only active (non-closed) cycles
+    const activeCycles = await RecruitmentCycle.findAll({
+      where: {
+        [Op.or]: [{ isClosed: false }, { isClosed: null }],
+      },
+      order: [["createdAt", "DESC"]],
+    });
+    const activeHodIds = [...new Set(activeCycles.map(c => c.hodId).filter(Boolean))];
+const activeCycleStrings = [...new Set(activeCycles.map(c => c.cycle))];
 
+    if (!activeCycleStrings.length) {
+      return res.json({
+        totalCandidates: 0, appearedCount: 0, selectedCount: 0,
+        totalExperts: 0, confirmedExperts: 0, attendingOffline: 0,
+        attendingOnline: 0, quotesPending: 0,
+      });
+    }
+
+    const totalExperts = await Expert.count({ where: { cycle: activeCycleStrings } });
     const travels = await ExpertTravel.findAll({ where: { cycle: activeCycleStrings } });
     const confirmedExperts = travels.filter(t => t.confirmed).length;
     const attendingOffline = travels.filter(t => t.presenceStatus === "Offline" && t.confirmed).length;
     const attendingOnline  = travels.filter(t => t.presenceStatus === "Online"  && t.confirmed).length;
     const quotesPending    = travels.filter(t => t.quoteStatus === "PENDING").length;
 
-    const totalCandidates = await Candidate.count({ where: { cycle: activeCycleStrings } });
-    const appearedCount   = await Candidate.count({
-      where: { cycle: activeCycleStrings, appearedInInterview: true },
-    });
+    const totalCandidates = await Candidate.count({
+  where: { cycle: activeCycleStrings, hodId: { [Op.in]: activeHodIds } },
+});
+const appearedCount = await Candidate.count({
+  where: { cycle: activeCycleStrings, hodId: { [Op.in]: activeHodIds }, appearedInInterview: true },
+});
     const selectedCount = await SelectedCandidate.count({ where: { cycle: activeCycleStrings } });
 
     res.json({

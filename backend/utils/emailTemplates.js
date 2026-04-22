@@ -4,13 +4,13 @@ const FROM_NAME  = process.env.EMAIL_FROM_NAME || "LNMIIT Recruitment Portal";
 const wrap = (body) => `
 <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:30px">
   <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-    <h2 style="margin:0;font-size:18px">LNMIIT Recruitment & Onboarding Portal</h2>
+    <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
   </div>
   <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;line-height:1.7;color:#333">
     ${body}
   </div>
   <p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">
-    This is an automated message from the LNMIIT Recruitment & Onboarding Portal. Do not reply directly to this email.
+    This is an automated message from the LNMII FacultyT Recruitment and Onboarding Portal. Do not reply directly to this email.
   </p>
 </div>`;
 
@@ -43,7 +43,7 @@ exports.hodSubmittedToDofa = ({ department, candidateCount, expertCount }) => ({
     </table>
     <p>Please review the submission and schedule the interview at the earliest.</p>
     ${btn("Review on Portal", `${PORTAL_URL}/dofa/dashboard`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
@@ -75,12 +75,12 @@ exports.hodResubmittedToDofa = ({ department }) => ({
     <p>The HoD of <strong>${department}</strong> department has addressed your query 
     and resubmitted the data for review.</p>
     ${btn("Review Updated Submission", `${PORTAL_URL}/dofa/dashboard`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
 /* ══════════════════════════════════════════════
-   4. HOD adds expert — email to DOFA + expert
+   4. HOD adds expert — email to DOFA
    (built in HOD portal, editable before send)
 ══════════════════════════════════════════════ */
 exports.expertInvitationToDofa = ({ expertName, department, expertEmail }) => ({
@@ -97,7 +97,7 @@ exports.expertInvitationToDofa = ({ expertName, department, expertEmail }) => ({
           <td style="padding:8px;border:1px solid #ddd">${department}</td></tr>
     </table>
     ${btn("View Experts", `${PORTAL_URL}/dofa/experts`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
@@ -134,7 +134,7 @@ exports.candidateApplicationSubmitted = ({ candidateName, department, email }) =
           <td style="padding:8px;border:1px solid #ddd">${email}</td></tr>
     </table>
     ${btn("Review Documents", `${PORTAL_URL}/dofa-office/document-tracking`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
@@ -173,7 +173,7 @@ exports.candidateResubmitted = ({ candidateName, department }) => ({
     <p><strong>${candidateName}</strong> (${department || "—"}) has addressed your remarks 
     and resubmitted the form for review.</p>
     ${btn("Review Updated Documents", `${PORTAL_URL}/dofa-office/document-tracking`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
@@ -206,7 +206,7 @@ exports.refereeReminder = ({ refereeName, candidateName, portalLink,captcha }) =
   html: `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
       <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-        <h2 style="margin:0">LNMIIT Recruitment Portal</h2>
+        <h2 style="margin:0">LNMIIT Faculty Recruitment Portal</h2>
       </div>
       <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
         <p>Dear ${refereeName},</p>
@@ -231,7 +231,7 @@ exports.refereeReminder = ({ refereeName, candidateName, portalLink,captcha }) =
           </a>
         </div>
         <p style="font-size:12px;color:#999">Or copy this link: ${portalLink}</p>
-        <p>Regards,<br><strong>LNMIIT Recruitment Team</strong></p>
+        <p>Regards,<br><strong>LNMIIT Faculty Recruitment Team</strong></p>
       </div>
     </div>
   `,
@@ -253,7 +253,7 @@ exports.refereeSubmitted = ({ refereeName, candidateName, department }) => ({
           <td style="padding:8px;border:1px solid #ddd">${candidateName}</td></tr>
     </table>
     ${btn("View Reference Letters", `${PORTAL_URL}/dofa-office/document-tracking`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment & Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
@@ -302,7 +302,7 @@ exports.travelQuoteToDofa = ({ expertName, expertId, quoteAmount, quoteDetails }
     </table>
     <p>Please review and approve/reject the quotation.</p>
     ${btn("Approve Quote", `${PORTAL_URL}/dofa/experts`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment and Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
@@ -327,7 +327,7 @@ exports.ticketUpdatedToDofaOffice = ({ expertName, expertId, ticketDetails }) =>
       <p style="margin:0">${ticketDetails || "Ticket booked. Please check the portal for full details."}</p>
     </div>
     ${btn("View Expert Travel", `${PORTAL_URL}/dofa-office/experts`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment and Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
@@ -364,18 +364,18 @@ exports.driverDetailsToDofaOffice = ({ expertName, expertId, driverDetails }) =>
           <td style="padding:8px;border:1px solid #ddd">${driverDetails.driverContact || "—"}</td></tr>
     </table>
     ${btn("View Expert Details", `${PORTAL_URL}/dofa-office/experts`)}
-    <p>Regards,<br><strong>LNMIIT Recruitment and Onboarding Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong></p>
   `),
 });
 
 /* ══════════════════════════════════════════════
    11. DOFA Office publishes selection — email to Establishment
 ══════════════════════════════════════════════ */
-exports.selectionPublishedToEstablishment = ({ selectedCount, waitlistedCount }) => ({
+exports.selectionPublishedToEstablishment = ({ selectedCount, waitlistedCount,department }) => ({
   subject: `Faculty Selection Published — Action Required`,
   html: wrap(`
     <p>Dear Establishment Team,</p>
-    <p>DOFA Office has published the final selection list for the current recruitment cycle in XXX Department.</p>
+    <p>DOFA Office has published the final selection list for the current recruitment cycle in <strong>${department || "—"}</strong> Department.</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
       <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Selected Candidates</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold;color:green">${selectedCount}</td></tr>
@@ -410,14 +410,14 @@ exports.joiningDateSetEmail = ({ candidateName, joiningDate, department, recipie
    13. DOFA Office adds room allotment — email to Estate
 ══════════════════════════════════════════════ */
 exports.roomAllotmentToEstate = ({ candidateName, roomNumber, building }) => ({
-  subject: `Room Allotment — ${candidateName}`,
+  subject: `Office Allotment — ${candidateName}`,
   html: wrap(`
     <p>Dear Estate Section,</p>
-    <p>A room has been allotted to the following new faculty member. Please proceed with the handover process and update the same on the portal.</p>
+    <p>A office has been allotted to the following new faculty member. Please proceed with the handover process and update the same on the portal.</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
       <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidate Name</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateName}</td></tr>
-      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Room Number</td>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">office Number</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${roomNumber}</td></tr>
       ${building ? `<tr><td style="padding:8px;border:1px solid #ddd;color:#666">Building</td>
           <td style="padding:8px;border:1px solid #ddd">${building}</td></tr>` : ""}

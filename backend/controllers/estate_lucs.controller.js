@@ -8,7 +8,10 @@ const getCurrentCycle = require("../utils/getCurrentCycle");
    ESTATE
 ════════════════════════════ */
 async function getActiveCycleStrings() {
-  const cycles = await RecruitmentCycle.findAll({ attributes: ["cycle"] });
+  const cycles = await RecruitmentCycle.findAll({
+    attributes: ["cycle"],
+    where: { isClosed: false },
+  });
   return cycles.map(c => c.cycle);
 }
 
@@ -134,5 +137,58 @@ exports.updateLucs = async (req, res) => {
   } catch (err) {
     console.error("updateLucs error:", err);
     res.status(500).json({ message: "Failed to update" });
+  }
+};
+
+/* ── Estate logs — closed cycles only ── */
+exports.getEstateLogs = async (req, res) => {
+  try {
+    const closedCycles = await RecruitmentCycle.findAll({
+      attributes: ["cycle"],
+      where: { isClosed: true },
+    });
+    const cycleStrings = closedCycles.map(c => c.cycle);
+    if (!cycleStrings.length) return res.json([]);
+
+    const records = await OnboardingRecord.findAll({
+      where: { cycle: cycleStrings, roomNumber: { [Op.ne]: null } },
+      include: [{ model: Candidate, as: "candidate" }],
+    });
+    // Strip sensitive fields
+    const safe = records.map(r => {
+      const obj = r.toJSON();
+      delete obj.offerLetterPath;
+      delete obj.joiningLetterPath;
+      return obj;
+    });
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch estate logs" });
+  }
+};
+
+/* ── LUCS logs — closed cycles only ── */
+exports.getLucsLogs = async (req, res) => {
+  try {
+    const closedCycles = await RecruitmentCycle.findAll({
+      attributes: ["cycle"],
+      where: { isClosed: true },
+    });
+    const cycleStrings = closedCycles.map(c => c.cycle);
+    if (!cycleStrings.length) return res.json([]);
+
+    const records = await OnboardingRecord.findAll({
+      where: { cycle: cycleStrings, joiningLetterPath: { [Op.ne]: null } },
+      include: [{ model: Candidate, as: "candidate" }],
+    });
+    const safe = records.map(r => {
+      const obj = r.toJSON();
+      delete obj.offerLetterPath;
+      delete obj.offerLetterUploadedAt;
+      return obj;
+    });
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch LUCS logs" });
   }
 };

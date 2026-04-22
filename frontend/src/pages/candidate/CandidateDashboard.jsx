@@ -1,5 +1,5 @@
 // pages/candidate/CandidateDashboard.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback,useRef } from "react";
 import { FaHome, FaFileAlt } from "react-icons/fa";
 import API        from "../../api/api";
 import { useNavigate } from "react-router-dom";
@@ -70,7 +70,7 @@ const [application, setApplication] = useState({
   const [referees,     setReferees]     = useState([EMPTY_REFEREE, EMPTY_REFEREE, EMPTY_REFEREE]);
   const [appLoaded,    setAppLoaded]    = useState(false);
 
-  // ✅ QUERY status — treat as editable
+  // QUERY status — treat as editable
   const isSubmitted = application.status === "SUBMITTED";
   const isQuery     = application.status === "QUERY";
   const isEditable  = application.status === "DRAFT" || isQuery;
@@ -88,13 +88,33 @@ const [application, setApplication] = useState({
   const saveNow = useCallback(async (overrides = {}) => {
   try {
     const res = await API.post("/candidate/save", buildPayload(overrides));
-    return res.data;  // ← this is the key change
+
+    if (res.data?.experiences?.length > 0) {
+      setExperiences(prev => prev.map((e, i) => ({
+        ...e,
+        id: res.data.experiences[i]?.id || e.id,
+      })));
+    }
+
+    if (res.data?.referees?.length > 0) {
+      setReferees(prev => prev.map(r => {
+        if (r.id) return r;
+        const match = res.data.referees.find(s =>
+          s.email && r.email &&
+          s.email.toLowerCase() === r.email.trim().toLowerCase()
+        );
+        return match ? { ...r, id: match.id } : r;
+      }));
+    }
+
+    return res.data;
   } catch (err) {
-    console.error(err);
+    // 400 = already submitted — silent, don't log to console
+    if (err?.response?.status === 400) return null;
+    console.error("saveNow error:", err);
     return null;
   }
 }, [buildPayload]);
-
   useEffect(() => {
     API.get("/candidate/me").then(res => {
       const app = res.data || {};
@@ -132,16 +152,37 @@ const [application, setApplication] = useState({
     }).catch(console.error);
   }, []);
 
+  const autoSaveRef = useRef(null);
   useEffect(() => {
+  // Clear any existing interval first
+  if (autoSaveRef.current) clearInterval(autoSaveRef.current);
+
   if (!appLoaded || isSubmitted || view !== "form") return;
   if (application.status !== "DRAFT" && application.status !== "QUERY") return;
-  const id = setInterval(() => saveNow(), 15000);
-  return () => clearInterval(id);
+
+  autoSaveRef.current = setInterval(() => saveNow(), 15000);
+  return () => {
+    clearInterval(autoSaveRef.current);
+    autoSaveRef.current = null;
+  };
 }, [appLoaded, application.status, view, saveNow]);
 
   const saveDraft = async () => { await saveNow(); alert("Draft saved"); };
 
   const submitApplication = async () => {
+    if (autoSaveRef.current) {
+    clearInterval(autoSaveRef.current);
+    autoSaveRef.current = null;
+  }
+
+  if (application.acceptance === false) {
+    await saveNow();
+    await API.post("/candidate/submit");
+    setApplication(a => ({ ...a, status: "SUBMITTED" }));
+    showToast("Response submitted successfully!");
+    setView("home");
+    return;
+  }
    if (!application.name?.trim())      { alert("Full name is required");            return; }
   if (!application.email?.trim())     { alert("Email is required");                return; }
   if (validateEmail(application.email)) { alert("Please enter a valid email");     return; }
@@ -195,7 +236,7 @@ const [application, setApplication] = useState({
     await saveNow();
     await API.post("/candidate/submit");
     setApplication(a => ({ ...a, status: "SUBMITTED" }));
-    showToast("Application submitted successfully!");
+    showToast("Documents submitted successfully!");
     setView("home");
   } catch (err) {
     showToast(err.response?.data?.message || "Submission failed", "error");
@@ -208,7 +249,7 @@ const [application, setApplication] = useState({
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white shadow-md z-10 flex flex-col">
         <div className="p-5 border-b flex flex-col items-center gap-2">
           <img src={logo} alt="LNMIIT" className="w-28 object-contain" />
-          <span className="text-sm font-semibold text-gray-700">LNMIIt Faculty & Recruitment Portal</span>
+          <span className="text-sm font-semibold text-gray-700">LNMIIT Faculty Recruitment and Onboarding Portal</span>
         </div>
         <nav className="p-4 space-y-1 text-gray-700 text-sm flex-1">
           {[
@@ -216,7 +257,7 @@ const [application, setApplication] = useState({
             {
               id:"form",
               icon:<FaFileAlt/>,
-              label: isQuery ? "⚠ Revise Application" : isSubmitted ? "View Application" : "My Application",
+              label: isQuery ? "Revise Documents" : isSubmitted ? "View Documents" : "My Documents",
             },
           ].map(({ id, icon, label }) => (
             <div key={id} onClick={() => setView(id)}
@@ -237,10 +278,9 @@ const [application, setApplication] = useState({
         {/* ✅ QUERY banner — shown on both home and form views */}
         {isQuery && (
           <div className="bg-amber-50 border-b border-amber-200 px-8 py-4 flex items-start gap-3">
-            <span className="text-amber-500 text-xl shrink-0">⚠</span>
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-800">
-                DOFA has flagged issues with your application
+                DOFA has flagged issues with your documents
               </p>
               <p className="text-xs text-amber-600 mt-0.5">
                 Please review your documents, make the necessary corrections, and resubmit.

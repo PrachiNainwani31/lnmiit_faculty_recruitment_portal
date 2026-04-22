@@ -169,8 +169,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
               {[
                 "Sr","Name","Primary Email","Secondary Email","Phone",
                 "Qualification","Specialization","Applied Position",
-                "Recommended Position","DLSC Recommendation","ILSC Recommendation",
-                "DLSC Remarks","ILSC Remarks",
+                "Recommended Position","DLSC Recommendation","DLSC Remarks","ILSC Recommendation","ILSC Remarks",
               ].map(h => (
                 <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
               ))}
@@ -199,12 +198,12 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.appliedPosition || "—"}</td>
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.recommendedPosition || "—"}</td>
                 <td className="px-3 py-2.5 text-gray-600 text-xs">{c.dlscRecommendation||"-"}</td>
-                <td className="px-3 py-2.5 text-gray-600 text-xs">{c.ilscRecommendation||"-"}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 max-w-[160px]">
                   <span className="line-clamp-2" title={c.dlscRemarks}>
                     {c.dlscRemarks || "—"}
                   </span>
                 </td>
+                <td className="px-3 py-2.5 text-gray-600 text-xs">{c.ilscRecommendation||"-"}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-600 max-w-[140px]">
                   <span className="line-clamp-2" title={c.ilscRemarks}>
                     {c.ilscRemarks || "—"}

@@ -6,11 +6,18 @@ export default function RoomAllotmentPage() {
   const [loading, setLoading] = useState(true);
 
   const load = () => {
-    API.get("/establishment/records")
-      .then(r => setDepts(r.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  API.get("/establishment/records")
+    .then(r => {
+      // Filter out closed cycle records from each dept
+      const filtered = (r.data || []).map(dept => ({
+        ...dept,
+        records: (dept.records || []).filter(rec => !rec.isCycleClosedFlag),
+      })).filter(dept => dept.records.length > 0); // remove empty depts
+      setDepts(filtered);
+    })
+    .catch(console.error)
+    .finally(() => setLoading(false));
+};
 
   useEffect(() => { load(); }, []);
 
@@ -19,15 +26,14 @@ export default function RoomAllotmentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-800">Room Allotment</h1>
+        <h1 className="text-xl font-semibold text-gray-800">Office Allotment</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Allot rooms to selected candidates. Candidate, HOD, DOFA, Estate, and LUCS will be notified.
+          Allot offices to selected candidates. Candidate, HOD, DOFA, Estate, and LUCS will be notified.
         </p>
       </div>
 
       {depts.length === 0 && (
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
-          <p className="text-4xl mb-3">🏠</p>
           <p>No selected candidates yet. Publish selection from the Select Candidates page first.</p>
         </div>
       )}
@@ -65,9 +71,9 @@ function RoomCard({ record, onRefresh }) {
         candidateId:  c.id,
         ...form,
       });
-      alert("Room allotted. Candidate, Estate, and LUCS have been notified.");
+      alert("Office allotted. Candidate, Estate, and LUCS have been notified.");
       onRefresh();
-    } catch { alert("Failed to allot room"); }
+    } catch { alert("Failed to allot office"); }
     finally { setSaving(false); }
   };
 
@@ -118,7 +124,7 @@ function RoomCard({ record, onRefresh }) {
       <div className="flex justify-end mt-3">
         <button onClick={handleSave} disabled={saving}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
-          {saving ? "Saving..." : allotted ? "Update Room" : "Allot Room & Notify All"}
+          {saving ? "Saving..." : allotted ? "Update Office" : "Allot Office & Notify All"}
         </button>
       </div>
     </div>

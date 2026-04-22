@@ -15,6 +15,7 @@ const {
   markJoiningComplete,
   closeCycle,
   markNotJoined,
+  getClosedCycleRecords
 } = require("../controllers/establishment.controller");
 
 router.get("/records",
@@ -32,5 +33,5 @@ router.post("/rfid-send",       auth(["ESTABLISHMENT"]), sendRfidToCandidate);
 router.post("/joining-complete", auth(["ESTABLISHMENT"]), markJoiningComplete);
 router.post("/close-cycle", auth(["ESTABLISHMENT"]), closeCycle);
 router.post("/not-joined", auth(["ESTABLISHMENT"]), markNotJoined);
-
+router.get("/logs",      auth(["ESTABLISHMENT"]), getClosedCycleRecords);
 module.exports = router;

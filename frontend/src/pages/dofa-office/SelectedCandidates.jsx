@@ -1,6 +1,4 @@
 // pages/dofa-office/SelectedCandidates.jsx
-// ✅ Added: Selected / Waitlisted status tags prominently on each candidate row
-// ✅ Added: interviewDone lock with clear error message on update attempt
 import { useEffect, useState } from "react";
 import API from "../../api/api";
 import { useActiveCycle } from "../../hooks/useActiveCycle";
@@ -50,9 +48,10 @@ export default function SelectCandidates() {
   const [loading,       setLoading]       = useState(true);
   const [saving,        setSaving]        = useState(false);
   const [published,     setPublished]     = useState(false);
-  const [interviewDone, setInterviewDone] = useState(false);
   const [dofaApproved,  setDofaApproved]  = useState(false);
   const [activeCycle, setActiveCycle] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [publishedDepts, setPublishedDepts] = useState({});
  
   useEffect(() => {
    //if (cycle === null || cycle === undefined) return;
@@ -76,9 +75,6 @@ export default function SelectCandidates() {
         ["APPROVED","INTERVIEW_SET","APPEARED_SUBMITTED"].includes(d.status)
       ));
 
-      const isDone = selected.some(s => s.interviewComplete);
-      setInterviewDone(isDone);
-
       const map = {};
       candidates.forEach(c => {
         const dept = c.department || "Unknown";
@@ -99,50 +95,42 @@ export default function SelectCandidates() {
       setSelections(selMap);
       setExtraInfo(infoMap);
       setPublished(selected.length > 0);
+      // ← Restore published state: a dept is "published" if any candidate has a selection record
+      const publishedMap = {};
+      selected.forEach(s => {
+        if (s.department) publishedMap[s.department] = true;
+      });
+      setPublishedDepts(publishedMap);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   const setStatus = (candId, status) => {
-    if (interviewDone) return;
     setSelections(s => ({ ...s, [candId]: status }));
   };
 
   const setExtra = (candId, key, val) =>
     setExtraInfo(m => ({ ...m, [candId]: { ...m[candId], [key]: val } }));
 
-  const handlePublish = async () => {
-    if (interviewDone) {
-      alert("Cannot update — interview already marked complete. Selection is locked.");
-      return;
-    }
-    const payload = [];
-    Object.entries(grouped).forEach(([dept, { hodId, candidates }]) => {
-      candidates.forEach(c => {
-        const info   = extraInfo[c.id] || {};
-        const status = selections[c.id] || "NOT_SELECTED";
-        payload.push({ candidateId: c.id, status, hodId, department: dept,
-          designation: info.designation || "", employmentType: info.employmentType || "" ,waitlistPriority: info.waitlistPriority ? parseInt(info.waitlistPriority) : null,});
-      });
-    });
-    try {
-      setSaving(true);
-      await API.post("/selected-candidates/publish", { selections: payload });
-      setPublished(true);
-      alert("Selection published successfully.");
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to publish");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleInterviewComplete = async () => {
-    if (!window.confirm("Mark interview as complete? Selection will be locked after this.")) return;
-    try {
-      await API.post("/selected-candidates/interview-complete", { cycle:activeCycle });
-      setInterviewDone(true);
-    } catch { alert("Failed"); }
-  };
+  const handleDeptPublish = async (dept, hodId, candidates) => {
+  const payload = candidates.map(c => {
+    const info   = extraInfo[c.id] || {};
+    const status = selections[c.id] || "NOT_SELECTED";
+    return { candidateId: c.id, status, hodId, department: dept,
+      designation: info.designation || "", employmentType: info.employmentType || "",
+      waitlistPriority: info.waitlistPriority ? parseInt(info.waitlistPriority) : null };
+  });
+  try {
+    setSaving(true);
+    await API.post("/selected-candidates/publish", { selections: payload });
+    // Mark this dept as published
+    setPublishedDepts(p => ({ ...p, [dept]: true }));
+    setToast(`${dept} selection published and locked.`);
+    setTimeout(() => setToast(null), 4000);
+    setPublished(true);
+  } catch (err) {
+    alert(err.response?.data?.message || "Failed to publish");
+  } finally { setSaving(false); }
+};
 
   if (loading) return <p className="text-gray-400 text-sm p-6">Loading…</p>;
 
@@ -153,46 +141,28 @@ export default function SelectCandidates() {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className="fixed top-5 right-5 z-50 bg-green-700 text-white text-sm px-5 py-3 rounded-xl shadow-lg flex items-center gap-2">
+          ✓ {toast}
+        </div>
+      )}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-800">Candidate Selection</h1>
           <p className="text-sm text-gray-500 mt-1">Toggle: Not Selected → Selected → Waitlisted</p>
         </div>
         <div className="flex gap-3 items-center flex-wrap">
-          {/* ✅ Summary tags */}
+          {/* Summary tags */}
           <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded-full font-semibold">
             ✓ {selectedCount} selected
           </span>
           <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full font-semibold">
             ⟳ {waitlistedCount} waitlisted
           </span>
-          {!interviewDone ? (
-            <button onClick={handleInterviewComplete} disabled={!activeCycle}
-              className="text-sm bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition font-medium">
-              Mark Interview Complete
-            </button>
-          ) : (
-            <span className="text-sm bg-green-100 text-green-700 border border-green-200 px-4 py-2 rounded-lg font-medium">
-              ✓ Interview Complete
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Locked banner */}
-      {interviewDone && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-start gap-3">
-          <div>
-            <p className="text-sm font-semibold text-red-800">Selection is locked</p>
-            <p className="text-xs text-red-600 mt-0.5">
-              Interview complete. Selection cannot be changed. Contact DOFA if corrections needed.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Instruction */}
-      {!interviewDone && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-2">
           <span className="text-blue-500 mt-0.5">ℹ</span>
           <p className="text-xs text-blue-700">
@@ -202,9 +172,8 @@ export default function SelectCandidates() {
             <span className="mx-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Waitlisted</span>
           </p>
         </div>
-      )}
 
-      {!dofaApproved && !interviewDone && (
+      {!dofaApproved && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <p className="text-sm font-medium text-amber-800">⚠ Awaiting DOFA approval before selection is allowed</p>
         </div>
@@ -215,13 +184,25 @@ export default function SelectCandidates() {
         <div key={dept} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="bg-indigo-600 px-5 py-3 flex items-center justify-between">
             <p className="text-white font-medium text-sm">{dept}</p>
-            <div className="flex gap-3 text-xs">
+            <div className="flex gap-3 text-xs items-center">
               <span className="text-green-300 font-semibold">
                 ✓ {candidates.filter(c => selections[c.id] === "SELECTED").length} selected
               </span>
               <span className="text-amber-300 font-semibold">
                 ⟳ {candidates.filter(c => selections[c.id] === "WAITLISTED").length} waitlisted
               </span>
+              {publishedDepts[dept] ? (
+                <span className="bg-green-100 text-green-700 border border-green-300 px-3 py-1 rounded-lg text-xs font-semibold">
+                  Published
+                </span>
+              ) : (
+                <button
+                  onClick={() => handleDeptPublish(dept, hodId, candidates)}
+                  disabled={saving || !dofaApproved}
+                  className="bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1 rounded-lg text-xs font-semibold disabled:opacity-50 transition">
+                  Publish & Lock
+                </button>
+              )}
             </div>
           </div>
 
@@ -250,8 +231,8 @@ export default function SelectCandidates() {
                   {/* Toggle control */}
                   <StatusToggle
                     status={status}
-                    onChange={s => dofaApproved && setStatus(c.id, s)}
-                    disabled={!dofaApproved || interviewDone}
+                    onChange={s => dofaApproved && !publishedDepts[dept] && setStatus(c.id, s)}
+                    disabled={!dofaApproved || !!publishedDepts[dept]}
                   />
                 </div>
 
@@ -261,7 +242,7 @@ export default function SelectCandidates() {
                   }`}>
                     <div className="col-span-2 mb-1 flex items-center gap-2">
                       <SelectionTag status={status} />
-                      {/* ✅ Show waitlist priority badge next to tag */}
+                      {/* Show waitlist priority badge next to tag */}
                       {isWaitlisted && info.waitlistPriority && (
                         <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full font-semibold">
                           Waitlisted #{info.waitlistPriority}
@@ -271,22 +252,22 @@ export default function SelectCandidates() {
 
                     <div>
                       <label className={lbl}>Designation / Position Offered</label>
-                      <input className={`${inputCls} ${interviewDone ? "bg-gray-100" : ""}`}
+                      <input className={`${inputCls} ${publishedDepts[dept] ? "bg-gray-100" : ""}`}
                         placeholder="e.g. Assistant Professor"
-                        readOnly={interviewDone}
+                        readOnly={!!publishedDepts[dept]}
                         value={info.designation || ""}
                         onChange={e => setExtra(c.id, "designation", e.target.value)} />
                     </div>
 
                     <div>
                       <label className={lbl}>Type of Employment</label>
-                      <select className={`${inputCls} ${interviewDone ? "bg-gray-100" : ""}`}
-                        disabled={interviewDone}
+                      <select className={`${inputCls} ${publishedDepts[dept] ? "bg-gray-100" : ""}`}
+                        disabled={!!publishedDepts[dept]}
                         value={info.employmentType || ""}
                         onChange={e => setExtra(c.id, "employmentType", e.target.value)}>
                         <option value="">Select type…</option>
                         <option value="Regular">Regular</option>
-                        <option value="Contract">Contractual</option>
+                        <option value="Contractual">Contractual</option>
                         <option value="Visiting">Visiting</option>
                         <option value="Adjunct">Adjunct</option>
                       </select>
@@ -304,9 +285,9 @@ export default function SelectCandidates() {
                         <div className="flex items-center gap-2">
                           <input
                             type="number" min="1" max="20"
-                            className={`${inputCls} w-24 ${interviewDone ? "bg-gray-100" : ""}`}
+                            className={`${inputCls} w-24 ${publishedDepts[dept] ? "bg-gray-100" : ""}`}
                             placeholder="1"
-                            readOnly={interviewDone}
+                            readOnly={!!publishedDepts[dept]}
                             value={info.waitlistPriority || ""}
                             onChange={e => setExtra(c.id, "waitlistPriority", e.target.value)}
                           />
@@ -325,24 +306,6 @@ export default function SelectCandidates() {
           })}
         </div>
       ))}
-
-      <div className="flex justify-end gap-3 pb-6 flex-wrap items-center">
-      {published && !interviewDone && (
-        <div className="flex-1 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 text-sm text-indigo-700">
-          Selection published. Now mark the interview as complete to send the list to the Establishment section.
-        </div>
-      )}
-      {interviewDone ? (
-        <button className="bg-gray-400 cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium">
-          Selection Locked
-        </button>
-      ) : (
-        <button onClick={handlePublish} disabled={saving || !dofaApproved}
-          className="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition">
-          {saving ? "Publishing…" : published ? "Update Selection" : "Publish Selection"}
-        </button>
-      )}
-    </div>
     </div>
   );
 }

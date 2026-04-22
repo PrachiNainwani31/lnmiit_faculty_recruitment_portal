@@ -1,5 +1,6 @@
 // controllers/establishment.controller.js
 const { RecruitmentCycle,OnboardingRecord, Candidate, User } = require("../models");
+const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/emailSender");
 const templates = require("../utils/emailTemplates");
 const getCurrentCycle = require("../utils/getCurrentCycle");
@@ -17,14 +18,19 @@ const checkCycleLocked = async (candidateId) => {
 /* ── Get all onboarding records grouped by department ──Includes interviewComplete from SelectedCandidate so Establishment can gate the offer letter upload.── */
 exports.getOnboardingRecords = async (req, res) => {
   try {
+    const role = req.user.role;
     const { SelectedCandidate } = require("../models");
+    const { Op } = require("sequelize");
     const activeCycles = await RecruitmentCycle.findAll({
-      attributes: ["cycle"],
-      order: [["createdAt", "DESC"]],
-    });
-    const cycleStrings = activeCycles.map(c => c.cycle);
-    const records = await OnboardingRecord.findAll({
-      where: { cycle: cycleStrings },
+  attributes: ["cycle", "hodId"],
+  where: { [Op.or]: [{ isClosed: false }, { isClosed: null }] },
+  order: [["createdAt", "DESC"]],
+});
+// Build a Set of "cycle|hodId" pairs that are active
+const activeHodCycleSet = new Set(activeCycles.map(c => `${c.cycle}|${c.hodId}`));
+const cycleStrings = [...new Set(activeCycles.map(c => c.cycle))];
+const records = await OnboardingRecord.findAll({
+  where: { cycle: cycleStrings },
       include: [
         { model: Candidate, as: "candidate" },
         { model: User,      as: "hod", attributes: ["department", "name", "email"] },
@@ -41,18 +47,31 @@ exports.getOnboardingRecords = async (req, res) => {
     cycles.forEach(c => { cycleClosedMap[c.cycle] = c.isClosed || false; });
     const deptMap = {};
     records.forEach(r => {
+      // Skip records where this HOD's cycle is closed
+      if (!activeHodCycleSet.has(`${r.cycle}|${r.hodId}`)) return;
       const dept = r.department || "General";
       if (!deptMap[dept]) deptMap[dept] = [];
       const sel = selMap[r.candidateId];
-      deptMap[dept].push({
+      const base = {
         ...r.toJSON(),
-        interviewComplete: sel?.interviewComplete || false,
-        selectionStatus:   sel?.status            || "SELECTED",
-         waitlistPriority:  sel?.waitlistPriority    || null,
-        designation:       sel?.designation       || "",
-        employmentType:    sel?.employmentType     || "",
-        isCycleClosedFlag:  cycleClosedMap[r.cycle] || false,
-      });
+        interviewComplete: !!(sel),
+        selectionStatus:   sel?.status         || "SELECTED",
+        waitlistPriority:  sel?.waitlistPriority || null,
+        designation:       sel?.designation    || "",
+        employmentType:    sel?.employmentType  || "",
+        isCycleClosedFlag: cycleClosedMap[r.cycle] || false,
+      };
+      // Strip fields by role
+      if (role === "LUCS") {
+        delete base.offerLetterPath;
+        delete base.offerLetterUploadedAt;
+      }
+      if (role === "ESTATE") {
+        delete base.offerLetterPath;
+        delete base.offerLetterUploadedAt;
+        delete base.joiningLetterPath;
+      }
+      deptMap[dept].push(base);
     });
 
     res.json(
@@ -378,7 +397,7 @@ exports.closeCycle = async (req, res) => {
     if (!hodId) return res.status(400).json({ message: "hodId required" });
 
     const cycle = await RecruitmentCycle.findOne({
-      where: { hodId },
+      where: { hodId, [Op.or]: [{ isClosed: false }, { isClosed: null }] },
       order: [["createdAt", "DESC"]],
     });
     if (!cycle) return res.status(404).json({ message: "Cycle not found" });
@@ -422,7 +441,7 @@ exports.markNotJoined = async (req, res) => {
         `Candidate Did Not Join — ${candidate?.fullName}`,
         `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
           <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-            <h2 style="margin:0">LNMIIT Recruitment & Onboarding Portal</h2>
+            <h2 style="margin:0">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
           </div>
           <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
             <p>Dear ${u.name || u.role},</p>
@@ -446,5 +465,52 @@ exports.markNotJoined = async (req, res) => {
   } catch (err) {
     console.error("markNotJoined:", err);
     res.status(500).json({ message: "Failed" });
+  }
+};
+
+/* ── Establishment logs — closed cycles only ── */
+exports.getClosedCycleRecords = async (req, res) => {
+  try {
+    const { SelectedCandidate } = require("../models");
+    const closedCycles = await RecruitmentCycle.findAll({
+  attributes: ["cycle", "hodId"],
+  where: { isClosed: true },
+  order: [["createdAt", "DESC"]],
+});
+if (!closedCycles.length) return res.json([]);
+const closedHodCycleSet = new Set(closedCycles.map(c => `${c.cycle}|${c.hodId}`));
+const cycleStrings = [...new Set(closedCycles.map(c => c.cycle))];
+const records = await OnboardingRecord.findAll({
+  where: { cycle: cycleStrings },
+  include: [
+    { model: Candidate, as: "candidate" },
+    { model: User, as: "hod", attributes: ["department", "name", "email"] },
+  ],
+});
+    const selRecords = await SelectedCandidate.findAll({ where: { cycle: cycleStrings } });
+    const selMap = {};
+    selRecords.forEach(s => { selMap[s.candidateId] = s; });
+
+    const deptMap = {};
+    records.forEach(r => {
+      // Skip records where this HOD's cycle is closed
+      if (!closedHodCycleSet.has(`${r.cycle}|${r.hodId}`)) return;
+      const dept = r.department || "General";
+      if (!deptMap[dept]) deptMap[dept] = [];
+      const sel = selMap[r.candidateId];
+      deptMap[dept].push({
+        ...r.toJSON(),
+        selectionStatus:  sel?.status            || "NOT_SELECTED",
+        waitlistPriority: sel?.waitlistPriority   || null,
+        designation:      sel?.designation        || "",
+        employmentType:   sel?.employmentType      || "",
+        isCycleClosedFlag: true,
+      });
+    });
+
+    res.json(Object.entries(deptMap).map(([department, records]) => ({ department, records })));
+  } catch (err) {
+    console.error("getClosedCycleRecords error:", err);
+    res.status(500).json({ message: "Failed to fetch logs" });
   }
 };

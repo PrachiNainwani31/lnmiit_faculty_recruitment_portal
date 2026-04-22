@@ -16,10 +16,10 @@ const CSV_COLUMNS = [
   { name: "Specialization",        required: true  },
   { name: "Applied Position",      required: true  },
   { name: "Recommended Position",  required: true  },
-  { name: "DLSC Recommendation",   required: false },
-  { name: "ILSC Recommendation",   required: false },
-  { name: "DLSC Remarks",          required: false },
-  { name: "ILSC Remarks",          required: false },
+  { name: "DLSC Recommendation",   required: true },
+  { name: "DLSC Remarks",          required: true },
+  { name: "ILSC Recommendation",   required: true },
+  { name: "ILSC Remarks",          required: true },
 ];
 
 export default function CandidateUploadCard({

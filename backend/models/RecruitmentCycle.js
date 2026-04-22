@@ -9,7 +9,7 @@ const RecruitmentCycle = sequelize.define(
 
     cycle:  { type: DataTypes.STRING(20), allowNull: false },
 
-    // ✅ FIX: added INTERVIEW_SET and APPEARED_SUBMITTED to ENUM
+    // FIX: added INTERVIEW_SET and APPEARED_SUBMITTED to ENUM
     // INTERVIEW_SET     → DOFA set the interview date; HOD can now mark appeared (unfrozen)
     // APPEARED_SUBMITTED → HOD submitted appeared data; cycle is frozen again
     status: {

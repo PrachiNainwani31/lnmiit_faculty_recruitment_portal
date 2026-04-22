@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
+import logo from "../../assets/lnmiit_logo.png";
 
 const BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
@@ -512,7 +513,6 @@ function GuestStep({ refereeId, candidateName, prefillName, prefillEmail, onBack
 
       {/* Guest warning */}
       <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-4 flex gap-2">
-        <span>⚠</span>
         <span>Submitting as a guest means you will not be able to revisit or modify your submission later.</span>
       </div>
 
@@ -636,13 +636,12 @@ export default function RefereePage() {
     >
       <div className="w-full max-w-2xl">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-rose-700 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow">
-            IP
-          </div>
+        <div className="flex items-center gap-2 mb">
+          <div className="flex items-center gap-4 mb">
+              <img src={logo} alt="LNMIIT" className="w-16 h-16 object-contain" />
+              </div>
           <div>
-            <p className="font-bold text-white drop-shadow leading-tight">Institute Portal</p>
-            <p className="text-xs text-white/70 drop-shadow">Faculty Recruitment</p>
+            <p className="font-bold text-gray drop-shadow leading-tight">The LNM Institute of Information Technology</p>
           </div>
         </div>
 

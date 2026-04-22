@@ -26,7 +26,7 @@ exports.setDeadline = async (req, res) => {
     description: `Deadline extended from ${existing.deadlineAt} to ${deadlineAt}`, req,
   });
 
-  // ✅ Send to ALL registered candidates (both submitted and draft) — same email
+  // Send to ALL registered candidates (both submitted and draft) — same email
   // Also send to secondary emails
   const apps = await CandidateApplication.findAll();
   const { Candidate } = require("../models");
@@ -43,7 +43,7 @@ exports.setDeadline = async (req, res) => {
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
         <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-          <h2 style="margin:0;font-size:18px">LNMIIT Recruitment & Onboarding Portal</h2>
+          <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
         </div>
         <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;line-height:1.7;color:#333">
           <p>Dear ${app.name || "Applicant"},</p>
@@ -92,7 +92,7 @@ exports.setDeadline = async (req, res) => {
           `Application Deadline Set — LNMIIT Faculty Recruitment`,
           `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
             <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-              <h2 style="margin:0">LNMIIT Recruitment & Onboarding Portal</h2>
+              <h2 style="margin:0">LNMIITFaculty  Recruitment and Onboarding Portal</h2>
             </div>
             <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
               <p>Dear ${app.name || "Applicant"},</p>
@@ -129,6 +129,29 @@ exports.getDeadline = async (req, res) => {
   try {
     const { cycle } = req.params;
     const deadline = await PortalDeadline.findOne({ where: { cycle } });
+    res.json(deadline || null);
+  } catch (err) {
+    res.status(500).json({ message: "Failed" });
+  }
+};
+
+exports.getActiveDeadline = async (req, res) => {
+  try {
+    const { RecruitmentCycle } = require("../models");
+    // Get all active (non-closed) cycles
+    const activeCycles = await RecruitmentCycle.findAll({
+      where: { isClosed: false },
+      attributes: ["cycle"],
+      order: [["createdAt", "DESC"]],
+    });
+    if (!activeCycles.length) return res.json(null);
+
+    const cycleStrings = activeCycles.map(c => c.cycle);
+    // Find deadline for any active cycle
+    const deadline = await PortalDeadline.findOne({
+      where: { cycle: cycleStrings },
+      order: [["createdAt", "DESC"]],
+    });
     res.json(deadline || null);
   } catch (err) {
     res.status(500).json({ message: "Failed" });

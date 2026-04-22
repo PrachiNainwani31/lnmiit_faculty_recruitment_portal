@@ -31,7 +31,7 @@ cron.schedule("0 9 * * *", async () => {
           `Reminder — Application Deadline ${daysLeft === 1 ? "Tomorrow" : "in 4 Days"}`,
           `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
             <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-              <h2 style="margin:0">LNMIIT Recruitment & Onboarding Portal</h2>
+              <h2 style="margin:0">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
             </div>
             <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
               <p>Dear ${app.name || "Applicant"},</p>
@@ -63,7 +63,7 @@ cron.schedule("0 9 * * *", async () => {
           `Reminder — Reference Letter Deadline ${daysLeft === 1 ? "Tomorrow" : "in 4 Days"}`,
           `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
           <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-            <h2 style="margin:0">LNMIIT Recruitment & Onboarding Portal</h2>
+            <h2 style="margin:0">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
           </div>
           <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
             <p>Dear ${app.name || "Applicant"},</p>
