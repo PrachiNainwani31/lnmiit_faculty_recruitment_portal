@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/layouts/AuthLayout";
 import logo from "../assets/lnmiit_logo.png";
 import axios from "axios";
+import API from "../api/api";
 
 /* ── Reusable password input with show/hide toggle ── */
 function PasswordInput({ name, placeholder, value, onChange }) {
@@ -78,7 +79,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await axios.post("http://localhost:5000/api/auth/register", {
+      await API.post("/auth/register",{
         name:     form.name,
         email:    form.email,
         password: form.password,

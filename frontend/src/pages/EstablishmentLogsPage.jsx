@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import API from "../api/api";
 
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE = import.meta.env.VITE_API_URL || "0";
 
 export default function EstablishmentLogsPage() {
   const [depts,   setDepts]   = useState([]);
@@ -32,9 +32,13 @@ export default function EstablishmentLogsPage() {
 
       {depts.map(({ department, records }) => (
         <div key={department} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="bg-gray-700 px-5 py-3 flex items-center justify-between">
-            <p className="text-white font-medium text-sm">{department}</p>
-            <span className="text-gray-300 text-xs">{records.length} candidate(s)</span>
+          <div className="bg-gray-800 px-5 py-3 flex items-center justify-between">
+            <p className="text-white font-medium">{department}</p>
+            {records[0]?.cycle && (
+              <span className="text-gray-400 text-xs font-mono">
+                {records[0].cycle}
+              </span>
+            )}
           </div>
           {records.map(r => {
             const c = r.candidate;

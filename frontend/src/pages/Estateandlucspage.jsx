@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import API from "../api/api";
 
-const BASE    = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE    = import.meta.env.VITE_API_URL;
 const inputSm = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-300";
 
 /* ══════════════════════════════════════

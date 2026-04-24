@@ -5,7 +5,7 @@ const { generatePassword } = require("../utils/passwordGenerator");
 const templates            = require("../utils/emailTemplates");
 const { log } = require("../utils/activityLogger");
 const { toCode } = require("../utils/deptMap");
-const FRONTEND_URL         = process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URL         = process.env.FRONTEND_URL;
 
 const VALID_ROLES = [
   "DOFA", "DOFA_OFFICE", "HOD", "ESTABLISHMENT",

@@ -7,12 +7,12 @@ export default function QuoteApproval() {
   const [remarks, setRemarks] = useState({});
   const [saving,  setSaving]  = useState(null);
 
-  const load = () => {
-    API.get("/expert-travel")
-      .then(res => setItems(res.data.filter(i => i.travel?.quote)))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  };
+const load = () => {
+  API.get("/expert-travel")
+  .then(res => setItems(res.data.filter(i => i.travel?.quote && i.travel?.quote?.status === "PENDING")))
+    .catch(() => {})
+    .finally(() => setLoading(false));
+};
 
   useEffect(() => { load(); }, []);
 

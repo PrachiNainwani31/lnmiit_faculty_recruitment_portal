@@ -3,9 +3,8 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import logo from "../../assets/lnmiit_logo.png";
 
-const BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : "http://localhost:5000/api";
+const BASE =`${import.meta.env.VITE_API_URL}/api`;
+  ;
 
 const SALUTATIONS = ["Prof.", "Dr.", "Mr.", "Ms.", "Mrs."];
 

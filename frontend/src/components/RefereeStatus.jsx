@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import API from "../api/api";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function RefereeStatus() {
   const [referees, setReferees] = useState([]);
@@ -109,7 +109,7 @@ export default function RefereeStatus() {
                     ? "bg-green-100 text-green-700 border-green-200"
                     : "bg-yellow-100 text-yellow-700 border-yellow-200"
                 }`}>
-                  {r.status === "SUBMITTED" ? "✔ Submitted" : "⏳ Pending"}
+                  {r.status === "SUBMITTED" ? "Submitted" : "Pending"}
                 </span>
 
                 {/* Remind — only if pending */}

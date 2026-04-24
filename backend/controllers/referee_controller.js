@@ -139,7 +139,7 @@ exports.sendRefereeReminder = async (req, res) => {
     if (referee.status === "SUBMITTED") return res.status(400).json({ message: "Already submitted" });
 
     const app     = await CandidateApplication.findByPk(referee.applicationId);
-    const baseUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
+    const baseUrl = (process.env.FRONTEND_URL).replace(/\/+$/, "");
     const portalLink = `${baseUrl}/referee/${refereeId}`;
 
     // ✅ ADD: generate fresh captcha and save it

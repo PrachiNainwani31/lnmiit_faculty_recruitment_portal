@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import API from "../../api/api";
 
-const BASE      = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE      = import.meta.env.VITE_API_URL;
 const inputCls  = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-300";
 const selectCls = inputCls;
 
@@ -201,7 +201,22 @@ function ExpertCard({ item, onSaved }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-gray-800 text-sm">{expert.fullName}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{expert.designation} · {expert.institute}</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {expert.designation} · {expert.institute}
+            {expert.uploadedByDepts?.length > 1 && (
+              <span className="ml-2 text-indigo-500 font-medium">
+                [{expert.uploadedByDepts.join(", ")}]
+              </span>
+            )}
+          </p>
+          <p className="text-xs mt-0.5 flex items-center gap-1.5">
+            <span className="bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full font-mono">
+              {expert.cycle || "—"}
+            </span>
+            <span className="bg-purple-50 text-purple-600 border border-purple-100 px-2 py-0.5 rounded-full">
+              { expert.uploadedByDept||expert.uploadedBy?.department || "Manual"}
+            </span>
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${statusColor}`}>
@@ -492,7 +507,9 @@ export default function ExpertConfirmation() {
         const map = {};
         res.data.forEach(({ expert, travel }) => {
           const groupKey = expert.uploadedBy?.role === "HOD"
-            ? `${expert.uploadedBy.department || "HOD"} Department`
+            ? expert.uploadedByDepts?.length > 1
+              ? `${expert.uploadedByDepts.join(" + ")} Departments`
+              : `${expert.uploadedBy.department || "HOD"} Department`
             : expert.department || "Manual Entry";
           if (!map[groupKey]) map[groupKey] = { isHod: expert.uploadedBy?.role === "HOD", items: [] };
           map[groupKey].items.push({ expert, travel });

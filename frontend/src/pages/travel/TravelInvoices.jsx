@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import API from "../../api/api";
 
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE = import.meta.env.VITE_API_URL;
 
 export default function TravelInvoices() {
   const [items,    setItems]    = useState([]);

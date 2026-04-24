@@ -23,6 +23,7 @@ exports.getSelectedCandidates = async (req, res) => {
         hods.map(h => RecruitmentCycle.findOne({
           where: {
             hodId: h.id,
+            status:"APPEARED_SUBMITTED",
             [Op.or]: [{ isClosed: false }, { isClosed: null }],
           },
           order: [["createdAt", "DESC"]],
@@ -142,12 +143,14 @@ exports.publishSelection = async (req, res) => {
 /* ── Mark interview complete — no email, just DB update ── */
 exports.markInterviewComplete = async (req, res) => {
   try {
-    const { cycle } = req.body;
+    const { cycle,hodId } = req.body;
     if (!cycle) return res.status(400).json({ message: "cycle required" });
-    await SelectedCandidate.update(
-      { interviewComplete: true, interviewCompletedAt: new Date() },
-      { where: { cycle: cycle } }
-    );
+    const updateWhere = { cycle };
+      if (hodId) updateWhere.hodId = hodId;
+      await SelectedCandidate.update(
+        { interviewComplete: true, interviewCompletedAt: new Date() },
+        { where: updateWhere }
+      );
 
     const selectedCount = await SelectedCandidate.count({
       where: { cycle: cycle, status: "SELECTED" },
@@ -201,18 +204,37 @@ exports.markInterviewComplete = async (req, res) => {
 exports.addManualExpert = async (req, res) => {
   try {
     const { Expert } = require("../models");
-    const { fullName, designation, department, institute, email, phone, specialization } = req.body;
+    const {
+      fullName, designation, department, institute,
+      email, phone, specialization,
+      hodId,   // ← NEW: DOFA picks which HOD's active cycle
+    } = req.body;
+ 
     if (!fullName || !email)
       return res.status(400).json({ message: "Full name and email are required" });
-
-    const activeCycle = await RecruitmentCycle.findOne({
-      where: {
-        [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }],
-      },
-      order: [["createdAt", "DESC"]],
-    });
+ 
+    let activeCycle;
+    if (hodId) {
+      // Use the specific HOD's active cycle
+      activeCycle = await RecruitmentCycle.findOne({
+        where: {
+          hodId,
+          [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }],
+        },
+        order: [["createdAt", "DESC"]],
+      });
+    } else {
+      // Fallback: latest active cycle across all
+      activeCycle = await RecruitmentCycle.findOne({
+        where: {
+          [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }],
+        },
+        order: [["createdAt", "DESC"]],
+      });
+    }
+ 
     if (!activeCycle) return res.status(404).json({ message: "No active cycle found" });
-
+    const targetHod = await User.findByPk(hodId, { attributes: ["department"] });
     const expert = await Expert.create({
       fullName,
       designation:    designation    || "",
@@ -223,11 +245,44 @@ exports.addManualExpert = async (req, res) => {
       specialization: specialization || null,
       cycle:          activeCycle.cycle,
       uploadedById:   req.user.id,
+      uploadedByDept: targetHod?.department || null,
     });
-
+ 
     res.json({ success: true, expert });
   } catch (err) {
     console.error("addManualExpert error:", err);
     res.status(500).json({ message: err.message || "Failed to add expert" });
+  }
+};
+
+exports.getAllCandidatesLogs = async (req, res) => {
+  try {
+    const { Op } = require("sequelize");
+    const selected = await SelectedCandidate.findAll({
+      include: [
+        { model: Candidate, as: "candidate" },
+        { model: User, as: "hod", attributes: ["department", "email", "name"] },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const result = selected.map(s => ({
+      id:              s.id,
+      candidateId:     s.candidateId,
+      fullName:        s.candidate?.fullName || "—",
+      email:           s.candidate?.email   || "—",
+      department:      s.department,
+      designation:     s.designation        || "",
+      employmentType:  s.employmentType     || "",
+      selectionStatus: s.status,
+      waitlistPriority:s.waitlistPriority   || null,
+      cycle:           s.cycle,
+      hod:             s.hod,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("getAllCandidatesLogs:", err);
+    res.status(500).json({ message: "Failed" });
   }
 };

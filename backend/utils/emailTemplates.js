@@ -1,4 +1,4 @@
-const PORTAL_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const PORTAL_URL = process.env.FRONTEND_URL;
 const FROM_NAME  = process.env.EMAIL_FROM_NAME || "LNMIIT Recruitment Portal";
 
 const wrap = (body) => `

@@ -1,3 +1,4 @@
+//dofa/logs.jsx
 import { useEffect, useState } from "react";
 import API from "../../api/api";
 import * as XLSX from "xlsx";
@@ -9,7 +10,24 @@ export default function DofaLogs() {
   const [yearFilter, setYearFilter] = useState("");
   const [cycleFilter,setCycleFilter]= useState("");
   const [deptFilter, setDeptFilter] = useState("");
+  const [closedDocs, setClosedDocs] = useState([]); 
+  const [activeTab, setActiveTab] = useState("cycles");
+  const [quotes, setQuotes]       = useState([]);
+  useEffect(() => {
+    API.get("/expert-travel/closed")   // we'll add this endpoint below
+      .then(r => setQuotes(r.data))
+      .catch(console.error);
+  }, []);
 
+  useEffect(() => {
+    API.get("/dofa/closed-cycle-docs")
+      .then(r => setClosedDocs(r.data))
+      .catch(console.error);
+  }, []);
+
+  // helper to match docs to a log entry
+  const getDocsForLog = (log) =>
+    closedDocs.find(d => d.cycle === log.cycle /* match however your log stores cycle */);
   useEffect(() => {
     const params = new URLSearchParams();
     if (yearFilter)  params.set("academicYear", yearFilter);
@@ -112,45 +130,63 @@ export default function DofaLogs() {
   XLSX.writeFile(wb, fileName);
 };
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-800">Recruitment Logs</h2>
-        <p className="text-sm text-gray-500 mt-1">Closed cycles — candidates, experts, referees</p>
-      </div>
+  <div className="space-y-6">
+    <div>
+      <h2 className="text-xl font-semibold text-gray-800">Recruitment Logs</h2>
+      <p className="text-sm text-gray-500 mt-1">Closed cycles — candidates, experts, referees, quotes</p>
+    </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-3 shadow-sm">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Academic Year</label>
-          <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-w-[140px]">
-            <option value="">All Years</option>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cycle</label>
-          <input type="number" min="1" max="10" placeholder="Any"
-            value={cycleFilter} onChange={e => setCycleFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-24" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Department</label>
-          <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-w-[130px]">
-            <option value="">All Departments</option>
-            {depts.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
-      </div>
+    {/* ── Tabs ── */}
+    <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+      {[
+        { id: "cycles", label: "Cycle Logs" },
+        { id: "quotes", label: "Quote History" },
+      ].map(t => (
+        <button key={t.id} onClick={() => setActiveTab(t.id)}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+            activeTab === t.id ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"
+          }`}>
+          {t.label}
+        </button>
+      ))}
+    </div>
 
-      {logs.length === 0 && (
-        <div className="bg-white rounded-xl border p-12 text-center text-gray-400 text-sm">
-          No closed cycles found matching the filters.
+    {/* ══ CYCLE LOGS TAB ══ */}
+    {activeTab === "cycles" && (
+      <>
+        {/* Filters */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-3 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Academic Year</label>
+            <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-w-[140px]">
+              <option value="">All Years</option>
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cycle</label>
+            <input type="number" min="1" max="10" placeholder="Any"
+              value={cycleFilter} onChange={e => setCycleFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-24" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Department</label>
+            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm min-w-[130px]">
+              <option value="">All Departments</option>
+              {depts.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
         </div>
-      )}
 
-      {logs.map(log => (
+        {logs.length === 0 && (
+          <div className="bg-white rounded-xl border p-12 text-center text-gray-400 text-sm">
+            No closed cycles found matching the filters.
+          </div>
+        )}
+
+        {logs.map(log => (
         <div key={log.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {/* Header */}
           <div className="bg-gray-800 px-5 py-3 flex items-center justify-between flex-wrap gap-2">
@@ -266,7 +302,163 @@ export default function DofaLogs() {
                 </table>
               </div>
             </details>
+                    {(() => {
+  const docEntry = closedDocs.find(d =>
+    d.department === log.department && d.cycle === `${log.academicYear}-C${log.cycleNumber}`
+  );
+  if (!docEntry?.candidates?.length) return null;
 
+  const DOCS_LIST = [
+    { key: "cv",                label: "CV" },
+    { key: "teachingStatement", label: "Teaching Statement" },
+    { key: "researchStatement", label: "Research Statement" },
+    { key: "marks10",           label: "10th Marksheet" },
+    { key: "marks12",           label: "12th Marksheet" },
+    { key: "graduation",        label: "Graduation Cert" },
+    { key: "postGraduation",    label: "Post Graduation Cert" },
+    { key: "phdCourseWork",     label: "PhD Course Work" },
+    { key: "phdProvisional",    label: "PhD Provisional" },
+    { key: "phdDegree",         label: "PhD Degree" },
+    { key: "thesisSubmission",  label: "Thesis Submission" },
+  ];
+
+  const VERDICT_BADGE = {
+    Correct:   "bg-green-100 text-green-700 border-green-200",
+    Incorrect: "bg-red-100 text-red-700 border-red-200",
+    Missing:   "bg-yellow-100 text-yellow-700 border-yellow-200",
+    Pending:   "bg-blue-50 text-blue-600 border-blue-200",
+  };
+
+  const BASE = import.meta.env.VITE_API_URL;
+
+  return (
+    <details>
+      <summary className="cursor-pointer text-sm font-semibold text-gray-700 mb-2">
+        📄 Submitted Documents ({docEntry.candidates.length} candidates)
+      </summary>
+      <div className="space-y-4 mt-2">
+        {docEntry.candidates.map((cand, ci) => (
+          <details key={cand.id} className="border border-gray-200 rounded-lg overflow-hidden">
+            <summary className="cursor-pointer px-4 py-3 bg-gray-50 flex items-center justify-between text-sm font-medium text-gray-700 hover:bg-gray-100">
+              <span>{ci + 1}. {cand.name} <span className="text-gray-400 font-normal">— {cand.email}</span></span>
+              <div className="flex gap-1.5 ml-4 flex-wrap">
+                {["Correct","Incorrect","Missing"].map(s => {
+                  const cnt = DOCS_LIST.filter(d => cand.verdicts?.[d.key]?.status === s).length;
+                  if (!cnt) return null;
+                  return (
+                    <span key={s} className={`text-xs px-2 py-0.5 rounded-full border font-medium ${VERDICT_BADGE[s]}`}>
+                      {cnt} {s}
+                    </span>
+                  );
+                })}
+              </div>
+            </summary>
+
+            <div className="p-4 overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead>
+                  <tr className="border-b text-gray-400 uppercase tracking-wide font-semibold">
+                    <th className="pb-2 pr-4 text-left">#</th>
+                    <th className="pb-2 pr-4 text-left">Document</th>
+                    <th className="pb-2 pr-4 text-left">File</th>
+                    <th className="pb-2 pr-4 text-left">Verdict</th>
+                    <th className="pb-2 text-left">Remark</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {DOCS_LIST.map((doc, i) => {
+                    const file    = cand.documents?.[doc.key];
+                    const verdict = cand.verdicts?.[doc.key];
+                    const status  = verdict?.status || "Pending";
+                    return (
+                      <tr key={doc.key} className="border-b border-gray-50">
+                        <td className="py-2 pr-4 text-gray-400">{i + 1}</td>
+                        <td className="py-2 pr-4 font-medium text-gray-700">{doc.label}</td>
+                        <td className="py-2 pr-4">
+                          {file ? (
+                            <a href={`${BASE}/${file}`} target="_blank" rel="noreferrer"
+                              className="text-blue-600 hover:underline inline-flex items-center gap-1 border border-blue-200 bg-blue-50 px-2 py-0.5 rounded">
+                              📄 {file.split(/[/\\]/).pop()}
+                            </a>
+                          ) : (
+                            <span className="text-gray-400 italic">Not uploaded</span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-4">
+                          <span className={`px-2 py-0.5 rounded-full border font-medium ${VERDICT_BADGE[status] || VERDICT_BADGE.Pending}`}>
+                            {status}
+                          </span>
+                        </td>
+                        <td className="py-2 text-gray-500 italic">{verdict?.remark || "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {/* Multi-file docs */}
+              {[
+                { key: "bestPapers", label: "Best Papers" },
+                { key: "salarySlips", label: "Salary Slips" },
+                { key: "researchExpCerts", label: "Research Exp Certs" },
+                { key: "teachingExpCerts", label: "Teaching Exp Certs" },
+                { key: "industryExpCerts", label: "Industry Exp Certs" },
+                { key: "otherDocs", label: "Other Docs" },
+              ].map(md => {
+                const files = cand.documents?.[md.key];
+                if (!files?.length) return null;
+                return (
+                  <div key={md.key} className="mt-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      {md.label} ({files.length})
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {files.map((f, fi) => {
+                        const fp   = typeof f === "string" ? f : f?.file;
+                        const name = typeof f === "object" && f?.name ? f.name : `File ${fi + 1}`;
+                        if (!fp) return null;
+                        return (
+                          <a key={fi} href={`${BASE}/${fp}`} target="_blank" rel="noreferrer"
+                            className="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-2 py-1 rounded hover:underline">
+                            📄 {name}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Referees */}
+              {cand.referees?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Referees ({cand.referees.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {cand.referees.map((r, ri) => (
+                      <span key={ri} className={`text-xs px-3 py-1 rounded-full border font-medium ${
+                        r.status === "SUBMITTED"
+                          ? "bg-green-100 text-green-700 border-green-200"
+                          : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      }`}>
+                        {r.name || r.email} — {r.status}
+                        {r.status === "SUBMITTED" && r.letter && (
+                          <a href={`${BASE}/${r.letter}`} target="_blank" rel="noreferrer"
+                            className="ml-1 underline">📄</a>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
+        ))}
+      </div>
+    </details>
+  );
+})()}
             {/* Referees */}
             {log.referees.length > 0 && (
               <details>
@@ -300,6 +492,60 @@ export default function DofaLogs() {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
+      </>
+    )}
+
+    {/* ══ QUOTE HISTORY TAB ══ */}
+    {activeTab === "quotes" && (
+      <div className="space-y-4">
+        {quotes.length === 0 && (
+          <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
+            No quote history from closed cycles.
+          </div>
+        )}
+        {quotes.map(({ expert, travel }) => {
+          const q = travel?.quote;
+          if (!q) return null;
+          return (
+            <div key={expert.id} className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="font-medium text-gray-800">{expert.fullName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {expert.institute} · {travel.modeOfTravel || "—"} · Cycle: {expert.cycle}
+                  </p>
+                </div>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
+                  q.status === "APPROVED" ? "bg-green-100 text-green-700 border-green-200" :
+                  q.status === "REJECTED" ? "bg-red-100 text-red-700 border-red-200" :
+                  "bg-amber-100 text-amber-700 border-amber-200"
+                }`}>{q.status}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-4 bg-gray-50 rounded-lg p-4 text-sm">
+                <div><p className="text-xs text-gray-400">Amount</p>
+                  <p className="font-semibold text-gray-800">₹{q.amount}</p></div>
+                <div><p className="text-xs text-gray-400">Vendor</p>
+                  <p className="text-gray-700">{q.vendor || "—"}</p></div>
+                <div><p className="text-xs text-gray-400">Remarks</p>
+                  <p className="text-gray-700">{q.remarks || "—"}</p></div>
+                {q.approvedAt && (
+                  <div><p className="text-xs text-gray-400">
+                    {q.status === "APPROVED" ? "Approved" : "Decided"} by
+                  </p>
+                  <p className="text-gray-700">{q.approvedBy} · {new Date(q.approvedAt).toLocaleDateString("en-GB")}</p>
+                  </div>
+                )}
+                {q.rejectionNote && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-400">Rejection Note</p>
+                    <p className="text-red-600">{q.rejectionNote}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+);}

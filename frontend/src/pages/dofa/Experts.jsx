@@ -6,7 +6,7 @@ import API from "../../api/api";
 import { downloadAsCSV } from "../../components/DownloadCSVButton";
 
 const STORAGE_KEY     = "dofa_expert_email_template";
-const DEFAULT_SUBJECT = "Interview Invitation – Faculty Recruitment | LNMIIT";
+const DEFAULT_SUBJECT = "Interview Invitation - Faculty Recruitment | LNMIIT";
 const DEFAULT_BODY    = `Dear $name,
 
 We wish to invite you as an expert for the upcoming faculty recruitment interview process at The LNM Institute of Information Technology, Jaipur.
@@ -21,16 +21,6 @@ For in-person participation, travel reimbursement will be arranged as per instit
 With Regards,
 Webmaster LNMIIT
 webmaster@lnmiit.ac.in`;
-
-const DEPT_OPTIONS = [
-  { label: "Communication and Computer Engineering",  code: "CCE"       },
-  { label: "Computer Science and Engineering",        code: "CSE"       },
-  { label: "Electronics and Communication Engineering", code: "ECE"     },
-  { label: "Mechanical-Mechatronics Engineering",     code: "MME"       },
-  { label: "Physics",                                 code: "PHYSICS"   },
-  { label: "Mathematics",                             code: "MATHEMATICS"},
-  { label: "Humanities and Social Sciences",          code: "HSS"       },
-];
 
 const loadTemplate = () => {
   try {
@@ -96,7 +86,7 @@ function EmailModal({ expert, allExperts, onClose }) {
                 : `All ${allExperts?.length} experts`}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">x</button>
         </div>
 
         <div className="flex gap-2 px-6 pt-3 items-center">
@@ -143,7 +133,7 @@ function EmailModal({ expert, allExperts, onClose }) {
           <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Cancel</button>
           <button onClick={handleSend} disabled={sending}
             className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
-            {sending ? "Sending…" : "Send Email"}
+            {sending ? "Sending..." : "Send Email"}
           </button>
         </div>
       </div>
@@ -151,43 +141,81 @@ function EmailModal({ expert, allExperts, onClose }) {
   );
 }
 
-/* ── Add Expert Manually — inline collapsible panel ── */
+/* ── Add Expert Manually ── */
 function AddExpertPanel({ onAdded }) {
-  const [open,   setOpen]   = useState(false);
-  const [form,   setForm]   = useState({
+  const [open,    setOpen]    = useState(false);
+  const [hods,    setHods]    = useState([]);   // list of active HOD cycles
+  const [form,    setForm]    = useState({
     fullName:"", designation:"", department:"",
-    institute:"", email:"", phone:"", specialization:""
+    institute:"", email:"", phone:"", specialization:"",
+    hodId: "",   // ← NEW: which HOD's cycle to assign
   });
-  const [saving, setSaving] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+
+  const validateForm = () => {
+    const errs = {};
+    if (!form.fullName.trim())    errs.fullName    = "Full name is required";
+    if (!form.email.trim())       errs.email       = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+                                  errs.email       = "Enter a valid email address";
+    if (!form.hodId)              errs.hodId       = "Please select a target department / cycle";
+    if (!form.designation.trim()) errs.designation = "Designation is required";
+    if (!form.institute.trim())   errs.institute   = "Institute is required";
+    if (!form.department.trim())  errs.department  = "Expert's department is required";
+    if (form.phone && !/^\+?[\d\s\-().]{7,15}$/.test(form.phone.trim()))
+                                  errs.phone       = "Enter a valid phone number";
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+ 
+  // Load active HOD cycles when panel opens
+  useEffect(() => {
+    if (!open) return;
+    API.get("/cycle/dofa-dashboard")
+      .then(r => setHods(r.data?.departments || []))
+      .catch(console.error);
+  }, [open]);
  
   const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-300";
   const lbl      = "text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1";
  
-  const handleAdd = async () => {
-    if (!form.fullName || !form.email) return alert("Full name and email are required");
+   const handleAdd = async () => {
+    if (!validateForm()) return;
     try {
       setSaving(true);
-      // ✅ department code (e.g. "CSE") is sent — backend maps to HOD by exact match
       await API.post("/selected-candidates/manual-expert", form);
-      alert(`Expert ${form.fullName} added under ${form.department}`);
-      setForm({ fullName:"", designation:"", department:"", institute:"", email:"", phone:"", specialization:"" });
+      alert(`Expert ${form.fullName} added`);
+      setForm({
+        fullName:"", designation:"", department:"",
+        institute:"", email:"", phone:"", specialization:"", hodId:"",
+      });
+      setFormErrors({});
       setOpen(false);
       onAdded();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to add expert");
     } finally {
-      setSaving(false); }
+      setSaving(false);
+    }
   };
+ 
+  // When a HOD is selected, auto-fill department field hint
+  const selectedHod = hods.find(h => String(h.hodId) === String(form.hodId));
  
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <button onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left"
+      >
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700 font-bold text-base">+</span>
+          <span className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700 font-bold text-base">
+            +
+          </span>
           <div>
             <p className="text-sm font-semibold text-gray-800">Add Expert Manually</p>
-            <p className="text-xs text-gray-400 mt-0.5">Add an expert not uploaded via CSV</p>
+            <p className="text-xs text-gray-400 mt-0.5">Add a single expert not uploaded via CSV</p>
           </div>
         </div>
         <span className="text-gray-400 text-sm">{open ? "▲" : "▼"}</span>
@@ -196,59 +224,127 @@ function AddExpertPanel({ onAdded }) {
       {open && (
         <div className="border-t border-gray-100 px-5 py-5 bg-gray-50">
           <div className="grid grid-cols-2 gap-3">
-            {/* Full Name — full width */}
+ 
+            {/* ── NEW: Cycle / Department picker ── */}
             <div className="col-span-2">
-              <label className={lbl}>Full Name (with Salutation)</label>
-              <input className={inputCls} placeholder="e.g. Prof. Rajesh Kumar"
+              <label className={lbl}>Target Department / Cycle <span className="text-red-500">*</span></label>
+              <select
+                className={formErrors.hodId ? `${inputCls} border-red-300 bg-red-50` : inputCls}
+                value={form.hodId}
+                onChange={e => { setForm(f => ({ ...f, hodId: e.target.value })); setFormErrors(er => ({ ...er, hodId: null })); }}
+              >
+                <option value="">-- Select department & cycle --</option>
+                {hods.map(d => (
+                  <option key={d.hodId} value={d.hodId}>
+                    {d.department} — {d.academicYear} · Cycle {d.cycleNumber}
+                  </option>
+                ))}
+              </select>
+              {formErrors.hodId && <p className="text-xs text-red-500 mt-0.5">{formErrors.hodId}</p>}
+              {selectedHod && !formErrors.hodId && (
+                <p className="text-xs text-indigo-600 mt-1">
+                  Cycle: <span className="font-mono font-semibold">{selectedHod.academicYear}-C{selectedHod.cycleNumber}</span>
+                </p>
+              )}
+            </div>
+
+            {/* ── Full Name ── */}
+            <div className="col-span-2">
+              <label className={lbl}>Full Name (with Salutation) <span className="text-red-500">*</span></label>
+              <input
+                className={formErrors.fullName ? `${inputCls} border-red-300 bg-red-50` : inputCls}
+                placeholder="e.g. Prof. Rajesh Kumar"
                 value={form.fullName}
-                onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} />
+                onChange={e => { setForm(f => ({ ...f, fullName: e.target.value })); setFormErrors(er => ({ ...er, fullName: null })); }}
+              />
+              {formErrors.fullName && <p className="text-xs text-red-500 mt-0.5">{formErrors.fullName}</p>}
             </div>
+
+            {/* ── Designation ── */}
             <div>
-              <label className={lbl}>Designation</label>
-              <input className={inputCls} placeholder="e.g. Professor"
+              <label className={lbl}>Designation <span className="text-red-500">*</span></label>
+              <input
+                className={formErrors.designation ? `${inputCls} border-red-300 bg-red-50` : inputCls}
+                placeholder="e.g. Professor"
                 value={form.designation}
-                onChange={e => setForm(f => ({ ...f, designation: e.target.value }))} />
+                onChange={e => { setForm(f => ({ ...f, designation: e.target.value })); setFormErrors(er => ({ ...er, designation: null })); }}
+              />
+              {formErrors.designation && <p className="text-xs text-red-500 mt-0.5">{formErrors.designation}</p>}
             </div>
-            {/* ✅ FIX: Department is now a dropdown with code mapping */}
+
+            {/* ── Expert's Department ── */}
             <div>
-              <label className={lbl}>Department (of the Expert)</label>
-              <input className={inputCls} placeholder="e.g. CSE, Physics, IIT Delhi Dept..."
+              <label className={lbl}>Expert's Own Department <span className="text-red-500">*</span></label>
+              <input
+                className={formErrors.department ? `${inputCls} border-red-300 bg-red-50` : inputCls}
+                placeholder="e.g. CSE, Physics…"
                 value={form.department}
-                onChange={e => setForm(f => ({ ...f, department: e.target.value }))} />
-              <p className="text-xs text-gray-400 mt-0.5">External expert's own department — not necessarily from this institute</p>
+                onChange={e => { setForm(f => ({ ...f, department: e.target.value })); setFormErrors(er => ({ ...er, department: null })); }}
+              />
+              {formErrors.department && <p className="text-xs text-red-500 mt-0.5">{formErrors.department}</p>}
             </div>
+
+            {/* ── Institute ── */}
             <div>
-              <label className={lbl}>Institute</label>
-              <input className={inputCls} placeholder="e.g. IIT Delhi"
+              <label className={lbl}>Institute <span className="text-red-500">*</span></label>
+              <input
+                className={formErrors.institute ? `${inputCls} border-red-300 bg-red-50` : inputCls}
+                placeholder="e.g. IIT Delhi"
                 value={form.institute}
-                onChange={e => setForm(f => ({ ...f, institute: e.target.value }))} />
+                onChange={e => { setForm(f => ({ ...f, institute: e.target.value })); setFormErrors(er => ({ ...er, institute: null })); }}
+              />
+              {formErrors.institute && <p className="text-xs text-red-500 mt-0.5">{formErrors.institute}</p>}
             </div>
+
+            {/* ── Email ── */}
             <div>
-              <label className={lbl}>Email</label>
-              <input className={inputCls} type="email" placeholder="expert@iit.ac.in"
+              <label className={lbl}>Email <span className="text-red-500">*</span></label>
+              <input
+                className={formErrors.email ? `${inputCls} border-red-300 bg-red-50` : inputCls}
+                type="email"
+                placeholder="expert@iit.ac.in"
                 value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                onChange={e => { setForm(f => ({ ...f, email: e.target.value })); setFormErrors(er => ({ ...er, email: null })); }}
+              />
+              {formErrors.email && <p className="text-xs text-red-500 mt-0.5">{formErrors.email}</p>}
             </div>
+
+            {/* ── Phone ── */}
             <div>
               <label className={lbl}>Phone</label>
-              <input className={inputCls} placeholder="Contact number"
+              <input
+                className={formErrors.phone ? `${inputCls} border-red-300 bg-red-50` : inputCls}
+                placeholder="Contact number"
                 value={form.phone}
-                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+                onChange={e => { setForm(f => ({ ...f, phone: e.target.value })); setFormErrors(er => ({ ...er, phone: null })); }}
+              />
+              {formErrors.phone && <p className="text-xs text-red-500 mt-0.5">{formErrors.phone}</p>}
             </div>
+
+            {/* ── Specialization ── */}
             <div>
               <label className={lbl}>Specialization</label>
-              <input className={inputCls} placeholder="e.g. Artificial Intelligence"
+              <input
+                className={inputCls}
+                placeholder="e.g. Artificial Intelligence"
                 value={form.specialization}
-                onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))} />
+                onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))}
+              />
             </div>
           </div>
+ 
           <div className="flex justify-end gap-3 mt-4">
-            <button onClick={() => setOpen(false)}
-              className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-100 transition">
+            <button
+              onClick={() => setOpen(false)}
+              className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-100 transition"
+            >
               Cancel
             </button>
-            <button onClick={handleAdd} disabled={saving}
-              className="px-5 py-2 text-sm bg-red-700 hover:bg-red-800 text-white rounded-lg font-medium disabled:opacity-60 transition">
+            <button
+              onClick={handleAdd}
+              disabled={saving}
+              className="px-5 py-2 text-sm bg-red-700 hover:bg-red-800 text-white rounded-lg font-medium disabled:opacity-60 transition"
+            >
               {saving ? "Adding…" : "Add Expert"}
             </button>
           </div>
@@ -258,69 +354,111 @@ function AddExpertPanel({ onAdded }) {
   );
 }
 
-/* ── Department card ── */
-function DeptCard({ department, experts, onEmail }) {
+
+/* ── Upload Experts CSV for a HOD's Cycle (DOFA) ── */
+function UploadCSVForHodPanel({ onUploaded }) {
+  const [open,    setOpen]    = useState(false);
+  const [hods,    setHods]    = useState([]);
+  const [hodId,   setHodId]   = useState("");
+  const [file,    setFile]    = useState(null);
+  const [saving,  setSaving]  = useState(false);
+
+  // Load active HODs from DOFA dashboard on open
+  useEffect(() => {
+    if (!open) return;
+    API.get("/cycle/dofa-dashboard")
+      .then(r => setHods(r.data?.departments || []))
+      .catch(console.error);
+  }, [open]);
+
+  const handleUpload = async () => {
+    if (!file)  return alert("Please select a CSV file");
+    if (!hodId) return alert("Please select a department / HOD");
+    try {
+      setSaving(true);
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("hodId", hodId);
+      const res = await API.post("/hod/upload-experts-for-hod", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      alert(`${res.data.count} experts uploaded for cycle ${res.data.cycle}`);
+      setFile(null);
+      setHodId("");
+      setOpen(false);
+      onUploaded();
+    } catch (err) {
+      alert(err.response?.data?.message || "Upload failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300";
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-gray-700 to-gray-800">
-        <div>
-          <h3 className="text-white font-semibold text-sm">{department}</h3>
-          <p className="text-white/50 text-xs mt-0.5">{experts.length} expert{experts.length !== 1 ? "s" : ""}</p>
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left">
+        <div className="flex items-center gap-3">
+          <span className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">CSV</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Upload Experts CSV for Department</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Upload a CSV into a specific department's active cycle — same email allowed if used in a prior closed cycle
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => downloadAsCSV(
-              experts.map(e => ({
-                fullName:e.fullName, email:e.email, designation:e.designation,
-                department:e.department, institute:e.institute, specialization:e.specialization||"",
-              })),
-              `experts_${department}.csv`
-            )}
-            className="text-xs border border-white/30 text-white/80 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition font-medium"
-          >
-            ↓ CSV
-          </button>
-          <button
-            onClick={() => onEmail({ allExperts: experts })}
-            className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition font-medium"
-          >
-            Email All
-          </button>
-        </div>
-      </div>
+        <span className="text-gray-400 text-sm">{open ? "^" : "v"}</span>
+      </button>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              {["Sr","Name","Email","Designation","Department","Institute","Specialization","Action"].map(h => (
-                <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+      {open && (
+        <div className="border-t border-gray-100 px-5 py-5 bg-gray-50 space-y-4">
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
+              Target Department / Cycle
+            </label>
+            <select
+              className={inputCls}
+              value={hodId}
+              onChange={e => setHodId(e.target.value)}
+            >
+              <option value="">-- Select department --</option>
+              {hods.map(d => (
+                <option key={d.hodId} value={d.hodId}>
+                  {d.department} — {d.academicYear} Cycle {d.cycleNumber}
+                </option>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {experts.map((e, i) => (
-              <tr key={e.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition">
-                <td className="px-3 py-2.5 text-gray-400 text-xs">{i + 1}</td>
-                <td className="px-3 py-2.5 font-medium text-gray-800 whitespace-nowrap">{e.fullName}</td>
-                <td className="px-3 py-2.5 text-blue-600 text-xs">{e.email}</td>
-                <td className="px-3 py-2.5 text-gray-600 text-xs">{e.designation}</td>
-                <td className="px-3 py-2.5 text-gray-600 text-xs">{e.department}</td>
-                <td className="px-3 py-2.5 text-gray-500 text-xs">{e.institute}</td>
-                <td className="px-3 py-2.5 text-gray-500 text-xs">{e.specialization || "—"}</td>
-                <td className="px-3 py-2.5">
-                  <button
-                    onClick={() => onEmail({ expert: e })}
-                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition"
-                  >
-                    Send Email
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
+              CSV File
+            </label>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={e => setFile(e.target.files[0])}
+              className="w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-100 file:text-indigo-700 file:text-xs file:font-medium hover:file:bg-indigo-200 cursor-pointer"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Columns: Full Name (with Salutation), Designation, Department, Institute, Email, Specialization, Mobile No. (Optional)
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button onClick={() => setOpen(false)}
+              className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-100 transition">
+              Cancel
+            </button>
+            <button onClick={handleUpload} disabled={saving}
+              className="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-60 transition">
+              {saving ? "Uploading..." : "Upload CSV"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -328,67 +466,68 @@ function DeptCard({ department, experts, onEmail }) {
 /* ── Main Page ── */
 export default function DofaExperts() {
   const [searchParams] = useSearchParams();
-  const deptFilter     = searchParams.get("dept")?.toUpperCase() || null;
+  const hodFilter  = searchParams.get("hodId") || null;
 
   const [allExperts, setAllExperts] = useState([]);
-  const [modal,      setModal]      = useState(null);
   const [loading,    setLoading]    = useState(true);
+  const [modal,      setModal]      = useState(null);
 
   const load = () => {
     setLoading(true);
-    getAllExperts()
+    const endpoint = hodFilter
+      ? API.get(`/hod/experts/by-hod/${hodFilter}`)
+      : getAllExperts();
+
+    endpoint
       .then(res => setAllExperts(Array.isArray(res.data) ? res.data : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
-//   useEffect(() => {
-//   API.get("/hod/experts/all")
-//     .then(res => setAllExperts(Array.isArray(res.data) ? res.data : []))
-//     .catch(console.error);
-// }, []);
+  useEffect(() => { load(); }, [hodFilter]);
 
-  // Show all experts flat — filter by dept param only if present
-  const visible = deptFilter
-    ? allExperts.filter(e => e.uploadedBy?.department === deptFilter)
-    : allExperts;
-
-  if (loading) return <p className="text-gray-400 text-sm p-6">Loading experts…</p>;
+  if (loading) return <p className="text-gray-400 text-sm p-6">Loading experts...</p>;
 
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Experts</h2>
-          <p className="text-xs text-gray-400 mt-1">{allExperts.length} total across all departments</p>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {visible.length} expert{visible.length !== 1 ? "s" : ""}
-            {deptFilter && (
+          <p className="text-xs text-gray-400 mt-1">
+            {allExperts.length} total across all departments
+            {hodFilter && (
               <a href="/dofa/experts" className="ml-3 text-blue-500 hover:underline text-xs">
-                ← All experts
+                All experts
               </a>
             )}
           </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Same expert invited by multiple departments appears as separate rows. Same HOD cannot list the same expert twice.
+          </p>
         </div>
-        {visible.length > 0 && (
+        {allExperts.length > 0 && (
           <div className="flex gap-2">
             <button
               onClick={() => downloadAsCSV(
-                visible.map(e => ({
-                  fullName: e.fullName, email: e.email,
-                  designation: e.designation, department: e.department,
-                  institute: e.institute, specialization: e.specialization || "",
-                  uploadedByDept: e.uploadedBy?.department || "",
+                allExperts.map(e => ({
+                  fullName:        e.fullName,
+                  email:           e.email,
+                  designation:     e.designation,
+                  department:      e.department,
+                  institute:       e.institute,
+                  specialization:  e.specialization || "",
+                  cycle:           e.cycle || "",
+                  uploadedByDept:  e.uploadedBy?.department || "Manual",
                 })),
                 `all_experts.csv`
               )}
               className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-1.5 rounded-lg transition font-medium"
             >
-              ↓ Download All CSV
+              Download All CSV
             </button>
             <button
-              onClick={() => setModal({ allExperts: visible })}
+              onClick={() => setModal({ allExperts })}
               className="text-xs bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg transition font-medium"
             >
               Email All
@@ -397,22 +536,24 @@ export default function DofaExperts() {
         )}
       </div>
 
+      {/* Action panels */}
       <AddExpertPanel onAdded={load} />
+      {!hodFilter && <UploadCSVForHodPanel onUploaded={load} />}
 
-      {/* Single flat table — no grouping by HOD dept */}
-      {visible.length > 0 && (
+      {/* Experts table */}
+      {allExperts.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {["Sr", "Name", "Email", "Designation", "Department", "Institute", "Specialization", "Action","Uploaded by"].map(h => (
+                  {["Sr", "Name", "Email", "Designation", "Department", "Institute", "Specialization","Phone", "Cycle", "Uploaded by", "Action"].map(h => (
                     <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {visible.map((e, i) => (
+                {allExperts.map((e, i) => (
                   <tr key={e.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition">
                     <td className="px-3 py-2.5 text-gray-400 text-xs">{i + 1}</td>
                     <td className="px-3 py-2.5 font-medium text-gray-800 whitespace-nowrap">{e.fullName}</td>
@@ -421,11 +562,23 @@ export default function DofaExperts() {
                     <td className="px-3 py-2.5 text-gray-600 text-xs">{e.department}</td>
                     <td className="px-3 py-2.5 text-gray-500 text-xs">{e.institute}</td>
                     <td className="px-3 py-2.5 text-gray-500 text-xs">{e.specialization || "—"}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600">{e.department || "—"}</td>
+                    <td className="px-3 py-2.5 text-gray-500 text-xs">{e.phone}</td>
                     <td className="px-3 py-2.5 text-xs">
-                      <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded-full text-xs">
-                        {e.uploadedBy?.department || "Manual"}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="bg-gray-100 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full font-mono text-xs whitespace-nowrap">
+                          {e.cycle || "—"}
+                        </span>
+                        <span className="bg-purple-50 text-purple-600 border border-purple-100 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
+                          {e.uploadedByDept||e.uploadedBy?.department || "—"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs">
+                      {(e.uploadedByDepts || [e.uploadedBy?.department || "Manual"]).map(d => (
+                        <span key={d} className="bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded-full text-xs mr-1">
+                          {d}
+                        </span>
+                      ))}
                     </td>
                     <td className="px-3 py-2.5">
                       <button
@@ -443,9 +596,9 @@ export default function DofaExperts() {
         </div>
       )}
 
-      {visible.length === 0 && (
+      {allExperts.length === 0 && (
         <div className="bg-white rounded-xl border p-14 text-center text-gray-400">
-          <p>{deptFilter ? `No experts for ${deptFilter} yet` : "No experts uploaded yet"}</p>
+          <p>{hodFilter ? "No experts for this HOD yet" : "No experts uploaded yet"}</p>
         </div>
       )}
 

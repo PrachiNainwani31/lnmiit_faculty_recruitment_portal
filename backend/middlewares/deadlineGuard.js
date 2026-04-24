@@ -3,11 +3,17 @@ const { PortalDeadline, RecruitmentCycle } = require("../models");
 module.exports = async (req, res, next) => {
   try {
     // Get the latest cycle for this user or globally
-    const cycle = await RecruitmentCycle.findOne({ order: [["createdAt","DESC"]] });
-    if (!cycle) return next(); // no cycle = no deadline yet
+    const email = req.user?.email;
+    if (!email) return next();
 
-    const deadline = await PortalDeadline.findOne({ where: { cycle: cycle.cycle } });
-    if (!deadline) return next(); // no deadline set = open
+    const candidate = await Candidate.findOne({ where: { email } });
+    if (!candidate?.hodId || !candidate?.cycle) return next();
+
+    // Scope deadline check to this candidate's specific HOD cycle
+    const deadline = await PortalDeadline.findOne({
+      where: { cycle: candidate.cycle, hodId: candidate.hodId },
+    });
+    if (!deadline) return next();
 
     const now = new Date();
     if (now > new Date(deadline.deadlineAt)) {

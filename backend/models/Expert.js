@@ -19,6 +19,7 @@ const Expert = sequelize.define(
     specialization: { type: DataTypes.STRING(200) },
     phone:          { type: DataTypes.STRING(30) },
     uploadedById:   { type: DataTypes.INTEGER.UNSIGNED },  // FK → User
+    uploadedByDept: { type: DataTypes.STRING(150), allowNull: true },
   },
   {
     tableName: "experts",

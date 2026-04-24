@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import API from "../../api/api";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const DOCS = [
   { key: "cv",                 label: "CV" },
@@ -93,7 +94,6 @@ LNMIIT`
       <div className="bg-white rounded-2xl shadow-2xl w-[560px] max-h-[90vh] overflow-y-auto">
 
         <div className="flex items-center gap-3 p-6 border-b">
-          <span className="text-2xl">📨</span>
           <h3 className="text-lg font-bold text-gray-800">Send Gentle Reminder</h3>
           <button onClick={onClose} className="ml-auto text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
@@ -102,7 +102,7 @@ LNMIIT`
           <p className="font-semibold text-blue-700">{candidate.name}</p>
           <p className="text-sm text-gray-500 mt-0.5">
             {candidate.email}
-            {candidate.phone && <> &nbsp;|&nbsp; 📞 {candidate.phone}</>}
+            {candidate.phone && <> &nbsp;|&nbsp; {candidate.phone}</>}
           </p>
         </div>
 
@@ -155,7 +155,6 @@ LNMIIT`
 }
 
 /* ── Candidate Row (collapsible) ────────────────────────── */
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
   const [open, setOpen]           = useState(false);
@@ -279,7 +278,7 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                     <td className="py-3 pr-4 align-middle">
                       {file ? (
                         <a
-                          href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/${file}`}
+                          href={`${BASE_URL}/${file}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-blue-600 text-xs hover:border-blue-400 transition"
@@ -359,7 +358,7 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                     if (!filePath) return null;
                     return (
                       <a key={i}
-                        href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/${filePath}`}
+                        href={`${BASE_URL}/${filePath}`}
                         target="_blank" rel="noreferrer"
                         className="text-xs text-blue-600 hover:underline border border-blue-200 bg-blue-50 px-2 py-1 rounded">
                         📄 {fileName}
@@ -447,7 +446,7 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                       {/* View letter link — only if submitted */}
                       {r.status === "SUBMITTED" && r.letter && (
                         <a
-                          href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/${r.letter}`}
+                          href={`${BASE_URL}/${r.letter}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium"
@@ -549,10 +548,16 @@ export default function DocumentTracking() {
           {/* Dept header */}
           <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-yellow-300 text-xl">📁</span>
               <div>
                 <h3 className="text-white font-bold text-lg leading-tight">{dept.department}</h3>
-                {dept.hodName && <p className="text-indigo-200 text-xs mt-0.5">— {dept.hodName}</p>}
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  {dept.hodName && <span className="text-indigo-200 text-xs">— {dept.hodName}</span>}
+                  {dept.cycle && (
+                    <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-medium border border-white/30">
+                      {dept.cycle}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="text-right text-indigo-200 text-sm">

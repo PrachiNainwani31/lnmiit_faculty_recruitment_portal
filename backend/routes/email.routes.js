@@ -108,7 +108,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
           </div>
         </div>`
       : "";
-    const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+    const FRONTEND_URL = process.env.FRONTEND_URL;
 
     const htmlBody = `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;background:#f4f4f4;padding:30px 0">
@@ -140,7 +140,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
 
           ${portalCreated
             ? `<div style="text-align:center;margin-top:28px">
-                <a href="${FRONTEND_URL}/login"
+                <a href="${FRONTEND_URL}login"
                   style="display:inline-block;background:#8b0000;color:#ffffff;padding:12px 32px;
                           border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;
                           letter-spacing:0.3px">

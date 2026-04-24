@@ -45,7 +45,7 @@ function applyVariables(text, c) {
 }
 
 /* ── Email Modal ── */
-function EmailModal({ candidate, allCandidates, onClose, activeCycle, existingDeadline }) {
+function EmailModal({ candidate, allCandidates, onClose, activeCycle,activeHodId, existingDeadline }) {
   const [template, setTemplate] = useState(loadTemplate);
   const [preview,  setPreview]  = useState(false);
   const [sending,  setSending]  = useState(false);
@@ -77,10 +77,11 @@ function EmailModal({ candidate, allCandidates, onClose, activeCycle, existingDe
     try {
       setSending(true);
 
-      if (deadlineInput && activeCycle) {
+      if (deadlineInput && activeCycle && activeHodId) {
         setDeadlineSaving(true);
         await API.post("/deadline", {
           cycle:      activeCycle,
+          hodId: activeHodId,
           deadlineAt: new Date(deadlineInput).toISOString(),
         }).catch(console.error);
         setDeadlineSaving(false);
@@ -173,7 +174,7 @@ function EmailModal({ candidate, allCandidates, onClose, activeCycle, existingDe
                   <span className={`text-xs font-bold px-2 py-1 rounded-full ${
                     deadlinePassed ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
                   }`}>
-                    {deadlinePassed ? "⛔ Expired" : "✓ Active"}:{" "}
+                    {deadlinePassed ? "Expired" : "✓ Active"}:{" "}
                     {new Date(existingDeadline.deadlineAt).toLocaleString("en-GB", {
                       day: "numeric", month: "short", year: "numeric",
                       hour: "2-digit", minute: "2-digit",
@@ -246,9 +247,10 @@ export default function DofaCandidates() {
   const [modal,         setModal]         = useState(null);
   const [deadline,      setDeadline]      = useState(null);
   const [activeCycle,   setActiveCycle]   = useState(null);
+  const [activeHodId, setActiveHodId] = useState(null);
 
-  const loadDeadline = (cycle) => {
-    API.get(`/deadline/${cycle}`)
+  const loadDeadline = (cycle,hodId) => {
+    API.get(`/deadline/${cycle}?hodId=${hodId}`)
       .then(r => setDeadline(r.data))
       .catch(() => setDeadline(null));
   };
@@ -281,16 +283,21 @@ export default function DofaCandidates() {
 
   // Fetch candidates when dept selected
   useEffect(() => {
-    if (!selectedDept) { setCandidates([]); return; }
-    getCandidatesByDepartment(selectedDept)
-      .then(res => {
-        const data = Array.isArray(res.data) ? res.data : [];
-        setCandidates(data);
-        const cycle = data[0]?.cycle;
-        if (cycle) { setActiveCycle(cycle); loadDeadline(cycle); }
-      })
-      .catch(() => setCandidates([]));
-  }, [selectedDept]);
+  if (!selectedDept) { setCandidates([]); return; }
+  getCandidatesByDepartment(selectedDept)
+    .then(res => {
+      const data = Array.isArray(res.data) ? res.data : [];
+      setCandidates(data);
+      const cycle = data[0]?.cycle;
+      const hodId = data[0]?.hodId;  // ✅ get hodId from candidate
+      if (cycle && hodId) {
+        setActiveCycle(cycle);
+        setActiveHodId(hodId);
+        loadDeadline(cycle, hodId);
+      }
+    })
+    .catch(() => setCandidates([]));
+}, [selectedDept]);
 
   const deadlinePassed = deadline?.deadlineAt && new Date() > new Date(deadline.deadlineAt);
   const appeared = candidates.filter(c => c.appearedInInterview).length;
@@ -498,10 +505,11 @@ export default function DofaCandidates() {
           candidate={modal.mode === "single" ? modal.candidate : null}
           allCandidates={modal.mode === "all" ? candidates : null}
           activeCycle={activeCycle}
+          activeHodId={activeHodId}           // ✅ NEW
           existingDeadline={deadline}
           onClose={() => {
             setModal(null);
-            if (activeCycle) loadDeadline(activeCycle);
+            if (activeCycle && activeHodId) loadDeadline(activeCycle, activeHodId);
           }}
         />
       )}

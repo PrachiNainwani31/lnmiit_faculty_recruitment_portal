@@ -2,7 +2,7 @@
 import { useRef } from "react";
 import API from "../../api/api";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function Experienceentry({ exp, index,displayNumber, onChange, onRemove, isReadOnly, total, onCertUpload,hideNatureOfWork=false }) {
   const certRef = useRef();

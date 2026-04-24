@@ -5,7 +5,7 @@ const { sendEmail } = require("../utils/emailSender");
 const templates = require("../utils/emailTemplates");
 const getCurrentCycle = require("../utils/getCurrentCycle");
 const { log } = require("../utils/activityLogger");
-const BASE_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const BASE_URL = process.env.FRONTEND_URL ;
 const checkCycleLocked = async (candidateId) => {
   const { OnboardingRecord, RecruitmentCycle } = require("../models");
   const record = await OnboardingRecord.findOne({ where: { candidateId } });
@@ -44,7 +44,7 @@ const records = await OnboardingRecord.findAll({
       where: { cycle: cycleStrings },
     });
     const cycleClosedMap = {};
-    cycles.forEach(c => { cycleClosedMap[c.cycle] = c.isClosed || false; });
+    cycles.forEach(c => { cycleClosedMap[`${c.cycle}|${c.hodId}`] = c.isClosed || false; })
     const deptMap = {};
     records.forEach(r => {
       // Skip records where this HOD's cycle is closed
@@ -59,7 +59,7 @@ const records = await OnboardingRecord.findAll({
         waitlistPriority:  sel?.waitlistPriority || null,
         designation:       sel?.designation    || "",
         employmentType:    sel?.employmentType  || "",
-        isCycleClosedFlag: cycleClosedMap[r.cycle] || false,
+        isCycleClosedFlag: cycleClosedMap[`${r.cycle}|${r.hodId}`] || false,
       };
       // Strip fields by role
       if (role === "LUCS") {

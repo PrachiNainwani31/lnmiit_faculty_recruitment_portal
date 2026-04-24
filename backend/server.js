@@ -34,7 +34,7 @@ async function startServer() {
     console.log(" MySQL Connected");
 
     //  Sync DB (DEV ONLY)
-    //await db.sequelize.sync({ alter: true });
+    // await db.sequelize.sync({ alter: true });
     await db.sequelize.sync();
     console.log("Tables Synced");
 

@@ -22,6 +22,7 @@ export default function TravelPortalLayout() {
           <NavLink to="/travel/tickets"         className={navStyle}>Tickets</NavLink>
           <NavLink to="/travel/invoices"        className={navStyle}>Invoices</NavLink>
           <NavLink to="/travel/pickup"          className={navStyle}>Pickup / Drop-off</NavLink>
+          <NavLink to="/travel/logs"            className={navStyle}>Logs</NavLink>
         </nav>
         <button
           onClick={() => { localStorage.clear(); navigate("/login"); }}

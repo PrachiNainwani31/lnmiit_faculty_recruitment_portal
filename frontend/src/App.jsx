@@ -33,6 +33,7 @@ import SelectCandidates     from "./pages/dofa-office/SelectedCandidates";
 import RoomAllotmentPage    from "./pages/dofa-office/RoomAllotmentPage";
 import InterviewLogs from "./pages/dofa-office/InterviewLogs";
 import Registration  from "./pages/dofa-office/Registration";
+import DofaOfficeLogs from "./pages/dofa-office/DofaOfficeLogs";
 
 import TravelPortalLayout from "./components/layouts/Travelportallayout";
 import ExpertTravelPage   from "./pages/travel/Experttravelpage";
@@ -40,6 +41,7 @@ import TravelQuotes       from "./pages/travel/TravelQuotes";
 import TravelTickets      from "./pages/travel/TravelTickets";
 import TravelInvoices     from "./pages/travel/TravelInvoices";
 import TravelPickup       from "./pages/travel/TravelPickup";
+import TravelLogs from "./pages/travel/TravelLogs";
 
 import { EstablishmentLayout, EstateLayout, LucsLayout } from "./components/layouts/NewLayouts";
 import EstablishmentPage from "./pages/Establishmentpage";
@@ -112,7 +114,7 @@ export default function App() {
         <Route path="comments"           element={<DofaComments />} />
         <Route path="logs"       element={<InterviewLogs/>}/>
         <Route path="registration" element={<Registration />} />
-        <Route path="cycle-logs" element={<DofaLogs/>}/>
+        <Route path="cycle-logs" element={<DofaOfficeLogs />}/>
       </Route>
 
       {/* Travel */}
@@ -124,6 +126,7 @@ export default function App() {
         <Route path="tickets"  element={<TravelTickets />} />
         <Route path="invoices" element={<TravelInvoices />} />
         <Route path="pickup"   element={<TravelPickup />} />
+        <Route path= "/travel/logs" element={ <TravelLogs /> }/>
       </Route>
 
       {/* Establishment */}

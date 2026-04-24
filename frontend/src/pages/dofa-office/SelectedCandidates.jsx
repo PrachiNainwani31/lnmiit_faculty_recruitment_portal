@@ -52,6 +52,7 @@ export default function SelectCandidates() {
   const [activeCycle, setActiveCycle] = useState(null);
   const [toast, setToast] = useState(null);
   const [publishedDepts, setPublishedDepts] = useState({});
+  const [appearedSubmittedDepts, setAppearedSubmittedDepts] = useState({});
  
   useEffect(() => {
    //if (cycle === null || cycle === undefined) return;
@@ -70,7 +71,11 @@ export default function SelectCandidates() {
   }
       const selected = Array.isArray(selRes.data) ? selRes.data : [];
       const depts    = dashRes.data?.departments || [];
-
+      const appearedSubmittedMap = {};
+depts.forEach(d => {
+  if (d.status === "APPEARED_SUBMITTED") appearedSubmittedMap[d.department] = true;
+});
+setAppearedSubmittedDepts(appearedSubmittedMap);
       setDofaApproved(depts.some(d =>
         ["APPROVED","INTERVIEW_SET","APPEARED_SUBMITTED"].includes(d.status)
       ));
@@ -112,6 +117,10 @@ export default function SelectCandidates() {
     setExtraInfo(m => ({ ...m, [candId]: { ...m[candId], [key]: val } }));
 
   const handleDeptPublish = async (dept, hodId, candidates) => {
+    if (!appearedSubmittedDepts[dept]) {
+  alert(`Cannot publish: ${dept} HOD has not submitted appeared marking yet.`);
+  return;
+}
   const payload = candidates.map(c => {
     const info   = extraInfo[c.id] || {};
     const status = selections[c.id] || "NOT_SELECTED";
@@ -198,7 +207,8 @@ export default function SelectCandidates() {
               ) : (
                 <button
                   onClick={() => handleDeptPublish(dept, hodId, candidates)}
-                  disabled={saving || !dofaApproved}
+                  disabled={saving || !dofaApproved || !appearedSubmittedDepts[dept]}
+                  title={!appearedSubmittedDepts[dept] ? "Appeared marking not submitted yet": ""}
                   className="bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1 rounded-lg text-xs font-semibold disabled:opacity-50 transition">
                   Publish & Lock
                 </button>

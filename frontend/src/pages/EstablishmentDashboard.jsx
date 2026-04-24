@@ -21,7 +21,7 @@ export default function EstablishmentDashboard() {
         ...dept,
         records: (dept.records || []).map(r => ({
           ...r,
-          selectionStatus:  selMap[r.candidate?.id]?.status || "SELECTED",
+          selectionStatus:  selMap[r.candidate?.id]?.status || "NOT_SELECTED",
         })),
       })).filter(dept => dept.records.length > 0);
       setDepts(merged);
@@ -63,9 +63,14 @@ export default function EstablishmentDashboard() {
       {depts.map(({ department, records }) => (
         <div key={department} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="bg-amber-600 px-5 py-3 flex items-center justify-between">
+          <div>
             <p className="text-white font-medium text-sm">{department}</p>
-            <span className="text-amber-100 text-xs">{records.length} candidate(s)</span>
+            {records[0]?.cycle && (
+              <p className="text-amber-200 text-xs mt-0.5 font-mono">{records[0].cycle}</p>
+            )}
           </div>
+          <span className="text-amber-100 text-xs">{records.length} candidate(s)</span>
+        </div>
           <div>
             {records.map(r => {
               const steps = [
@@ -94,7 +99,14 @@ export default function EstablishmentDashboard() {
                 <div className="px-5 py-3 flex items-center gap-4">
                     <div className="flex-1">
                     <p className="text-sm font-medium text-gray-800">{r.candidate?.fullName}</p>
-                    <p className="text-xs text-gray-400">{r.candidate?.email}</p>
+                    <p className="text-xs text-gray-400">
+                      {r.candidate?.email}
+                      {r.cycle && (
+                        <span className="ml-2 font-mono bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-gray-500">
+                          {r.cycle}
+                        </span>
+                      )}
+                    </p>
                     </div>
                     {r.notJoined && (
                     <span className="text-xs bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">

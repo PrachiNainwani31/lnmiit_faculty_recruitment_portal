@@ -258,7 +258,7 @@ exports.submitApplication = async (req, res) => {
           { captchaCode: captcha },
           { where: { id: referee.id } }
         );
-        const portalLink = `${frontendUrl}referee/${referee.id}`;
+        const portalLink = `${frontendUrl}/referee/${referee.id}`;
         const tmpl = templates.refereeInvitation({
           refereeName:   `${referee.salutation || ""} ${referee.name}`.trim(),
           candidateName: app.name,
@@ -315,7 +315,7 @@ exports.submitApplication = async (req, res) => {
         { captchaCode: captcha },
         { where: { id: referee.id } }
       );
-      const portalLink = `${frontendUrl}referee/${referee.id}`;
+      const portalLink = `${frontendUrl}/referee/${referee.id}`;
       const tmpl = templates.refereeInvitation({
         refereeName:   `${referee.salutation || ""} ${referee.name}`.trim(),
         candidateName: app.name,
@@ -360,7 +360,7 @@ exports.remindReferee = async (req, res) => {
     );
 
     const baseUrl = process.env.FRONTEND_URL || req.headers.origin || `${req.protocol}://${req.get("host")}`;
-    const portalLink = `${baseUrl}referee/${refereeId}`;
+    const portalLink = `${baseUrl}/referee/${refereeId}`;
 
     const tmpl = templates.refereeReminder({
       refereeName:   `${referee.salutation || ""} ${referee.name}`.trim(),

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import API from "../api/api";
 
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE = import.meta.env.VITE_API_URL;
 
 /* ── SELECTED / WAITLISTED tag ── */
 function SelectionTag({ status }) {
@@ -147,7 +147,14 @@ function CandidateRecord({ record, onRefresh }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-800">{c?.fullName}</p>
-          <p className="text-xs text-gray-400">{c?.email}</p>
+          <p className="text-xs text-gray-400">
+            {c.email}
+            {record.cycle && (
+              <span className="ml-2 font-mono bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-gray-500">
+                {record.cycle}
+              </span>
+            )}
+          </p>
         </div>
 
         {/*SELECTED / WAITLISTED tag */}
@@ -547,7 +554,6 @@ export default function EstablishmentPage() {
                   onClick={async () => {
                     if (!window.confirm("Close this cycle permanently? No further edits will be allowed by anyone.")) return;
                     const hodId = records[0]?.hodId;
-if (!hodId) return alert("No active cycle found");
                     if (!hodId) return alert("No active cycle found");
                     await API.post("/establishment/close-cycle", { hodId });
                     load();

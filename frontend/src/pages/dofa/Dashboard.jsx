@@ -312,7 +312,7 @@ export default function Dashboard() {
                   View Candidates
                 </button>
                 <button
-                  onClick={() => navigate(`/dofa/experts?dept=${d.department}`)}
+                  onClick={() => navigate(`/dofa/experts?hodId=${d.hodId}`)}   // ← d not dept, onClick not href
                   className="px-4 py-2 text-xs bg-gray-700 text-white rounded-lg hover:bg-gray-800 font-medium transition"
                 >
                   View Experts

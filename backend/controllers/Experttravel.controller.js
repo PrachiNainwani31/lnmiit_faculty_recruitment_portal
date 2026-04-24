@@ -4,7 +4,6 @@ const templates     = require("../utils/emailTemplates");
 const { Op }        = require("sequelize");
 const getCurrentCycle = require("../utils/getCurrentCycle");
 
-// ✅ No TRAVEL_EMAIL env var — query travel users from DB
 async function emailTravelUsers(tmpl) {
   const travelUsers = await User.findAll({ where: { role: "REGISTRAR_OFFICE" } });
   for (const u of travelUsers) {
@@ -67,51 +66,104 @@ function toNestedShape(t) {
   };
 }
 
+/* =========================================================
+   GET ALL EXPERT TRAVEL (active cycles only)
+
+   Rules:
+   - Only experts from non-closed cycles
+   - Deduplicate by (email + uploadedById): same HOD listing
+     the same expert across C1/C2 → kept once (latest cycle wins
+     so the travel record is attached to the most recent entry)
+   - Different HODs listing same expert → separate rows
+========================================================= */
 exports.getAllExpertTravel = async (req, res) => {
   try {
     const { RecruitmentCycle } = require("../models");
 
+    // Get active cycles with their HOD mapping
     const activeCycles = await RecruitmentCycle.findAll({
       attributes: ["cycle", "hodId"],
       where: { [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }] },
     });
+    if (!activeCycles.length) return res.json([]);
+
     const activeHodIds = new Set(activeCycles.map(c => c.hodId).filter(Boolean));
     const activeCycleStrings = [...new Set(activeCycles.map(c => c.cycle))];
+    // Map hodId → cycle string for active cycles
+    const hodActiveCycleMap = {};
+    activeCycles.forEach(c => { if (c.hodId) hodActiveCycleMap[c.hodId] = c.cycle; });
 
-    // ✅ Get HOD-uploaded experts from active cycles
-    const hodExperts = activeCycleStrings.length ? await Expert.findAll({
+    // HOD-uploaded experts — only from their active cycle
+    const hodExperts = await Expert.findAll({
       where: {
-        cycle: activeCycleStrings,
         uploadedById: { [Op.in]: [...activeHodIds] },
+        // Each HOD's expert must be in THAT HOD's active cycle
       },
-      include: [{ model: User, as: "uploadedBy", attributes: ["name", "department", "role"] }],
-    }) : [];
+      include: [{ model: User, as: "uploadedBy", attributes: ["id", "name", "department", "role"] }],
+      order: [["createdAt", "DESC"]],
+    });
 
-    // ✅ Get DOFA-manually-added experts from active cycles (uploadedById is DOFA user)
+    // Filter: only keep experts whose cycle matches their uploader HOD's active cycle
+    const validHodExperts = hodExperts.filter(e =>
+      hodActiveCycleMap[e.uploadedById] === e.cycle
+    );
+
+    // DOFA-manually-added experts from active cycles
     const dofaUsers = await User.findAll({
       where: { role: { [Op.in]: ["DOFA", "ADOFA", "DOFA_OFFICE"] } },
       attributes: ["id"],
     });
     const dofaUserIds = dofaUsers.map(u => u.id);
 
-    const dofaExperts = activeCycleStrings.length && dofaUserIds.length ? await Expert.findAll({
+    const dofaExperts = dofaUserIds.length ? await Expert.findAll({
       where: {
         cycle: activeCycleStrings,
         uploadedById: { [Op.in]: dofaUserIds },
       },
-      include: [{ model: User, as: "uploadedBy", attributes: ["name", "department", "role"] }],
+      include: [{ model: User, as: "uploadedBy", attributes: ["id", "name", "department", "role"] }],
+      order: [["createdAt", "DESC"]],
     }) : [];
 
-    const allExperts = [...hodExperts, ...dofaExperts];
+    const combined = [...validHodExperts, ...dofaExperts];
 
+    // Get travel records
     const travels = await ExpertTravel.findAll();
     const travelMap = {};
     travels.forEach(t => { travelMap[t.expertId] = t; });
 
-    const result = allExperts.map(e => ({
-      expert: e,
-      travel: toNestedShape(travelMap[e.id]) || null,
-    }));
+    // ── Merge same expert (email) uploaded by multiple departments ──
+    // Key: email (case-insensitive) — group all uploaders together
+    const emailMap = {};
+    combined.forEach(e => {
+      const key = e.email.toLowerCase();
+      if (!emailMap[key]) {
+        emailMap[key] = {
+          expert: e,
+          departments: [],
+          expertIds: [],  // all expert IDs for this email (for travel lookup)
+        };
+      }
+      const dept = e.uploadedBy?.department || e.uploadedByDept || "DOFA";
+      if (!emailMap[key].departments.includes(dept)) {
+        emailMap[key].departments.push(dept);
+      }
+      emailMap[key].expertIds.push(e.id);
+    });
+
+    const result = Object.values(emailMap).map(({ expert, departments, expertIds }) => {
+      // Use travel from first expert ID that has one
+      let travel = null;
+      for (const id of expertIds) {
+        if (travelMap[id]) { travel = toNestedShape(travelMap[id]); break; }
+      }
+      return {
+        expert: {
+          ...expert.toJSON(),
+          uploadedByDepts: departments,  // ← array of dept names e.g. ["CSE", "CCE"]
+        },
+        travel,
+      };
+    });
 
     res.json(result);
   } catch (err) {
@@ -119,7 +171,49 @@ exports.getAllExpertTravel = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-/* ── Save confirmation + travel details (#10a) ── */
+
+/* =========================================================
+   GET CLOSED CYCLE EXPERT TRAVEL (for logs)
+
+   Returns ALL experts from closed cycles — not filtered by
+   quote status. The caller can filter by quote if needed.
+========================================================= */
+exports.getClosedCycleTravel = async (req, res) => {
+  try {
+    const { RecruitmentCycle } = require("../models");
+
+    const closedCycles = await RecruitmentCycle.findAll({
+      where: { isClosed: true },
+      attributes: ["cycle"],
+    });
+    if (!closedCycles.length) return res.json([]);
+
+    const closedCycleStrings = closedCycles.map(c => c.cycle);
+
+    const experts = await Expert.findAll({
+      where: { cycle: { [Op.in]: closedCycleStrings } },
+      include: [{ model: User, as: "uploadedBy", attributes: ["name", "department", "role"] }],
+      order: [["createdAt", "ASC"]],
+    });
+
+    const travels = await ExpertTravel.findAll();
+    const travelMap = {};
+    travels.forEach(t => { travelMap[t.expertId] = t; });
+
+    // Return ALL closed cycle experts — no quote filter
+    const result = experts.map(e => ({
+      expert: e,
+      travel: toNestedShape(travelMap[e.id]) || null,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("getClosedCycleTravel:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ── Save confirmation + travel details ── */
 exports.saveConfirmation = async (req, res) => {
   try {
     const { expertId } = req.params;
@@ -158,9 +252,8 @@ exports.saveConfirmation = async (req, res) => {
       { where: { expertId, cycle } }
     );
 
-    const doc    = await getOrCreate(expertId);
+    const doc = await getOrCreate(expertId);
 
-    // Email #10a — send travel details to Travel portal users (Offline only)
     if (data.presenceStatus === "Offline" && data.confirmed) {
       const tmpl = templates.travelDetailsToTravel({
         expertName:    expert.fullName,
@@ -183,7 +276,7 @@ exports.saveConfirmation = async (req, res) => {
   }
 };
 
-/* ── Submit quote (#10b) — email to DOFA ── */
+/* ── Submit quote ── */
 exports.submitQuote = async (req, res) => {
   try {
     const { expertId } = req.params;
@@ -225,16 +318,15 @@ exports.submitQuote = async (req, res) => {
   }
 };
 
-/* ── Approve quote (#10c) — email to Travel users ── */
+/* ── Approve quote ── */
 exports.approveQuote = async (req, res) => {
   try {
     const { expertId } = req.params;
     const { status, rejectionNote } = req.body;
 
-    const expert = await Expert.findByPk(expertId);  // ← move up
-    const cycle  = expert?.cycle;                     // ← move up
-
-    const existing = await ExpertTravel.findOne({ where: { expertId, cycle } }); // ← now valid
+    const expert   = await Expert.findByPk(expertId);
+    const cycle    = expert?.cycle;
+    const existing = await ExpertTravel.findOne({ where: { expertId, cycle } });
 
     await ExpertTravel.update(
       {
@@ -262,7 +354,7 @@ exports.approveQuote = async (req, res) => {
   }
 };
 
-/* ── Upload ticket (#10d) — email to DOFA Office ── */
+/* ── Upload ticket ── */
 exports.uploadTicket = async (req, res) => {
   try {
     const { expertId } = req.params;
@@ -271,7 +363,7 @@ exports.uploadTicket = async (req, res) => {
     const cycle  = expert?.cycle;
     await ExpertTravel.update(
       { ticketPath: req.file.path, ticketUploadedAt: new Date() },
-      { where: { expertId, cycle} }
+      { where: { expertId, cycle } }
     );
 
     const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
@@ -291,7 +383,7 @@ exports.uploadTicket = async (req, res) => {
   }
 };
 
-/* ── Upload invoice — no email required per list ── */
+/* ── Upload invoice ── */
 exports.uploadInvoice = async (req, res) => {
   try {
     const { expertId } = req.params;
@@ -310,7 +402,7 @@ exports.uploadInvoice = async (req, res) => {
   }
 };
 
-/* ── Save pickup/drop (#10e) — email to Travel users ── */
+/* ── Save pickup/drop ── */
 exports.savePickupDrop = async (req, res) => {
   try {
     const { expertId } = req.params;
@@ -337,7 +429,7 @@ exports.savePickupDrop = async (req, res) => {
   }
 };
 
-/* ── Save driver info (#10f) — email to DOFA Office ── */
+/* ── Save driver info ── */
 exports.saveDriverInfo = async (req, res) => {
   try {
     const { expertId } = req.params;

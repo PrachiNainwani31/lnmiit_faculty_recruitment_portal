@@ -15,6 +15,7 @@ const DEPARTMENTS = [
 
 const ROLES = [
   { value: "DOFA",          label: "Dean of Faculty Affairs(DoFA)"              },
+  { value: "ADOFA",            label: "Assistant Dean of Faculty Affairs (ADoFA)" },
   { value: "DOFA_OFFICE",   label: "DoFA Office"       },
   { value: "HOD",           label: "Head of Department(HoD)"               },
   { value: "ESTABLISHMENT", label: "Establishment"     },

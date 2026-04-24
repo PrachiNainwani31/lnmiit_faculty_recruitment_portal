@@ -13,12 +13,12 @@ const NAV_ITEMS = [
 ];
 
 const STATUS_CONFIG = {
-  DRAFT:              { label: "Draft",                       dot: "bg-gray-400",   badge: "bg-gray-100   text-gray-600   border-gray-300"   },
-  SUBMITTED:          { label: "Submitted",                   dot: "bg-blue-400",   badge: "bg-blue-50    text-blue-700   border-blue-200"   },
-  QUERY:              { label: "Query from DOFA",             dot: "bg-amber-400",  badge: "bg-amber-50   text-amber-700  border-amber-200"  },
-  APPROVED:           { label: "Approved",                    dot: "bg-green-400",  badge: "bg-green-50   text-green-700  border-green-200"  },
-  INTERVIEW_SET:      { label: "Interview Scheduled",         dot: "bg-indigo-400", badge: "bg-indigo-50  text-indigo-700 border-indigo-200" },
-  APPEARED_SUBMITTED: { label: "Appeared Submitted",          dot: "bg-violet-400", badge: "bg-violet-50  text-violet-700 border-violet-200" },
+  DRAFT:              { label: "Draft",                dot: "bg-gray-400",   badge: "bg-gray-100   text-gray-600   border-gray-300",   headerBg: "bg-gray-100   text-gray-700"   },
+  SUBMITTED:          { label: "Submitted",            dot: "bg-blue-400",   badge: "bg-blue-50    text-blue-700   border-blue-200",   headerBg: "bg-blue-50    text-blue-700"   },
+  QUERY:              { label: "Query from DOFA",      dot: "bg-amber-400",  badge: "bg-amber-50   text-amber-700  border-amber-200",  headerBg: "bg-amber-50   text-amber-700"  },
+  APPROVED:           { label: "Approved",             dot: "bg-green-400",  badge: "bg-green-50   text-green-700  border-green-200",  headerBg: "bg-green-50   text-green-700"  },
+  INTERVIEW_SET:      { label: "Interview Scheduled",  dot: "bg-indigo-400", badge: "bg-indigo-50  text-indigo-700 border-indigo-200", headerBg: "bg-indigo-50  text-indigo-700" },
+  APPEARED_SUBMITTED: { label: "Appeared Submitted",   dot: "bg-violet-400", badge: "bg-violet-50  text-violet-700 border-violet-200", headerBg: "bg-violet-50  text-violet-700" },
 };
 
 export default function HodLayout() {
@@ -42,6 +42,18 @@ export default function HodLayout() {
   }, []);
 
   const status = STATUS_CONFIG[cycle?.status] || STATUS_CONFIG.DRAFT;
+
+  // Parse cycle string like "2026-27-C2" → extract cycle number
+  const cycleNumber = cycle?.cycle
+    ? (() => {
+        const match = cycle.cycle.match(/-C(\d+)$/);
+        return match ? `Cycle ${match[1]}` : cycle.cycle;
+      })()
+    : null;
+
+  const academicYear = cycle?.cycle
+    ? cycle.cycle.replace(/-C\d+$/, "")
+    : null;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -72,7 +84,7 @@ export default function HodLayout() {
           </div>
         )}
 
-        {/* Interview dates — shown when DOFA has set them */}
+        {/* Interview dates */}
         {(cycle?.interviewDate || cycle?.teachingInteractionDate) && (
           <div className="mx-4 mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 space-y-2">
             {cycle.teachingInteractionDate && (
@@ -151,20 +163,51 @@ export default function HodLayout() {
         {/* Frozen banner */}
         {isFrozen && (
           <div className="bg-amber-50 border-b border-amber-200 text-amber-700 text-xs text-center py-2 font-medium">
-             Cycle submitted — editing is locked until DoFA responds
+            Cycle submitted — editing is locked until DoFA responds
           </div>
         )}
 
-        {/* Interview-set banner — prompt HOD to mark appeared */}
+        {/* Interview-set banner */}
         {cycle?.status === "INTERVIEW_SET" && !isFrozen && (
           <div className="bg-indigo-50 border-b border-indigo-200 text-indigo-700 text-xs text-center py-2 font-medium">
-            📅 Interview scheduled by DOFA — please mark appeared candidates and submit
+            Interview scheduled by DOFA — please mark appeared candidates and submit
           </div>
         )}
 
-        {/* Topbar */}
+        {/* ── Topbar — always shows cycle info ── */}
         <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 shadow-sm">
-          <div />
+
+          {/* LEFT: Cycle number + year + status pill */}
+          <div className="flex items-center gap-3">
+            {cycle ? (
+              <>
+                {/* Academic year */}
+                <span className="text-xs text-gray-400 font-medium hidden sm:block">
+                  {academicYear}
+                </span>
+
+                {/* Cycle number — prominent pill */}
+                {cycleNumber && (
+                  <span className="font-mono text-xs font-bold px-3 py-1 rounded-full bg-blue-600 text-white shadow-sm">
+                    {cycleNumber}
+                  </span>
+                )}
+
+                {/* Divider */}
+                <span className="text-gray-200 hidden sm:block">|</span>
+
+                {/* Status pill */}
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${status.badge}`}>
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${status.dot}`} />
+                  {status.label}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-gray-300">Loading cycle…</span>
+            )}
+          </div>
+
+          {/* RIGHT: Notification bell */}
           <div className="flex items-center gap-3">
             <NotificationBell />
           </div>

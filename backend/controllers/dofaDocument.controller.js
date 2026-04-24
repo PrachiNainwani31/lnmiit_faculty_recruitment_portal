@@ -109,9 +109,13 @@ const applications = await CandidateApplication.findAll({
 const filteredApplications = applications.filter(app => {
   const hodId = emailToHodId[app.email];
   if (!hodId) return false;
-  // Check this specific HOD's cycle is active
   const hodCycle = activeCycles.find(c => c.hodId === hodId);
-  return !!hodCycle; // only include if HOD has an active (non-closed) cycle
+  if (!hodCycle) return false;
+
+  // ── KEY FIX: if the application was submitted BEFORE this active cycle
+  //    was created, it belongs to a previous (now closed) cycle — exclude it.
+  if (new Date(app.createdAt) < new Date(hodCycle.createdAt)) return false;
+  return true;
 });
     // ← rest is exactly your existing deptMap building code, unchanged:
     const deptMap = {};
@@ -119,8 +123,15 @@ const filteredApplications = applications.filter(app => {
       .filter(app => app.name || app.email)
       .forEach(app => {
         const dept = app.department || "General";
-        if (!deptMap[dept]) deptMap[dept] = { department: dept, candidates: [] };
-
+        if (!deptMap[dept]) {
+          const hodId = emailToHodId[app.email];
+          const hodCycle = activeCycles.find(c => c.hodId === hodId);
+          deptMap[dept] = {
+            department: dept,
+            cycle: hodCycle?.cycle || null,     // e.g. "2024-25 Cycle 2"
+            candidates: [],
+          };
+        }
         const clean = (p) => {
           if (!p) return null;
           if (typeof p === "string") return p.replace(/^\.\//, "");
@@ -293,5 +304,118 @@ exports.downloadByCandidate = async (req, res) => {
   } catch (err) {
     console.error("downloadByCandidate:", err);
     if (!res.headersSent) res.status(500).json({ message: "Download failed" });
+  }
+};
+
+exports.getClosedCycleDocs = async (req, res) => {
+  try {
+    const { RecruitmentCycle, Candidate } = require("../models");
+
+    /* ── Fetch all CLOSED cycles ── */
+    const closedCycles = await RecruitmentCycle.findAll({
+      where: { isClosed: true },
+      order: [["createdAt", "DESC"]],
+    });
+    if (!closedCycles.length) return res.json([]);
+
+    const closedCycleStrings = closedCycles.map(c => c.cycle);
+    const closedHodIds = [...new Set(closedCycles.map(c => c.hodId).filter(Boolean))];
+
+    /* ── Get candidate emails that belong to closed cycles ── */
+    const closedCandidates = await Candidate.findAll({
+      where: { cycle: closedCycleStrings, hodId: closedHodIds },
+      attributes: ["email", "hodId"],
+    });
+
+    const emailToHodId = {};
+    closedCandidates.forEach(c => { if (c.email) emailToHodId[c.email] = c.hodId; });
+    const candidateEmails = Object.keys(emailToHodId);
+    if (!candidateEmails.length) return res.json([]);
+
+    /* ── Fetch their applications ── */
+    const applications = await CandidateApplication.findAll({
+      where: {
+        email: { [Op.in]: candidateEmails },
+        status: { [Op.in]: ["SUBMITTED", "QUERY"] },
+      },
+      include: [
+        { model: CandidateReferee,    as: "referees",    required: false },
+        { model: CandidateExperience, as: "experiences", required: false },
+      ],
+    });
+
+    const clean = (p) => {
+      if (!p) return null;
+      if (typeof p === "string") return p.replace(/^\.\//, "");
+      if (typeof p === "object") {
+        const fp = p.path || p.file || null;
+        return fp ? fp.replace(/^\.\//, "") : null;
+      }
+      return null;
+    };
+
+    /* ── Group by cycle ── */
+    const cycleMap = {};
+    applications.forEach(app => {
+      const hodId    = emailToHodId[app.email];
+      const hodCycle = closedCycles.find(c => c.hodId === hodId);
+      if (!hodCycle) return;
+
+      const key = hodCycle.cycle;
+      if (!cycleMap[key]) {
+        cycleMap[key] = {
+          cycle:      hodCycle.cycle,
+          department: app.department || "General",
+          closedAt:   hodCycle.updatedAt || null,
+          candidates: [],
+        };
+      }
+
+      cycleMap[key].candidates.push({
+        id:        app.id,
+        name:      app.name  || "—",
+        email:     app.email || "—",
+        phone:     app.phone || "—",
+        status:    app.status,
+        verdicts:  app.verdicts || {},
+        documents: {
+          cv:                clean(app.docCv),
+          teachingStatement: clean(app.docTeachingStatement),
+          researchStatement: clean(app.docResearchStatement),
+          marks10:           clean(app.docMarks10),
+          marks12:           clean(app.docMarks12),
+          graduation:        clean(app.docGraduation),
+          postGraduation:    clean(app.docPostGraduation),
+          phdCourseWork:     clean(app.docPhdCourseWork),
+          phdProvisional:    clean(app.docPhdProvisional),
+          phdDegree:         clean(app.docPhdDegree),
+          thesisSubmission:  clean(app.docThesisSubmission),
+          dateOfDefense:     app.docDateOfDefense || null,
+          researchExpCerts:  Array.isArray(app.docResearchExpCerts) ? app.docResearchExpCerts.map(clean).filter(Boolean) : [],
+          teachingExpCerts:  Array.isArray(app.docTeachingExpCerts) ? app.docTeachingExpCerts.map(clean).filter(Boolean) : [],
+          industryExpCerts:  Array.isArray(app.docIndustryExpCerts) ? app.docIndustryExpCerts.map(clean).filter(Boolean) : [],
+          bestPapers:        Array.isArray(app.docBestPapers)        ? app.docBestPapers.map(clean).filter(Boolean)        : [],
+          postDocDocs:       Array.isArray(app.docPostDocDocs)       ? app.docPostDocDocs.map(clean).filter(Boolean)       : [],
+          salarySlips:       Array.isArray(app.docSalarySlips)       ? app.docSalarySlips.map(clean).filter(Boolean)       : [],
+          otherDocs: Array.isArray(app.docOtherDocs)
+            ? app.docOtherDocs.map(item => {
+                if (!item) return null;
+                if (typeof item === "string") return { file: clean(item) };
+                return { name: item.name || null, file: clean(item.file || item.path || null) };
+              }).filter(i => i && i.file)
+            : [],
+        },
+        referees: (app.referees || []).map(r => ({
+          id: r.id, name: r.name, email: r.email,
+          designation: r.designation, institute: r.institute,
+          status: r.status, letter: r.letter, submittedAt: r.submittedAt,
+        })),
+      });
+    });
+
+    res.json(Object.values(cycleMap));
+  } catch (err) {
+    console.error("getClosedCycleDocs error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

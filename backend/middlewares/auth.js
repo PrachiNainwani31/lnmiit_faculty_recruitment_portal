@@ -13,13 +13,11 @@ const auth = (roles = []) => {
       const token = header.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // ❌ findById → ✅ findByPk
       let user = await User.findByPk(decoded.id);
 
-      /* Allow hardcoded users */
       if (!user) {
         user = {
-          id: decoded.id,   // ✅ _id → id
+          id: decoded.id,
           role: decoded.role,
           active: true
         };

@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import API from "../../api/api";
 
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE = import.meta.env.VITE_API_URL;
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "—";
 const fmtTime = (t) => t ? t.slice(0,5) : "—";

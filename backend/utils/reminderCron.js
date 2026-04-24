@@ -1,7 +1,7 @@
 const cron = require("node-cron");
 const { PortalDeadline, CandidateApplication, CandidateReferee } = require("../models");
 const { sendEmail } = require("./emailSender");
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URL = process.env.FRONTEND_URL ;
 
 // Runs every day at 9am
 cron.schedule("0 9 * * *", async () => {
