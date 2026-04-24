@@ -91,20 +91,12 @@ export default function Login() {
     <div className="w-full max-w-xl">
 
       {/* ── Portal header ── (unchanged) */}
-      <div className="flex items-center gap-4 mb-5">
-        <img src={logo} alt="LNMIIT" className="w-16 h-16 object-contain" />
-        <div>
-          <p className="text-gray-400 text-[13px] uppercase tracking-[0.18em] font-medium leading-tight">
-            The LNM Institute of Information Technology
-          </p>
-          <h1 className="text-gray-800 text-3xl font-bold leading-tight">
-            Faculty Recruitment and
-          </h1>
-          <h1 className="text-gray-800 text-3xl font-bold leading-tight">
-            Onboarding Portal
-          </h1>
-        </div>
-      </div>
+      <div className="flex flex-col items-center mb-5">
+  <img src={logo} alt="LNMIIT" className="w-40 h-20 object-contain" />
+  <h1 className="text-orange-700 text-2xl font-bold leading-tight text-center mt-3">
+    Faculty Recruitment & Onboarding Portal
+  </h1>
+</div>
 
       {/* ── Login card ── */}
       <div className="bg-gray rounded-2xl shadow-2xl w-full px-8 py-8">
