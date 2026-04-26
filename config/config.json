@@ -1,21 +1,21 @@
 {
   "development": {
     "username": "root",
-    "password": "iampourush233",
+    "password": "prachi3101sql@",
     "database": "recruitment_db",
     "host": "127.0.0.1",
     "dialect": "mysql"
   },
   "test": {
     "username": "root",
-    "password": "iampourush233",
+    "password": "prachi3101sql@",
     "database": "recruitment_db",
     "host": "127.0.0.1",
     "dialect": "mysql"
   },
   "production": {
     "username": "root",
-    "password": "iampourush233",
+    "password": "prachi3101sql@",
     "database": "recruitment_db",
     "host": "127.0.0.1",
     "dialect": "mysql"

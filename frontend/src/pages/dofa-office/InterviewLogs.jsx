@@ -294,7 +294,7 @@ export default function InterviewLogs() {
 
       {filtered.length === 0 && (
         <div className="bg-white rounded-xl border p-14 text-center text-gray-400">
-          <p>No records yet. Appears once DOFA sets interview dates and HODs submit appeared data.</p>
+          <p>No records yet. Appears once DoFA sets interview dates and HoDs submit appeared data.</p>
         </div>
       )}
 

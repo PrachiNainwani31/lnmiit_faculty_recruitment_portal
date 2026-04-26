@@ -16,19 +16,19 @@ const {
 const auth   = require("../middlewares/auth");
 const router = express.Router();
 
-router.get("/current",        auth(["HOD","DOFA","ADOFA","ADMIN","DOFA_OFFICE"]), getCurrentCycle);
-router.post("/submit",        auth(["HOD"]),                        submitToDofa);
-router.post("/query",         auth(["DOFA","ADOFA"]),               raiseQuery);
-router.post("/approve",       auth(["DOFA","ADOFA"]),               approveCycle);
-router.get("/dofa-dashboard", auth(["DOFA","ADOFA","DOFA_OFFICE"]), getDofaDashboard);
-router.get("/dofa-office-dashboard", auth(["DOFA_OFFICE","DOFA","ADOFA"]), getDofaOfficeDashboard);
+router.get("/current",        auth(["HoD","DoFA","ADoFA","ADMIN","DoFA_OFFICE"]), getCurrentCycle);
+router.post("/submit",        auth(["HoD"]),                        submitToDofa);
+router.post("/query",         auth(["DoFA","ADoFA"]),               raiseQuery);
+router.post("/approve",       auth(["DoFA","ADoFA"]),               approveCycle);
+router.get("/dofa-dashboard", auth(["DoFA","ADoFA","DoFA_OFFICE"]), getDofaDashboard);
+router.get("/dofa-office-dashboard", auth(["DoFA_OFFICE","DoFA","ADoFA"]), getDofaOfficeDashboard);
 
-// ── NEW: DOFA sets teaching-interaction + interview dates ──────────────
+// ── NEW: DoFA sets teaching-interaction + interview dates ──────────────
 // Body: { hodId, teachingInteractionDate: "YYYY-MM-DD", interviewDate: "YYYY-MM-DD" }
-// Setting interviewDate unlocks HOD's "Mark Appeared" toggle
-router.post("/set-dates",     auth(["DOFA","ADOFA"]),               setInterviewDates);
-router.post("/submit-appeared", auth(["HOD"]),                        submitAppearedToDofa);
-router.post("/initiate", auth(["HOD"]), initiateCycle);
-router.get("/next-cycle-number", auth(["HOD"]), getNextCycleNumber);
+// Setting interviewDate unlocks HoD's "Mark Appeared" toggle
+router.post("/set-dates",     auth(["DoFA","ADoFA"]),               setInterviewDates);
+router.post("/submit-appeared", auth(["HoD"]),                        submitAppearedToDofa);
+router.post("/initiate", auth(["HoD"]), initiateCycle);
+router.get("/next-cycle-number", auth(["HoD"]), getNextCycleNumber);
 
 module.exports = router;

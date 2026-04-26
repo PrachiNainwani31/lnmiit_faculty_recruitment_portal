@@ -92,7 +92,7 @@ exports.uploadReferenceLetter = async (req, res) => {
     await CandidateReferee.update(updateData, { where: { id: refereeId } });
 
     const app = await CandidateApplication.findByPk(referee.applicationId);
-    const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
+    const dofaOfficeUsers = await User.findAll({ where: { role: "DoFA_OFFICE" } });
     const tmpl = templates.refereeSubmitted({
       refereeName:   referee.name,
       candidateName: app?.name       || "—",

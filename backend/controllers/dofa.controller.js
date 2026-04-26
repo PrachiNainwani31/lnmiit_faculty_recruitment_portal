@@ -7,8 +7,8 @@ exports.downloadDepartmentResumes = async (req, res) => {
     const { User, RecruitmentCycle } = require("../models");
     const department = req.params.department.toUpperCase();
 
-    const hod = await User.findOne({ where: { role: "HOD", department } });
-    if (!hod) return res.status(404).json({ message: "No HOD found for department" });
+    const hod = await User.findOne({ where: { role: "HoD", department } });
+    if (!hod) return res.status(404).json({ message: "No HoD found for department" });
 
     const latestCycle = await RecruitmentCycle.findOne({
       where: { hodId: hod.id },

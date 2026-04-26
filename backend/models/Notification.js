@@ -8,12 +8,12 @@ const Notification = sequelize.define(
     cycle:        { type: DataTypes.STRING(20), allowNull: false },
     role: {
       type: DataTypes.ENUM(
-        "HOD","DOFA","ADMIN","ADOFA","DOFA_OFFICE",
+        "HoD","DoFA","ADMIN","ADoFA","DoFA_OFFICE",
         "ESTABLISHMENT","LUCS","ESTATE","REGISTRAR_OFFICE","CANDIDATE"
       ),
       allowNull: false,
     },
-    // ✅ NEW: target a specific user (e.g. a specific HOD or candidate)
+    // ✅ NEW: target a specific user (e.g. a specific HoD or candidate)
     targetUserId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, defaultValue: null },
     title:   { type: DataTypes.STRING(300), allowNull: false },
     message: { type: DataTypes.TEXT,        allowNull: false },

@@ -17,7 +17,7 @@ export function EstablishmentLayout() {
       <aside className="w-60 bg-[#7c4a03] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <p className="text-white font-semibold text-sm">Establishment</p>
-          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment and Onboarding Portal</p>
+          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment & Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
           <NavLink to="/establishment" end className={({ isActive }) => mk(isActive)}>
@@ -59,7 +59,7 @@ export function EstateLayout() {
       <aside className="w-60 bg-[#6b1a5a] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <p className="text-white font-semibold text-sm">Estate Section</p>
-          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment and Onboarding Portal</p>
+          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment & Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
           <NavLink to="/estate" end className={({ isActive }) => mk(isActive)}>Office Handovers</NavLink>
@@ -91,7 +91,7 @@ export function LucsLayout() {
       <aside className="w-60 bg-[#085041] flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <p className="text-white font-semibold text-sm">LUCS</p>
-          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment and Onboarding Portal</p>
+          <p className="text-white/50 text-xs mt-0.5">LNMIIT Faculty Recruitment & Onboarding Portal</p>
         </div>
         <nav className="flex-1 py-3 space-y-0.5">
           <NavLink to="/lucs" end className={({ isActive }) => mk(isActive)}>IT Asset Assignment</NavLink>

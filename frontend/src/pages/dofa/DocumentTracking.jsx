@@ -82,10 +82,10 @@ We noticed that the following document(s) require your attention:
 
 ${issues.map(d => `• ${d.label} — ${candidate.verdicts?.[d.key]?.status}`).join("\n")}
 
-Please rectify the above at the earliest on the LNMIIT Faculty Recruitment and onBoarding Portal.
+Please rectify the above at the earliest on the LNMIIT Faculty Recruitment & Onboarding Portal.
 
 Best regards,
-DOFA Office
+DoFA Office
 LNMIIT`
   );
 
@@ -258,7 +258,7 @@ function CandidateRow({ candidate, onVerdictChange, onReminderClick }) {
                 <th className="pb-2 pr-4 w-8">#</th>
                 <th className="pb-2 pr-4">Document</th>
                 <th className="pb-2 pr-4">Uploaded File</th>
-                <th className="pb-2 pr-4 w-48">DOFA Verdict</th>
+                <th className="pb-2 pr-4 w-48">DoFA Verdict</th>
                 <th className="pb-2">Remark</th>
               </tr>
             </thead>

@@ -68,7 +68,7 @@ router.post("/register", async (req, res) => {
       email,
       password,
       role,
-      department: role === "HOD" ? department : undefined,
+      department: role === "HoD" ? department : undefined,
       active: true,
     });
  

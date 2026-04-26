@@ -20,7 +20,7 @@ exports.getCurrentCycle = async (req, res) => {
 };
 
 /* ════════════════════════════════════
-   SUBMIT TO DOFA
+   SUBMIT TO DoFA
 ════════════════════════════════════ */
 exports.submitToDofa = async (req, res) => {
   try {
@@ -50,7 +50,7 @@ exports.submitToDofa = async (req, res) => {
       where: { cycle: cycle.cycle, uploadedById: req.user.id },
     });
 
-    const dofaUsers = await User.findAll({ where: { role: "DOFA" } });
+    const dofaUsers = await User.findAll({ where: { role: "DoFA" } });
 
     // ── Send emails ONCE (not twice) ───────────────────────────────
     if (isResubmit) {
@@ -63,9 +63,9 @@ exports.submitToDofa = async (req, res) => {
 
       await createNotification({
         cycle: cycle.cycle,
-        role: "DOFA",
-        title: "HOD Resubmitted After Query",
-        message: `${hod?.department} HOD has addressed the query and resubmitted.`,
+        role: "DoFA",
+        title: "HoD Resubmitted After Query",
+        message: `${hod?.department} HoD has addressed the query and resubmitted.`,
         type: "STATUS",
       });
     } else {
@@ -82,16 +82,16 @@ exports.submitToDofa = async (req, res) => {
 
       await createNotification({
         cycle: cycle.cycle,
-        role: "DOFA",
+        role: "DoFA",
         title: "Cycle Submitted",
-        message: `${hod?.department} HOD submitted candidate and expert lists.`,
+        message: `${hod?.department} HoD submitted candidate and expert lists.`,
         type: "STATUS",
       });
     }
 
     log({
       user: req.user,
-      action: "CYCLE_SUBMITTED_TO_DOFA",
+      action: "CYCLE_SUBMITTED_TO_DoFA",
       entity: "RecruitmentCycle",
       entityId: cycle.id,
       description: `Cycle submitted to DoFA for department ${hod?.department || req.user.department}`,
@@ -108,7 +108,7 @@ exports.submitToDofa = async (req, res) => {
 };
 
 /* ════════════════════════════════════
-   SUBMIT APPEARED CANDIDATES TO DOFA
+   SUBMIT APPEARED CANDIDATES TO DoFA
 ════════════════════════════════════ */
 exports.submitAppearedToDofa = async (req, res) => {
   try {
@@ -125,9 +125,9 @@ exports.submitAppearedToDofa = async (req, res) => {
     const hod = await User.findByPk(req.user.id);
     await createNotification({
       cycle:   cycle.cycle,
-      role:    "DOFA",
+      role:    "DoFA",
       title:   "Appeared Candidates Submitted",
-      message: `HOD (${hod?.department}) has submitted appeared candidate data.`,
+      message: `HoD (${hod?.department}) has submitted appeared candidate data.`,
       type:    "STATUS",
     });
 
@@ -140,7 +140,7 @@ exports.submitAppearedToDofa = async (req, res) => {
     if (submittedCount === activeCycles.length && activeCycles.length > 0) {
       await createNotification({
         cycle:   cycle.cycle,
-        role:    "DOFA",
+        role:    "DoFA",
         title:   "All Departments Submitted Appeared Data",
         message: `All ${submittedCount} departments submitted appeared data.`,
         type:    "STATUS",
@@ -173,7 +173,7 @@ exports.raiseQuery = async (req, res) => {
       where: { hodId, status: "SUBMITTED" },
       order: [["createdAt", "DESC"]],
     });
-    if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" });
+    if (!cycle) return res.status(404).json({ message: "Cycle not found for this HoD" });
 
     await RecruitmentCycle.update(
       { status: "QUERY", isFrozen: false, dofaComment: comment },
@@ -182,7 +182,7 @@ exports.raiseQuery = async (req, res) => {
 
     const hod = await User.findByPk(hodId);
     await Comment.create({
-      message: comment, fromRole: "DOFA", toRole: "HOD",
+      message: comment, fromRole: "DoFA", toRole: "HoD",
       cycle: cycle.cycle, targetUserId: hodId, fromDepartment: toCode(hod?.department)
     });
 
@@ -196,8 +196,8 @@ exports.raiseQuery = async (req, res) => {
     }
 
     await createNotification({
-      cycle: cycle.cycle, role: "HOD",
-      title: "Query Raised by DOFA", message: comment,
+      cycle: cycle.cycle, role: "HoD",
+      title: "Query Raised by DoFA", message: comment,
       type: "COMMENT", targetUserId: hodId,
     });
 
@@ -206,7 +206,7 @@ exports.raiseQuery = async (req, res) => {
       action:      "CYCLE_QUERY_RAISED",
       entity:      "RecruitmentCycle",
       entityId:    cycle.id,
-      description: `Query raised for cycle ${cycle.id} by DOFA`,
+      description: `Query raised for cycle ${cycle.id} by DoFA`,
       req,
     });
 
@@ -227,7 +227,7 @@ exports.approveCycle = async (req, res) => {
       where: { hodId, status: "SUBMITTED" },
       order: [["createdAt", "DESC"]],
     });
-    if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" });
+    if (!cycle) return res.status(404).json({ message: "Cycle not found for this HoD" });
 
     await RecruitmentCycle.update(
       { status: "APPROVED", isFrozen: true },
@@ -238,7 +238,7 @@ exports.approveCycle = async (req, res) => {
 
     await createNotification({
       cycle:   cycle.cycle,
-      role:    "HOD",
+      role:    "HoD",
       title:   "Cycle Approved",
       message: "DoFA has approved your submission.",
       type:    "STATUS",
@@ -276,7 +276,7 @@ exports.setInterviewDates = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    if (!cycle) return res.status(404).json({ message: "No approved cycle found for this HOD" });
+    if (!cycle) return res.status(404).json({ message: "No approved cycle found for this HoD" });
     if (!hodId)
       return res.status(400).json({ message: "hodId required" });
 
@@ -293,9 +293,9 @@ exports.setInterviewDates = async (req, res) => {
     if (interviewDate) {
       await createNotification({
         cycle:   cycle.cycle,
-        role:    "HOD",
+        role:    "HoD",
         title:   "Interview Date Set",
-        message: `Interview scheduled on ${interviewDate}. Please mark appeared candidates and submit to DOFA.`,
+        message: `Interview scheduled on ${interviewDate}. Please mark appeared candidates and submit to DoFA.`,
         type:    "STATUS",
         targetUserId: hodId,
       });
@@ -324,7 +324,7 @@ exports.setInterviewDates = async (req, res) => {
 ════════════════════════════════════ */
 exports.unfreezeCycle = async (req, res) => {
   const cycle = await getCurrentCycle(req.user.id);
-  if (!cycle) return res.status(404).json({ message: "Cycle not found for this HOD" });
+  if (!cycle) return res.status(404).json({ message: "Cycle not found for this HoD" });
   await RecruitmentCycle.update(
     { status: "DRAFT", isFrozen: false },
     { where: { id: cycle.id } }
@@ -333,7 +333,7 @@ exports.unfreezeCycle = async (req, res) => {
 };
 
 /* ════════════════════════════════════
-   DOFA DASHBOARD
+   DoFA DASHBOARD
 ════════════════════════════════════ */
 exports.getDofaDashboard = async (req, res) => {
   const cycles = await RecruitmentCycle.findAll({
@@ -355,14 +355,14 @@ exports.getDofaDashboard = async (req, res) => {
     include: [{ model: User, as: "hod", attributes: ["id", "department", "email"] }],
   });
 
-  // Build set of HOD ids that have active cycles
+  // Build set of HoD ids that have active cycles
   const activeHodIds = new Set(Object.keys(cycleMap).map(Number));
 
   const deptMap = {};
   candidates.forEach(c => {
     const dept = c.hod?.department;
     if (!dept) return;
-    if (!activeHodIds.has(c.hod.id)) return; // ← skip closed cycle HODs
+    if (!activeHodIds.has(c.hod.id)) return; // ← skip closed cycle HoDs
     if (!deptMap[dept]) {
       deptMap[dept] = { department: dept, hodId: c.hod.id, hodEmail: c.hod.email, candidates: 0, appeared: 0 };
     }
@@ -417,7 +417,7 @@ exports.getDofaDashboard = async (req, res) => {
 };
 
 /* ════════════════════════════════════
-   DOFA OFFICE DASHBOARD
+   DoFA OFFICE DASHBOARD
 ════════════════════════════════════ */
 exports.getDofaOfficeDashboard = async (req, res) => {
   try {

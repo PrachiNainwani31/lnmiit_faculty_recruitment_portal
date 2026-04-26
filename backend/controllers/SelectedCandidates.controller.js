@@ -11,14 +11,14 @@ const VALID_STATUSES = ["SELECTED", "WAITLISTED", "NOT_SELECTED", "REJECTED"];
 exports.getSelectedCandidates = async (req, res) => {
   try {
     const where = {};
-    if (req.user.role === "HOD") {
+    if (req.user.role === "HoD") {
        const activeCycle = await getCurrentCycle(req.user.id);
         if (!activeCycle) return res.json([]);
         where.hodId = req.user.id;
         where.cycle = activeCycle.cycle;
-    }else if(req.user.role === "DOFA" || req.user.role === "DOFA_OFFICE"){
+    }else if(req.user.role === "DoFA" || req.user.role === "DoFA_OFFICE"){
       const { Op } = require("sequelize");
-      const hods = await User.findAll({ where: { role: "HOD" }, attributes: ["id"] });
+      const hods = await User.findAll({ where: { role: "HoD" }, attributes: ["id"] });
       const cyclePerHod = await Promise.all(
         hods.map(h => RecruitmentCycle.findOne({
           where: {
@@ -119,7 +119,7 @@ exports.publishSelection = async (req, res) => {
       await createNotification({
         cycle: selections[0]?.cycle || "SYSTEM", role: "ESTABLISHMENT",
         title:   "No Candidates Selected",
-        message: "DOFA Office completed selection — no candidates were selected.",
+        message: "DoFA Office completed selection — no candidates were selected.",
         type:    "STATUS",
       });
     }
@@ -156,7 +156,7 @@ exports.markInterviewComplete = async (req, res) => {
       where: { cycle: cycle, status: "SELECTED" },
     });
 
-    const notifyRoles = ["HOD", "DOFA", "LUCS", "ESTABLISHMENT"];
+    const notifyRoles = ["HoD", "DoFA", "LUCS", "ESTABLISHMENT"];
     const message = selectedCount > 0
       ? `Interview process complete. ${selectedCount} candidate(s) selected.`
       : `Interview process complete. No candidates were selected in this cycle.`;
@@ -182,7 +182,7 @@ exports.markInterviewComplete = async (req, res) => {
           `<p>Dear ${u.name || "Team"},</p>
            <p>The interview process for cycle <strong>${cycle}</strong> is complete. 
            No candidates were selected in this cycle. No further action is required.</p>
-           <p>Regards,<br>DOFA Office, LNMIIT</p>`
+           <p>Regards,<br>DoFA Office, LNMIIT</p>`
         ).catch(console.error);
       }
     }
@@ -207,7 +207,7 @@ exports.addManualExpert = async (req, res) => {
     const {
       fullName, designation, department, institute,
       email, phone, specialization,
-      hodId,   // ← NEW: DOFA picks which HOD's active cycle
+      hodId,   // ← NEW: DoFA picks which HoD's active cycle
     } = req.body;
  
     if (!fullName || !email)
@@ -215,7 +215,7 @@ exports.addManualExpert = async (req, res) => {
  
     let activeCycle;
     if (hodId) {
-      // Use the specific HOD's active cycle
+      // Use the specific HoD's active cycle
       activeCycle = await RecruitmentCycle.findOne({
         where: {
           hodId,

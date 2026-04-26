@@ -9,7 +9,7 @@ export default function HodLayout() {
       <aside className="w-64 bg-white shadow-lg">
         <div className="p-5 font-bold text-xl border-b">
           Institute Portal
-          <p className="text-sm text-gray-500">HOD Management</p>
+          <p className="text-sm text-gray-500">HoD Management</p>
         </div>
 
         <nav className="mt-4 space-y-1">
@@ -35,7 +35,7 @@ export default function HodLayout() {
           <h2 className="font-semibold text-lg">Dashboard</h2>
           <div className="flex items-center gap-4">
             <span className="bg-gray-200 px-3 py-1 rounded-full">HD</span>
-            <span>Dr. HOD Name</span>
+            <span>Dr. HoD Name</span>
             <button className="bg-blue-500 text-white px-3 py-1 rounded">
               Logout
             </button>

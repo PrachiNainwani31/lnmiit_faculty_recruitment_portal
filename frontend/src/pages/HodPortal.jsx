@@ -35,7 +35,7 @@ export default function HodPortal() {
           
           {/* Left: Title */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">HOD Portal</h1>
+            <h1 className="text-2xl font-bold text-gray-900">HoD Portal</h1>
           </div>
 
           {/* Right: Notifications + Status + Action */}

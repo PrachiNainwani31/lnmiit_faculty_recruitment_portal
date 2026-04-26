@@ -273,7 +273,7 @@ export default function Candidateform({
             </div>
           </div>
 
-          {/* ── FIX: Department — read-only, pre-filled from HOD's department ── */}
+          {/* ── FIX: Department — read-only, pre-filled from HoD's department ── */}
           <div>
             <label className={labelCls}>Department Applied For</label>
             <div className="border p-2 rounded w-full text-sm bg-gray-50 text-gray-700 min-h-[36px] flex items-center">

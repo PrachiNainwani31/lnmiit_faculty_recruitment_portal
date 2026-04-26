@@ -27,16 +27,16 @@ export default function HodComments() {
   };
 
   const senderLabel = (c) => {
-  if (c.fromRole === "HOD") {
+  if (c.fromRole === "HoD") {
     const dept = (c.fromDepartment || myDept || "").trim();
-    return dept ? `${dept} HOD` : "HOD";
+    return dept ? `${dept} HoD` : "HoD";
   }
   return c.fromRole;
 };
 
   return (
     <div className="space-y-6 p-6">
-      <h2 className="text-xl font-semibold text-gray-800">Comments (DOFA ↔ HOD)</h2>
+      <h2 className="text-xl font-semibold text-gray-800">Comments (DoFA ↔ HoD)</h2>
       <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 text-sm">
         <span className="text-indigo-700">
           Ready to submit everything to DoFA?
@@ -59,7 +59,7 @@ export default function HodComments() {
             <div
               key={c.id}
               className={`p-3 rounded-lg border ${
-                c.fromRole === "HOD"
+                c.fromRole === "HoD"
                   ? "bg-blue-50 text-blue-800 border-blue-200"
                   : "bg-red-50 text-red-800 border-red-200"
               }`}
@@ -78,7 +78,7 @@ export default function HodComments() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Type your reply to DOFA..."
+          placeholder="Type your reply to DoFA..."
           className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300"
         />
         <button

@@ -85,11 +85,11 @@ exports.getDocumentTracking = async (req, res) => {
     if (!activeHodIds.length) return res.json([]);
 
     const activeCandidates = await Candidate.findAll({
-  where: { cycle: activeCycleStrings, hodId: activeHodIds }, // ← scope to active HODs
+  where: { cycle: activeCycleStrings, hodId: activeHodIds }, // ← scope to active HoDs
   attributes: ["email", "hodId"],
 });
 
-// Map email → hodId so we can check if HOD is active
+// Map email → hodId so we can check if HoD is active
 const emailToHodId = {};
 activeCandidates.forEach(c => { if (c.email) emailToHodId[c.email] = c.hodId; });
 const candidateEmails = Object.keys(emailToHodId);
@@ -105,7 +105,7 @@ const applications = await CandidateApplication.findAll({
   ],
 });
 
-// ── FIX: only keep applications whose HOD's cycle is NOT closed ──
+// ── FIX: only keep applications whose HoD's cycle is NOT closed ──
 const filteredApplications = applications.filter(app => {
   const hodId = emailToHodId[app.email];
   if (!hodId) return false;
@@ -259,7 +259,7 @@ exports.sendReminder = async (req, res) => {
       cycle:        "SYSTEM",
       role:         "CANDIDATE",
       title:        "Document Correction Required",
-      message:      `DOFA has flagged document issue(s) in your application. Please review and resubmit.`,
+      message:      `DoFA has flagged document issue(s) in your application. Please review and resubmit.`,
       type:         "COMMENT",
       targetUserId: app.candidateUserId,   // target this candidate specifically
     });

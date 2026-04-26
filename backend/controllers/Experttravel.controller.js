@@ -71,16 +71,16 @@ function toNestedShape(t) {
 
    Rules:
    - Only experts from non-closed cycles
-   - Deduplicate by (email + uploadedById): same HOD listing
+   - Deduplicate by (email + uploadedById): same HoD listing
      the same expert across C1/C2 → kept once (latest cycle wins
      so the travel record is attached to the most recent entry)
-   - Different HODs listing same expert → separate rows
+   - Different HoDs listing same expert → separate rows
 ========================================================= */
 exports.getAllExpertTravel = async (req, res) => {
   try {
     const { RecruitmentCycle } = require("../models");
 
-    // Get active cycles with their HOD mapping
+    // Get active cycles with their HoD mapping
     const activeCycles = await RecruitmentCycle.findAll({
       attributes: ["cycle", "hodId"],
       where: { [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }] },
@@ -93,24 +93,24 @@ exports.getAllExpertTravel = async (req, res) => {
     const hodActiveCycleMap = {};
     activeCycles.forEach(c => { if (c.hodId) hodActiveCycleMap[c.hodId] = c.cycle; });
 
-    // HOD-uploaded experts — only from their active cycle
+    // HoD-uploaded experts — only from their active cycle
     const hodExperts = await Expert.findAll({
       where: {
         uploadedById: { [Op.in]: [...activeHodIds] },
-        // Each HOD's expert must be in THAT HOD's active cycle
+        // Each HoD's expert must be in THAT HoD's active cycle
       },
       include: [{ model: User, as: "uploadedBy", attributes: ["id", "name", "department", "role"] }],
       order: [["createdAt", "DESC"]],
     });
 
-    // Filter: only keep experts whose cycle matches their uploader HOD's active cycle
+    // Filter: only keep experts whose cycle matches their uploader HoD's active cycle
     const validHodExperts = hodExperts.filter(e =>
       hodActiveCycleMap[e.uploadedById] === e.cycle
     );
 
-    // DOFA-manually-added experts from active cycles
+    // DoFA-manually-added experts from active cycles
     const dofaUsers = await User.findAll({
-      where: { role: { [Op.in]: ["DOFA", "ADOFA", "DOFA_OFFICE"] } },
+      where: { role: { [Op.in]: ["DoFA", "ADoFA", "DoFA_OFFICE"] } },
       attributes: ["id"],
     });
     const dofaUserIds = dofaUsers.map(u => u.id);
@@ -143,7 +143,7 @@ exports.getAllExpertTravel = async (req, res) => {
           expertIds: [],  // all expert IDs for this email (for travel lookup)
         };
       }
-      const dept = e.uploadedBy?.department || e.uploadedByDept || "DOFA";
+      const dept = e.uploadedBy?.department || e.uploadedByDept || "DoFA";
       if (!emailMap[key].departments.includes(dept)) {
         emailMap[key].departments.push(dept);
       }
@@ -299,7 +299,7 @@ exports.submitQuote = async (req, res) => {
     );
 
     const dofaUsers = await User.findAll({
-      where: { role: { [Op.in]: ["DOFA", "ADOFA"] } },
+      where: { role: { [Op.in]: ["DoFA", "ADoFA"] } },
     });
     const tmpl = templates.travelQuoteToDofa({
       expertName:   expert.fullName,
@@ -366,7 +366,7 @@ exports.uploadTicket = async (req, res) => {
       { where: { expertId, cycle } }
     );
 
-    const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
+    const dofaOfficeUsers = await User.findAll({ where: { role: "DoFA_OFFICE" } });
     const tmpl = templates.ticketUpdatedToDofaOffice({
       expertName:    expert.fullName,
       expertId:      expert.id,
@@ -441,7 +441,7 @@ exports.saveDriverInfo = async (req, res) => {
       { where: { expertId, cycle } }
     );
 
-    const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
+    const dofaOfficeUsers = await User.findAll({ where: { role: "DoFA_OFFICE" } });
     const tmpl = templates.driverDetailsToDofaOffice({
       expertName: expert.fullName,
       expertId:   expert.id,

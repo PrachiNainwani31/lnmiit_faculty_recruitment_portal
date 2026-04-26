@@ -14,7 +14,7 @@ Greetings from the LNM Institute of Information Technology, Jaipur.
 Based on your application for the faculty position, we are pleased to inform you that you have been shortlisted for an interview for the Assistant Professor position in physical mode scheduled for April 6-7, 2026.
 
 With Regards,
-DOFA
+DoFA
 The LNM Institute of Information Technology, Jaipur`;
 
 // ── FIX: DEPARTMENTS must be outside DEFAULT_BODY (was incorrectly inside the template string) ──

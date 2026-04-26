@@ -36,7 +36,7 @@ exports.setDeadline = async (req, res) => {
         description: `Deadline extended from ${existing.deadlineAt} to ${deadlineAt}`, req,
       });
 
-      // Email all candidates belonging to this HOD's cycle only
+      // Email all candidates belonging to this HoD's cycle only
       const apps = await getAppsForCycle(cycle, hodId);
 
       for (const app of apps) {
@@ -48,7 +48,7 @@ exports.setDeadline = async (req, res) => {
         const html = `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
             <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-              <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
+              <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment & Onboarding Portal</h2>
             </div>
             <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;line-height:1.7;color:#333">
               <p>Dear ${app.name || "Applicant"},</p>
@@ -69,7 +69,7 @@ exports.setDeadline = async (req, res) => {
                   Go to Portal
                 </a>
               </div>
-              <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+              <p>Regards,<br><strong>DoFA Office, LNMIIT</strong></p>
             </div>
           </div>`;
 
@@ -95,7 +95,7 @@ exports.setDeadline = async (req, res) => {
           `Application Deadline Set — LNMIIT Faculty Recruitment`,
           `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
             <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-              <h2 style="margin:0">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
+              <h2 style="margin:0">LNMIIT Faculty Recruitment & Onboarding Portal</h2>
             </div>
             <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
               <p>Dear ${app.name || "Applicant"},</p>
@@ -107,7 +107,7 @@ exports.setDeadline = async (req, res) => {
                   Go to Portal
                 </a>
               </div>
-              <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+              <p>Regards,<br><strong>DoFA Office, LNMIIT</strong></p>
             </div>
           </div>`
         ).catch(console.error);

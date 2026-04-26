@@ -14,15 +14,13 @@ export default function DofaOfficeDashboard() {
     onlineExperts:    0,
     pendingQuotes:    0,
   });
-  const [cycleLabel, setCycleLabel] = useState("-");
-  const [cycleString,   setCycleString]   = useState(null);
-  const [loading,    setLoading]    = useState(true);
+  const [cycleLabel,  setCycleLabel]  = useState("-");
+  const [cycleString, setCycleString] = useState(null);
+  const [loading,     setLoading]     = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     Promise.all([
-      // FIX: use the dedicated stats endpoint — aggregates across all cycles internally
-      // Previously depended on useActiveCycle which returns null for DOFA_OFFICE users
       API.get("/cycle/dofa-office-dashboard").catch(() => ({ data: null })),
       API.get("/expert-travel").catch(() => ({ data: [] })),
     ]).then(([statsRes, travelRes]) => {
@@ -45,27 +43,36 @@ export default function DofaOfficeDashboard() {
           pendingQuotes:    stats.quotesPending    ?? pendingQuotes,
         });
       } else {
-        // Fallback: compute what we can from travel data alone
         setData(d => ({ ...d, confirmedExperts, offlineExperts, onlineExperts, pendingQuotes }));
       }
 
-      // Derive a cycle label for display only — non-critical
+      // Cycle label — non-critical, runs after main data is set
       API.get("/cycle/dofa-dashboard")
-      .then(r => {
-        const depts = r.data?.departments || [];
-        // Only use non-closed departments for label
-        const activeDepts = depts.filter(d =>
-          d.status !== "DRAFT" || d.academicYear
-        );
-        const years = [...new Set(activeDepts.map(d => d.academicYear).filter(Boolean))];
-        if (years.length) setCycleLabel(years[0]);
-        // Also store the full cycle string for SelectionStatusPanel
-        const cycles = activeDepts.map(d => d.academicYear && d.cycleNumber ? `${d.academicYear}-C${d.cycleNumber}` : null).filter(Boolean);
-        if (cycles.length) setCycleString(cycles[0]);
-      }).catch(() => {});
+        .then(r => {
+          const depts = r.data?.departments || [];
+          const valid = depts.filter(d => d.academicYear);
+
+          if (valid.length) {
+            const d = valid[0];
+            setCycleLabel(
+              d.cycleNumber ? `${d.academicYear} Cycle ${d.cycleNumber}` : d.academicYear
+            );
+            const cycleStr = d.cycleNumber ? `${d.academicYear}-C${d.cycleNumber}` : null;
+            if (cycleStr) setCycleString(cycleStr);
+          } else {
+            const now       = new Date();
+            const startYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+            setCycleLabel(`${startYear}-${String(startYear + 1).slice(2)}`);
+          }
+        })
+        .catch(() => {
+          const now       = new Date();
+          const startYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+          setCycleLabel(`${startYear}-${String(startYear + 1).slice(2)} (Not Initiated)`);
+        });
 
     }).catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => setLoading(false)); // ← this was missing before
   }, []);
 
   if (loading) return <p className="text-gray-400 text-sm p-6">Loading dashboard…</p>;
@@ -103,10 +110,10 @@ export default function DofaOfficeDashboard() {
 
       <div className="grid grid-cols-2 gap-4">
         {[
-          { label: "External Experts",  sub: "Mark attendance, enter travel",      path: "/dofa-office/experts"           },
-          { label: "Pickup / Drop-off", sub: "Station / airport pickup details",   path: "/dofa-office/pickup"            },
-          { label: "Select Candidates", sub: "Publish final selection list",       path: "/dofa-office/select-candidates" },
-          { label: "Office Allotment",    sub: "Allot offices to selected candidates", path: "/dofa-office/room-allotment"    },
+          { label: "External Experts",  sub: "Mark attendance, enter travel",         path: "/dofa-office/experts"           },
+          { label: "Pickup / Drop-off", sub: "Station / airport pickup details",      path: "/dofa-office/pickup"            },
+          { label: "Select Candidates", sub: "Publish final selection list",          path: "/dofa-office/select-candidates" },
+          { label: "Office Allotment",  sub: "Allot offices to selected candidates",  path: "/dofa-office/room-allotment"    },
         ].map(({ label, sub, path }) => (
           <button key={path} onClick={() => navigate(path)}
             className="bg-white border border-gray-200 rounded-xl p-5 text-left hover:shadow-md transition">
@@ -116,7 +123,7 @@ export default function DofaOfficeDashboard() {
         ))}
       </div>
 
-      <SelectionStatusPanel role="DOFA_OFFICE" cycle={cycleString}/>
+      <SelectionStatusPanel role="DoFA_OFFICE" cycle={cycleString} />
     </div>
   );
 }

@@ -18,7 +18,7 @@ function Field({ label, children }) {
   );
 }
 
-/* ── Submit Appeared card — shown after DOFA sets interview date ── */
+/* ── Submit Appeared card — shown after DoFA sets interview date ── */
 function SubmitAppearedCard({ cycleData, onSubmitted }) {
   const [submitting, setSubmitting] = useState(false);
 
@@ -174,7 +174,7 @@ useEffect(() => {
     hasData &&
     (status === "DRAFT" || !status);
 
-  // ✅ FIX: Show RE-SUBMIT when DOFA raised a query (status=QUERY, cycle unfrozen)
+  // ✅ FIX: Show RE-SUBMIT when DoFA raised a query (status=QUERY, cycle unfrozen)
   // Previously this was combined with showFirstSubmit but QUERY was excluded — bug fixed here.
   const showReSubmit =
     hasData &&
@@ -305,7 +305,7 @@ if (cycleLoaded && cycleData === null) return (
 
   return (
     <div className="space-y-6">
-      {/* ── DOFA Query banner ── */}
+      {/* ── DoFA Query banner ── */}
       {status === "QUERY" && cycleData?.dofaComment && (
         <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 flex items-start gap-3">
           <span className="text-amber-500 text-xl shrink-0">⚠</span>
@@ -492,7 +492,7 @@ if (cycleLoaded && cycleData === null) return (
         </p>
       </div>
         {cycleData?.cycle && cycleData?.status !== "DRAFT" && (
-          <SelectionStatusPanel role="HOD" cycle={cycleData.cycle} />
+          <SelectionStatusPanel role="HoD" cycle={cycleData.cycle} />
         )}
     </div>
   );

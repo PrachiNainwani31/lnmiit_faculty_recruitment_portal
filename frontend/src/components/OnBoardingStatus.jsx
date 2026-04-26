@@ -66,7 +66,7 @@ export default function OnboardingStatus() {
       done:   !!r?.roomNumber,
       detail: r?.roomNumber
         ? `${r.roomBuilding} — Room ${r.roomNumber}${r.roomNotes ? ` · ${r.roomNotes}` : ""}`
-        : "DOFA Office will allot your accommodation",
+        : "DoFA Office will allot your accommodation",
       color:  "indigo",
     },
     {

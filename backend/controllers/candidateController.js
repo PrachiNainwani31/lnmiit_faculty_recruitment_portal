@@ -101,9 +101,9 @@ exports.uploadCandidates = async (req, res) => {
     notifyDofaUpload({ department: hod.department, hodName: hod.name }).catch(console.error);
 
     await createNotification({
-      cycle: cycle.cycle, role: "DOFA",
+      cycle: cycle.cycle, role: "DoFA",
       title: "Candidate List Updated",
-      message: `HOD (${hod.department}) uploaded ${formatted.length} candidates`,
+      message: `HoD (${hod.department}) uploaded ${formatted.length} candidates`,
       type: "UPLOAD",
     });
 
@@ -121,7 +121,7 @@ exports.uploadCandidates = async (req, res) => {
 ===================================================== */
 exports.getCandidatesByCycle = async (req, res) => {
   try {
-    if (req.user.role === "HOD") {
+    if (req.user.role === "HoD") {
       const cycle = await getCurrentCycle(req.user.id);
       if (!cycle) return res.status(404).json({ message: "No active cycle found" });
 
@@ -143,9 +143,9 @@ exports.getCandidatesByCycle = async (req, res) => {
       return res.json({ candidates: result, interviewDate: rc?.interviewDate || null });
     }
 
-    // DOFA / DOFA_OFFICE — fetch latest cycle per HOD
+    // DoFA / DoFA_OFFICE — fetch latest cycle per HoD
     const { Op } = require("sequelize");
-    const hods = await User.findAll({ where: { role: "HOD" }, attributes: ["id"] });
+    const hods = await User.findAll({ where: { role: "HoD" }, attributes: ["id"] });
 
     if (!hods.length) return res.json({ candidates: [], interviewDate: null });
 
@@ -205,14 +205,14 @@ exports.markAppeared = async (req, res) => {
     if (!candidate)
       return res.status(404).json({ message: "Candidate not found" });
 
-    // Gate: interview date must be set by DOFA
+    // Gate: interview date must be set by DoFA
     const rc = await RecruitmentCycle.findOne({
       where: { cycle: cycle.cycle, hodId: req.user.id },
     });
 
     if (!rc?.interviewDate) {
       return res.status(403).json({
-        message: "Interview date not yet set by DOFA.",
+        message: "Interview date not yet set by DoFA.",
         gated: true,
       });
     }
@@ -329,18 +329,18 @@ exports.downloadTemplate = async (req, res) => {
 
 exports.getCandidatesByDepartment = async (req, res) => {
   try {
-    if (req.user.role !== "DOFA")
+    if (req.user.role !== "DoFA")
       return res.status(403).json({ message: "Access denied" });
 
     const hod = await User.findOne({
       where: {
-        role: "HOD",
+        role: "HoD",
         department: req.params.department,
       },
     });
 
     if (!hod) {
-      return res.status(404).json({ message: "HOD not found" });
+      return res.status(404).json({ message: "HoD not found" });
     }
      const latestCycle = await RecruitmentCycle.findOne({
       where:{hodId:hod.id},

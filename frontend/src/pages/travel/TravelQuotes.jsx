@@ -56,7 +56,7 @@ export default function TravelQuotes() {
         vendor:  form.vendor  || "",
         remarks: form.remarks || "",
       });
-      alert("Quote submitted. DOFA has been notified.");
+      alert("Quote submitted. DoFA has been notified.");
       load();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to submit quote");
@@ -75,7 +75,7 @@ export default function TravelQuotes() {
       <div>
         <h1 className="text-xl font-semibold text-gray-800">Travel Quotes</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Submit quotes for offline experts confirmed by DOFA Office.
+          Submit quotes for offline experts confirmed by DoFA Office.
         </p>
       </div>
 

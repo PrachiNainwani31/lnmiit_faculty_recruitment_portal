@@ -47,7 +47,7 @@ const records = await OnboardingRecord.findAll({
     cycles.forEach(c => { cycleClosedMap[`${c.cycle}|${c.hodId}`] = c.isClosed || false; })
     const deptMap = {};
     records.forEach(r => {
-      // Skip records where this HOD's cycle is closed
+      // Skip records where this HoD's cycle is closed
       if (!activeHodCycleSet.has(`${r.cycle}|${r.hodId}`)) return;
       const dept = r.department || "General";
       if (!deptMap[dept]) deptMap[dept] = [];
@@ -120,7 +120,7 @@ exports.uploadOfferLetter = async (req, res) => {
   }
 };
 
-/* ── Set joining date (#12) — email to DOFA, DOFA Office, HOD ── */
+/* ── Set joining date (#12) — email to DoFA, DoFA Office, HoD ── */
 exports.setJoiningDate = async (req, res) => {
   try {
     const { candidateId, joiningDate } = req.body;
@@ -141,9 +141,9 @@ exports.setJoiningDate = async (req, res) => {
       day: "numeric", month: "long", year: "numeric",
     });
 
-    // Email DOFA + DOFA_OFFICE + this department's HOD
+    // Email DoFA + DoFA_OFFICE + this department's HoD
     const recipients = await User.findAll({
-      where: { role: ["DOFA", "DOFA_OFFICE"] },
+      where: { role: ["DoFA", "DoFA_OFFICE"] },
     });
     if (record?.hodId) {
       const hod = await User.findByPk(record.hodId);
@@ -334,7 +334,7 @@ exports.sendRfidToCandidate = async (req, res) => {
   }
 };
 
-/* ── Mark joining complete (#15) — email to HOD + DOFA + DOFA Office, freeze record ── */
+/* ── Mark joining complete (#15) — email to HoD + DoFA + DoFA Office, freeze record ── */
 exports.markJoiningComplete = async (req, res) => {
   try {
     const { candidateId } = req.body;
@@ -352,7 +352,7 @@ exports.markJoiningComplete = async (req, res) => {
       : null;
 
     const recipients = await User.findAll({
-      where: { role: ["DOFA", "DOFA_OFFICE"] },
+      where: { role: ["DoFA", "DoFA_OFFICE"] },
     });
     if (record?.hodId) {
       const hod = await User.findByPk(record.hodId);
@@ -428,7 +428,7 @@ exports.markNotJoined = async (req, res) => {
     const candidate = await Candidate.findByPk(candidateId);
 
     // Notify all relevant roles
-    const notifyRoles = ["HOD", "DOFA", "DOFA_OFFICE", "LUCS", "ESTATE", "ESTABLISHMENT"];
+    const notifyRoles = ["HoD", "DoFA", "DoFA_OFFICE", "LUCS", "ESTATE", "ESTABLISHMENT"];
     const recipients  = await User.findAll({ where: { role: notifyRoles } });
     if (record?.hodId) {
       const hod = await User.findByPk(record.hodId);
@@ -441,7 +441,7 @@ exports.markNotJoined = async (req, res) => {
         `Candidate Did Not Join — ${candidate?.fullName}`,
         `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px">
           <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-            <h2 style="margin:0">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
+            <h2 style="margin:0">LNMIIT Faculty Recruitment & Onboarding Portal</h2>
           </div>
           <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px">
             <p>Dear ${u.name || u.role},</p>
@@ -493,7 +493,7 @@ const records = await OnboardingRecord.findAll({
 
     const deptMap = {};
     records.forEach(r => {
-      // Skip records where this HOD's cycle is closed
+      // Skip records where this HoD's cycle is closed
       if (!closedHodCycleSet.has(`${r.cycle}|${r.hodId}`)) return;
       const dept = r.department || "General";
       if (!deptMap[dept]) deptMap[dept] = [];

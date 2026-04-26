@@ -61,7 +61,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
       );
     } catch (err) {
       if (err.response?.data?.gated) {
-        showToast("Interview date not yet set by DOFA. Cannot mark appeared yet.", "error");
+        showToast("Interview date not yet set by DoFA. Cannot mark appeared yet.", "error");
       } else {
         showToast("Failed to update appeared status", "error");
       }
@@ -70,16 +70,16 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
     }
   };
 
-  /* ── Submit appeared to DOFA ── */
+  /* ── Submit appeared to DoFA ── */
   const handleSubmitAppeared = async () => {
     const ok = await showConfirm(
-      "Submit appeared candidate data to DOFA? Your portal will be frozen again after submission."
+      "Submit appeared candidate data to DoFA? Your portal will be frozen again after submission."
     );
     if (!ok) return;
     try {
       setSubmitting(true);
       await API.post("/cycle/submit-appeared");
-      showToast("Appeared candidates submitted to DOFA. Portal is now locked.");
+      showToast("Appeared candidates submitted to DoFA. Portal is now locked.");
       window.dispatchEvent(new Event("hod-refresh"));
       await fetchCandidates();
     } catch (err) {
@@ -92,7 +92,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
   const appearedCount = candidates.filter(c => c.appearedInInterview).length;
 
   // Show submit button when:
-  // - interview date is set (unlocked by DOFA)
+  // - interview date is set (unlocked by DoFA)
   // - cycle is not yet re-frozen (status !== APPEARED_SUBMITTED)
   // - portal is not frozen (isFrozen false)
   const showSubmitBtn =
@@ -129,7 +129,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
           <div>
             <p className="font-semibold">Appeared marking is locked</p>
             <p className="mt-0.5 text-amber-600">
-              DOFA has not set the interview date yet. Once set, you can mark which candidates appeared.
+              DoFA has not set the interview date yet. Once set, you can mark which candidates appeared.
             </p>
           </div>
         </div>
@@ -153,9 +153,9 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
         <div className="mb-4 flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 text-xs text-violet-700">
           <span className="text-base">✓</span>
           <div>
-            <p className="font-semibold">Appeared data submitted to DOFA</p>
+            <p className="font-semibold">Appeared data submitted to DoFA</p>
             <p className="mt-0.5 text-violet-600">
-              Portal is locked pending DOFA's final selection.
+              Portal is locked pending DoFA's final selection.
             </p>
           </div>
         </div>
@@ -217,7 +217,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
                       onClick={() => !isFrozen && !alreadySubmitted && handleToggleAppeared(c)}
                       disabled={togglingId === c.id || isFrozen || alreadySubmitted}
                       title={
-                        alreadySubmitted  ? "Already submitted to DOFA" :
+                        alreadySubmitted  ? "Already submitted to DoFA" :
                         isFrozen          ? "Cycle frozen" :
                         c.appearedInInterview ? "Click to unmark" : "Click to mark appeared"
                       }
@@ -234,7 +234,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
                       {togglingId === c.id ? "…" : c.appearedInInterview ? "✓" : "○"}
                     </button>
                   ) : (
-                    <span className="text-gray-300 text-lg" title="Interview date not set by DOFA"></span>
+                    <span className="text-gray-300 text-lg" title="Interview date not set by DoFA"></span>
                   )}
                 </td>
 
@@ -269,20 +269,20 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
           </span>
           {!interviewDate && (
             <span className="flex items-center gap-1.5 text-amber-500">
-              Locked until DOFA sets interview date
+              Locked until DoFA sets interview date
             </span>
           )}
         </div>
       )}
 
-      {/* NEW: Submit appeared to DOFA button */}
+      {/* NEW: Submit appeared to DoFA button */}
       {showSubmitBtn && candidates.length > 0 && (
         <div className="mt-5 pt-5 border-t border-gray-100">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <p className="text-sm font-semibold text-gray-800">Done marking appeared candidates?</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                Submit to DOFA to lock this cycle and notify them.
+                Submit to DoFA to lock this cycle and notify them.
                 {appearedCount > 0 && (
                   <span className="ml-1 text-green-600 font-medium">
                     {appearedCount} / {candidates.length} marked as appeared.
@@ -295,7 +295,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
               disabled={submitting}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 transition shadow-sm"
             >
-              {submitting ? "Submitting…" : "Submit Appeared Candidates to DOFA →"}
+              {submitting ? "Submitting…" : "Submit Appeared Candidates to DoFA →"}
             </button>
           </div>
         </div>

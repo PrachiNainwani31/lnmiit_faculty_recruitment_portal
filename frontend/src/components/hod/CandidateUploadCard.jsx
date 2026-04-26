@@ -5,7 +5,7 @@ import {
   uploadCandidatesCSV,
 } from "../../api/candidateApi";
 
-// All 11 CSV columns — shown as a hint so HOD knows what to fill
+// All 11 CSV columns — shown as a hint so HoD knows what to fill
 const CSV_COLUMNS = [
   { name: "Sr. No.",               required: true  },
   { name: "Full Name",             required: true  },

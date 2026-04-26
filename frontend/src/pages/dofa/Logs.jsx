@@ -193,7 +193,7 @@ export default function DofaLogs() {
             <div>
                 <span className="text-white font-bold text-sm">{log.department}</span>
                 <span className="text-gray-400 text-xs ml-3">
-                {log.academicYear} · Cycle {log.cycleNumber} · HOD: {log.hodName}
+                {log.academicYear} · Cycle {log.cycleNumber} · HoD: {log.hodName}
                 </span>
             </div>
 

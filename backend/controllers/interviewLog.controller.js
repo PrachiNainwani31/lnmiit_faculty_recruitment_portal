@@ -12,10 +12,10 @@ const safeDate = (d) => {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 };
 /* ════════════════════════════════════════════════════════
-   HELPER: build candidateExperiences array for one HOD
+   HELPER: build candidateExperiences array for one HoD
    - Fetches selected + waitlisted candidates
    - For each, finds their CandidateApplication → CandidateExperience rows
-   - Merges with any DOFA-edited toDate already saved in the log
+   - Merges with any DoFA-edited toDate already saved in the log
 ════════════════════════════════════════════════════════ */
 async function buildCandidateExperiences(hodId,cycleString ,savedExperiences = []) {
   // Build a lookup of previously saved editedToDate values
@@ -74,7 +74,7 @@ async function buildCandidateExperiences(hodId,cycleString ,savedExperiences = [
 }
 
 /* ════════════════════════════════════════════════════════
-   HELPER: prefill non-experience fields for one HOD
+   HELPER: prefill non-experience fields for one HoD
 ════════════════════════════════════════════════════════ */
 async function getPrefill(hodId,cycleString) {
   const [cycle, stats, appearedCount, experts, selected] = await Promise.all([
@@ -207,7 +207,7 @@ exports.saveLog = async (req, res) => {
       expert3Detail:             body.expert3Detail             || null,
       selectedCandidateName:     body.selectedCandidateName     || null,
       waitlistedCandidateName:   body.waitlistedCandidateName   || null,
-      // Store the full candidateExperiences (with editedToDate from DOFA)
+      // Store the full candidateExperiences (with editedToDate from DoFA)
       candidateExperiences:      body.candidateExperiences      || [],
       evaluationSheetLink:       body.evaluationSheetLink       || null,
       advCopyDate:               body.advCopyDate               || null,

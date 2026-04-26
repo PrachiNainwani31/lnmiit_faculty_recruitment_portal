@@ -115,18 +115,36 @@ export default function ResetPassword() {
               <label className="block text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">
                 New Password <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <input
+                <div className="relative">
+                  <input
                   type={showPwd ? "text" : "password"}
                   className="w-full border rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 border-gray-200"
                   placeholder="Enter new password"
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError(""); }}
                 />
-                <button type="button" tabIndex={-1} onClick={() => setShowPwd(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPwd ? "🙈" : "👁"}
-                </button>
+              <button type="button" tabIndex={-1} onClick={() => setShowConfirm(s => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showConfirm ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+                        a9.97 9.97 0 012.19-3.568M6.34 6.34A9.953 9.953 0 0112 5
+                        c4.477 0 8.268 2.943 9.542 7a9.972 9.972 0 01-4.21 5.206
+                        M15 12a3 3 0 00-3-3m0 0a3 3 0 00-2.122.879M3 3l18 18" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+                        -1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
               </div>
               <StrengthBar password={password} />
             </div>

@@ -10,6 +10,9 @@ const NAV_ITEMS = [
   { to: "/dofa/comments",          label: "Comments" },
   { to: "/dofa/logs", label: "Logs" },
 ];
+const now = new Date();
+const startYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+const cycleYear = `${startYear}–${String(startYear + 1).slice(2)}`;
 
 export default function DofaLayout() {
   const navigate = useNavigate();
@@ -62,7 +65,7 @@ export default function DofaLayout() {
               {user.name?.slice(0,2)?.toUpperCase() || "DA"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white/80 truncate">{user.name || "DOFA"}</p>
+              <p className="text-xs font-semibold text-white/80 truncate">{user.name || "DoFA"}</p>
               <p className="text-xs text-white/40 truncate">{user.email || ""}</p>
             </div>
           </div>
@@ -78,9 +81,9 @@ export default function DofaLayout() {
       {/* ══════════════ MAIN ══════════════ */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 shadow-sm">
-          <h2 className="font-semibold text-gray-800 text-sm">Faculty Recruitment · 2026–27</h2>
+          <h2 className="font-semibold text-gray-800 text-sm">Faculty Recruitment · {cycleYear}</h2>
           <span className="text-xs bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full font-medium">
-            DOFA
+            DoFA
           </span>
         </header>
 

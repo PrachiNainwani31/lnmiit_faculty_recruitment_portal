@@ -28,7 +28,7 @@ export default function RoomAllotmentPage() {
       <div>
         <h1 className="text-xl font-semibold text-gray-800">Office Allotment</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Allot offices to selected candidates. Candidate, HOD, DOFA, Estate, and LUCS will be notified.
+          Allot offices to selected candidates. Candidate, HoD, DoFA, Estate, and LUCS will be notified.
         </p>
       </div>
 

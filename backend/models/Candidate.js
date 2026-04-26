@@ -63,7 +63,7 @@ const Candidate = sequelize.define(
       allowNull: true,
     },
 
-    // ── NEW: position HOD recommends this candidate for ───────────
+    // ── NEW: position HoD recommends this candidate for ───────────
     recommendedPosition: {
       type:      DataTypes.STRING(200),
       allowNull: true,
@@ -86,14 +86,14 @@ const Candidate = sequelize.define(
       allowNull: true,
     },
 
-    // FK → User (the HOD)
+    // FK → User (the HoD)
     hodId: {
       type:      DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
 
-    // ── NEW: HOD marks which candidates actually appeared ─────────
-    //    Reflected on DOFA page and DOFA Office page
+    // ── NEW: HoD marks which candidates actually appeared ─────────
+    //    Reflected on DoFA page and DoFA Office page
     appearedInInterview: {
       type:         DataTypes.BOOLEAN,
       defaultValue: false,

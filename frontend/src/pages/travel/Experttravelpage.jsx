@@ -1,5 +1,5 @@
 // pages/travel/Experttravelpage.jsx
-// Shows the same unified detail view seen on the DOFA Office side
+// Shows the same unified detail view seen on the DoFA Office side
 // Mirrors the "car arrangement" email format: name, dept, arrival date,
 // pickup place, flight no, arrival time, departure date, drop place, departure time, contact
 import { useEffect, useState } from "react";

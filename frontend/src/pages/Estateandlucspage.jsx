@@ -68,7 +68,7 @@ function EstateCard({ record, onRefresh }) {
         </div>
       </div>
       <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-700">
-        Allotted by DOFA Office on {new Date(record.roomAllottedAt).toLocaleDateString("en-GB")}
+        Allotted by DoFA Office on {new Date(record.roomAllottedAt).toLocaleDateString("en-GB")}
         {record.roomNotes && <p className="text-xs mt-1 text-blue-500">{record.roomNotes}</p>}
       </div>
       <div className="grid grid-cols-2 gap-3">

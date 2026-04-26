@@ -7,8 +7,8 @@ exports.getComments = async (req, res) => {
   try {
     const role = req.user.role;
 
-    if (role === "HOD") {
-      // HOD: fetch their own cycle, filter to their comments
+    if (role === "HoD") {
+      // HoD: fetch their own cycle, filter to their comments
       const hodCycle = await getCurrentCycle(req.user.id);
       if (!hodCycle)
         return res.status(404).json({ message: "No active cycle found" });
@@ -17,8 +17,8 @@ exports.getComments = async (req, res) => {
         where: {
           cycle: hodCycle.cycle,
           [Op.or]: [
-            { targetUserId: req.user.id },                               // DOFA → this HOD
-            { fromRole: "HOD", fromDepartment: req.user.department },    // this HOD's sent messages
+            { targetUserId: req.user.id },                               // DoFA → this HoD
+            { fromRole: "HoD", fromDepartment: req.user.department },    // this HoD's sent messages
           ],
         },
         order: [["createdAt", "ASC"]],
@@ -27,14 +27,14 @@ exports.getComments = async (req, res) => {
       return res.json(comments);
     }
 
-    // DOFA / DOFA_OFFICE: see all comments across all cycles
+    // DoFA / DoFA_OFFICE: see all comments across all cycles
     // Optionally filter by ?hodId=X from query param
     const { hodId } = req.query;
 
     if (hodId) {
       const hodCycle = await getCurrentCycle(hodId);
       if (!hodCycle)
-        return res.status(404).json({ message: "No active cycle for this HOD" });
+        return res.status(404).json({ message: "No active cycle for this HoD" });
 
       const comments = await Comment.findAll({
         where: { cycle: hodCycle.cycle },
@@ -43,7 +43,7 @@ exports.getComments = async (req, res) => {
       return res.json(comments);
     }
 
-    // No filter — return all comments (DOFA overview)
+    // No filter — return all comments (DoFA overview)
     const comments = await Comment.findAll({
       order: [["createdAt", "DESC"]],
     });
@@ -65,8 +65,8 @@ exports.addComment = async (req, res) => {
     const role = req.user.role;
     let cycleString, targetUserId = null, fromDepartment = null;
 
-    if (role === "HOD") {
-      // HOD commenting → look up their own cycle
+    if (role === "HoD") {
+      // HoD commenting → look up their own cycle
       const hodCycle = await getCurrentCycle(req.user.id);
       if (!hodCycle)
         return res.status(404).json({ message: "No active cycle found" });
@@ -81,18 +81,18 @@ exports.addComment = async (req, res) => {
       }
 
     } else {
-      // DOFA / DOFA_OFFICE → must provide targetHodId to identify whose cycle to post in
+      // DoFA / DoFA_OFFICE → must provide targetHodId to identify whose cycle to post in
       if (!targetHodId)
-        return res.status(400).json({ message: "targetHodId is required for DOFA comments" });
+        return res.status(400).json({ message: "targetHodId is required for DoFA comments" });
 
       const hodCycle = await getCurrentCycle(targetHodId);
       if (!hodCycle)
-        return res.status(404).json({ message: "No active cycle found for this HOD" });
+        return res.status(404).json({ message: "No active cycle found for this HoD" });
 
       cycleString  = hodCycle.cycle;
       targetUserId = parseInt(targetHodId, 10);
 
-      // Unfreeze cycle when DOFA raises a comment/query
+      // Unfreeze cycle when DoFA raises a comment/query
       await RecruitmentCycle.update(
         { isFrozen: false, status: "QUERY" },
         { where: { cycle: cycleString, hodId: targetHodId } }
@@ -103,8 +103,8 @@ exports.addComment = async (req, res) => {
       cycle:          cycleString,
       fromRole:       role,
       fromDepartment,
-      toRole:         role === "HOD" ? "DOFA" : "HOD",
-      targetUserId,   // null when HOD posts, set to hodId when DOFA posts
+      toRole:         role === "HoD" ? "DoFA" : "HoD",
+      targetUserId,   // null when HoD posts, set to hodId when DoFA posts
       message:        message.trim(),
     });
 

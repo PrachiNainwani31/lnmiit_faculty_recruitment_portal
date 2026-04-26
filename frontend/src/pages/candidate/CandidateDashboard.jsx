@@ -249,7 +249,7 @@ const [application, setApplication] = useState({
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white shadow-md z-10 flex flex-col">
         <div className="p-5 border-b flex flex-col items-center gap-2">
           <img src={logo} alt="LNMIIT" className="w-28 object-contain" />
-          <span className="text-sm font-semibold text-gray-700">LNMIIT Faculty Recruitment and Onboarding Portal</span>
+          <span className="text-sm font-semibold text-gray-700">LNMIIT Faculty Recruitment & Onboarding Portal</span>
         </div>
         <nav className="p-4 space-y-1 text-gray-700 text-sm flex-1">
           {[
@@ -280,7 +280,7 @@ const [application, setApplication] = useState({
           <div className="bg-amber-50 border-b border-amber-200 px-8 py-4 flex items-start gap-3">
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-800">
-                DOFA has flagged issues with your documents
+                DoFA has flagged issues with your documents
               </p>
               <p className="text-xs text-amber-600 mt-0.5">
                 Please review your documents, make the necessary corrections, and resubmit.

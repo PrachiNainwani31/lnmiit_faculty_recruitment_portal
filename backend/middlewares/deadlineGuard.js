@@ -9,7 +9,7 @@ module.exports = async (req, res, next) => {
     const candidate = await Candidate.findOne({ where: { email } });
     if (!candidate?.hodId || !candidate?.cycle) return next();
 
-    // Scope deadline check to this candidate's specific HOD cycle
+    // Scope deadline check to this candidate's specific HoD cycle
     const deadline = await PortalDeadline.findOne({
       where: { cycle: candidate.cycle, hodId: candidate.hodId },
     });

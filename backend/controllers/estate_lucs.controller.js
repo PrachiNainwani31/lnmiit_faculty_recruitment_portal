@@ -49,7 +49,7 @@ exports.confirmHandover = async (req, res) => {
     );
 
     await sendEmail(
-      process.env.DOFA_OFFICE_EMAIL,
+      process.env.DoFA_OFFICE_EMAIL,
       `Room Handover Confirmed: ${record.candidate?.fullName}`,
       `<p>Room ${record.roomNumber} handed over to ${record.candidate?.fullName}</p>`
     ).catch(console.error);

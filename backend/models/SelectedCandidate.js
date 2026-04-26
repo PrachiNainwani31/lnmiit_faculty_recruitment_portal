@@ -21,7 +21,7 @@ const SelectedCandidate = sequelize.define(
       defaultValue: "SELECTED",
     },
 
-    // FIX: added designation + employmentType — set by DOFA Office during selection
+    // FIX: added designation + employmentType — set by DoFA Office during selection
     designation:    { type: DataTypes.STRING(200), defaultValue: "" },
     employmentType: { type: DataTypes.STRING(100), defaultValue: "" },
     waitlistPriority: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },

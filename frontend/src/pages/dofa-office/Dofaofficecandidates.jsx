@@ -136,7 +136,7 @@ function CandidateRow({ candidate: c, index }) {
   const handleDownloadZip = async (e) => {
     e.stopPropagation();
     // We need the CandidateApplication id — it's stored in c.userId (the candidate's user id)
-    // The DOFA Office downloads by candidateApplication id which maps via candidateUserId
+    // The DoFA Office downloads by candidateApplication id which maps via candidateUserId
     // Use a fallback: hit the endpoint with candidate.id and let backend find the application
     try {
       setDownloading(true);

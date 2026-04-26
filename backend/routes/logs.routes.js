@@ -2,7 +2,7 @@ const express = require("express");
 const router  = express.Router();
 const auth    = require("../middlewares/auth");
 
-router.get("/", auth(["DOFA", "DOFA_OFFICE"]), async (req, res) => {
+router.get("/", auth(["DoFA", "DoFA_OFFICE"]), async (req, res) => {
   try {
     const { RecruitmentCycle, Candidate, Expert, CandidateReferee,
             CandidateApplication, SelectedCandidate, User } = require("../models");

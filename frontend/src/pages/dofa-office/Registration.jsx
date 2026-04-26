@@ -14,10 +14,10 @@ const DEPARTMENTS = [
 ];
 
 const ROLES = [
-  { value: "DOFA",          label: "Dean of Faculty Affairs(DoFA)"              },
-  { value: "ADOFA",            label: "Assistant Dean of Faculty Affairs (ADoFA)" },
-  { value: "DOFA_OFFICE",   label: "DoFA Office"       },
-  { value: "HOD",           label: "Head of Department(HoD)"               },
+  { value: "DoFA",          label: "Dean of Faculty Affairs (DoFA)"              },
+  { value: "ADoFA",            label: "Assistant Dean of Faculty Affairs (ADoFA)" },
+  { value: "DoFA_OFFICE",   label: "DoFA Office"       },
+  { value: "HoD",           label: "Head of Department (HoD)"               },
   { value: "ESTABLISHMENT", label: "Establishment"     },
   { value: "LUCS",          label: "LUCS"              },
   { value: "ESTATE",        label: "Estate"            },
@@ -25,6 +25,18 @@ const ROLES = [
   { value: "OTHER",         label: "Other"             },
 ];
 
+const roleLabel = {
+  DoFA:             "DoFA",
+  DOFA:             "DoFA",
+  DoFA_OFFICE:      "DoFA OFFICE",
+  DOFA_OFFICE:      "DoFA OFFICE",
+  HOD:              "HoD",
+  ESTABLISHMENT:    "Establishment",
+  LUCS:             "LUCS",
+  ESTATE:           "Estate",
+  REGISTRAR_OFFICE: "Registrar Office",
+  CANDIDATE:        "Candidate",
+};
 /* ── Inline field error ── */
 function FieldError({ error }) {
   if (!error) return null;
@@ -97,7 +109,7 @@ function RegisterUser({ onRefresh }) {
     if (nameErr)  e.name  = nameErr;
     if (emailErr) e.email = emailErr;
     if (!form.role) e.role = "Role is required";
-    if (form.role === "HOD" && !form.department) e.department = "Department is required for HOD";
+    if (form.role === "HoD" && !form.department) e.department = "Department is required for HoD";
     if (form.role === "OTHER" && !form.otherRole.trim()) e.otherRole = "Please specify role";
     if (form.department === "Other" && !form.otherDepartment?.trim())
       e.otherDepartment = "Please specify department";
@@ -226,10 +238,101 @@ function RegisterUser({ onRefresh }) {
   );
 }
 
+function EditModal({ user, onClose, onSave }) {
+  const [form, setForm] = useState({
+    name: user.name, email: user.email,
+    role: user.role, department: user.department || "",
+  });
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const set = (field, value) => {
+    setForm(f => ({ ...f, [field]: value }));
+    setErrors(e => ({ ...e, [field]: null }));
+  };
+
+  const handleSave = async () => {
+    const e = {};
+    const nameErr  = validateName(form.name);
+    const emailErr = validateEmail(form.email);
+    if (nameErr)  e.name  = nameErr;
+    if (emailErr) e.email = emailErr;
+    if (!form.role) e.role = "Role is required";
+    if (Object.keys(e).length) { setErrors(e); return; }
+
+    try {
+      setSaving(true);
+      await API.put(`/registration/users/${user.id}`, form);
+      onSave();
+      onClose();
+    } catch (err) {
+      setErrors({ _global: err.response?.data?.message || "Update failed" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-base font-semibold text-gray-800">Edit User</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        </div>
+
+        {errors._global && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+            {errors._global}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Full Name" required error={errors.name}>
+            <input className={inputCls(errors.name)} value={form.name}
+              onChange={e => set("name", e.target.value)}
+              onKeyPress={e => { if (/\d/.test(e.key)) e.preventDefault(); }}
+            />
+          </Field>
+          <Field label="Email" required error={errors.email}>
+            <input type="email" className={inputCls(errors.email)} value={form.email}
+              onChange={e => set("email", e.target.value)} />
+          </Field>
+          <Field label="Role" required error={errors.role}>
+            <select className={inputCls(errors.role)} value={form.role}
+              onChange={e => set("role", e.target.value)}>
+              <option value="">— Select Role —</option>
+              {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Department" error={errors.department}>
+            <select className={inputCls(errors.department)} value={form.department}
+              onChange={e => set("department", e.target.value)}>
+              <option value="">— None —</option>
+              {DEPARTMENTS.filter(d => d !== "Other").map(d =>
+                <option key={d} value={d}>{d}</option>)}
+            </select>
+          </Field>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="px-5 py-2 text-sm bg-red-700 hover:bg-red-800 text-white rounded-lg disabled:opacity-60">
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════
    User List Tab
 ══════════════════════════ */
-function UserList({ users, onDelete }) {
+function UserList({ users, onEdit, onDeactivate, onActivate }) {
   const [filter, setFilter] = useState("");
 
   const filtered = users.filter(u =>
@@ -239,9 +342,9 @@ function UserList({ users, onDelete }) {
   );
 
   const roleColor = {
-    DOFA:          "bg-red-100 text-red-700 border-red-200",
-    DOFA_OFFICE:   "bg-rose-100 text-rose-700 border-rose-200",
-    HOD:           "bg-blue-100 text-blue-700 border-blue-200",
+    DoFA:          "bg-red-100 text-red-700 border-red-200",
+    DoFA_OFFICE:   "bg-rose-100 text-rose-700 border-rose-200",
+    HoD:           "bg-blue-100 text-blue-700 border-blue-200",
     ESTABLISHMENT: "bg-amber-100 text-amber-700 border-amber-200",
     LUCS:          "bg-purple-100 text-purple-700 border-purple-200",
     ESTATE:        "bg-teal-100 text-teal-700 border-teal-200",
@@ -276,7 +379,7 @@ function UserList({ users, onDelete }) {
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-8 text-center text-gray-400 italic">
+                <td colSpan={7} className="px-5 py-8 text-center text-gray-400 italic">
                   No users found
                 </td>
               </tr>
@@ -289,7 +392,7 @@ function UserList({ users, onDelete }) {
                   <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${
                     roleColor[u.role] || "bg-gray-100 text-gray-600 border-gray-200"
                   }`}>
-                    {u.role}
+                    {roleLabel[u.role] || u.role}  {/* ← change this */}
                   </span>
                 </td>
                 <td className="px-5 py-3 text-gray-500 text-xs">{u.department || "—"}</td>
@@ -297,15 +400,41 @@ function UserList({ users, onDelete }) {
                   {new Date(u.createdAt).toLocaleDateString("en-GB")}
                 </td>
                 <td className="px-5 py-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                    u.active ? "bg-green-50 text-green-600 border-green-200" 
+                            : "bg-gray-100 text-gray-400 border-gray-200"
+                  }`}>
+                    {u.active ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="px-5 py-3 flex gap-3 items-center">
                   <button
-                    onClick={() => {
-                      if (!window.confirm(`Remove ${u.name}? They will lose portal access.`)) return;
-                      onDelete(u.id);
-                    }}
-                    className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                    onClick={() => onEdit(u)}
+                    className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
                   >
-                    Remove
+                    Edit
                   </button>
+                  {u.active ? (
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`Deactivate ${u.name}? They will lose access but records are kept.`)) return;
+                        onDeactivate(u.id);
+                      }}
+                      className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                    >
+                      Deactivate
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`Activate ${u.name}? They will regain portal access.`)) return;
+                        onActivate(u.id);
+                      }}
+                      className="text-xs text-green-600 hover:text-green-800 hover:underline"
+                    >
+                      Activate
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -323,6 +452,7 @@ export default function Registration() {
   const [tab,     setTab]     = useState("register");
   const [users,   setUsers]   = useState([]);
   const [loading, setLoading] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
 
   const loadUsers = async () => {
     try {
@@ -335,14 +465,23 @@ export default function Registration() {
 
   useEffect(() => { loadUsers(); }, []);
 
-  const handleDelete = async (id) => {
+  const handleDeactivate = async (id) => {
     try {
-      await API.delete(`/registration/users/${id}`);
+      await API.patch(`/registration/users/${id}/deactivate`);
       loadUsers();
     } catch {
-      alert("Failed to remove user");
+      alert("Failed to deactivate user");
     }
   };
+
+  const handleActivate = async (id) => {
+  try {
+    await API.patch(`/registration/users/${id}/activate`);
+    loadUsers();
+  } catch {
+    alert("Failed to activate user");
+  }
+};
 
   return (
     <div className="space-y-6">
@@ -385,12 +524,24 @@ export default function Registration() {
       {/* Tab content */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         {tab === "register" && <RegisterUser onRefresh={loadUsers} />}
-        {tab === "list"     && (
+        {tab === "list" && (
           loading
             ? <p className="text-gray-400 text-sm">Loading…</p>
-            : <UserList users={users} onDelete={handleDelete} />
+            : <UserList
+                users={users}
+                onEdit={setEditingUser}
+                onDeactivate={handleDeactivate}
+                onActivate={handleActivate}
+              />
         )}
       </div>
+      {editingUser && (
+      <EditModal
+        user={editingUser}
+        onClose={() => setEditingUser(null)}
+        onSave={loadUsers}
+      />
+    )}
     </div>
   );
 }

@@ -39,7 +39,7 @@ export default function SelectionStatusPanel({ role,cycle }) {
     const deptMap = {};
     recRes.data.forEach(({ department, records }) => {
       if (!records?.length) return;
-      if (role === "HOD" && user.department && department !== user.department) return;
+      if (role === "HoD" && user.department && department !== user.department) return;
       
       // Filter out closed cycle records
       const activeRecords = records.filter(r => !r.isCycleClosedFlag);

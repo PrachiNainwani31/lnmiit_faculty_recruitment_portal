@@ -118,7 +118,7 @@ setAppearedSubmittedDepts(appearedSubmittedMap);
 
   const handleDeptPublish = async (dept, hodId, candidates) => {
     if (!appearedSubmittedDepts[dept]) {
-  alert(`Cannot publish: ${dept} HOD has not submitted appeared marking yet.`);
+  alert(`Cannot publish: ${dept} HoD has not submitted appeared marking yet.`);
   return;
 }
   const payload = candidates.map(c => {
@@ -184,7 +184,7 @@ setAppearedSubmittedDepts(appearedSubmittedMap);
 
       {!dofaApproved && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <p className="text-sm font-medium text-amber-800">⚠ Awaiting DOFA approval before selection is allowed</p>
+          <p className="text-sm font-medium text-amber-800">⚠ Awaiting DoFA approval before selection is allowed</p>
         </div>
       )}
 

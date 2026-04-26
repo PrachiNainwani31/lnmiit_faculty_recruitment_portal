@@ -27,7 +27,7 @@ const User = sequelize.define(
     },
     role: {
       type:      DataTypes.ENUM(
-        "ADMIN", "HOD", "DOFA", "ADOFA", "DOFA_OFFICE",
+        "ADMIN", "HoD", "DoFA", "ADoFA", "DoFA_OFFICE",
         "REGISTRAR_OFFICE", "CANDIDATE", "REFEREE",
         "ESTABLISHMENT", "LUCS", "ESTATE"
       ),
@@ -35,7 +35,7 @@ const User = sequelize.define(
     },
     department: {
       type:      DataTypes.STRING(150),
-      allowNull: true,   // only for HOD
+      allowNull: true,   // only for HoD
     },
     active: {
       type:         DataTypes.BOOLEAN,

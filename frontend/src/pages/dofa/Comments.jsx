@@ -7,12 +7,12 @@ export default function DofaComments() {
   const [comments, setComments] = useState([]);
   const [message,  setMessage]  = useState("");
 
-  // Load HOD list once
+  // Load HoD list once
   useEffect(() => {
   API.get("/registration/users")
     .then(res => {
       const all = Array.isArray(res.data) ? res.data : [];
-      setHods(all.filter(u => u.role === "HOD" && u.department));
+      setHods(all.filter(u => u.role === "HoD" && u.department));
     })
     .catch(console.error);
 }, []);
@@ -37,19 +37,19 @@ export default function DofaComments() {
   };
 
   const senderLabel = (c) => {
-    if (c.fromRole === "HOD")
-      return c.fromDepartment?.trim() ? `${c.fromDepartment.trim()} HOD` : "HOD";
+    if (c.fromRole === "HoD")
+      return c.fromDepartment?.trim() ? `${c.fromDepartment.trim()} HoD` : "HoD";
     return c.fromRole;
   };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Comments (DOFA ↔ HOD)</h2>
+      <h2 className="text-xl font-semibold">Comments (DoFA ↔ HoD)</h2>
 
-      {/* HOD selector */}
+      {/* HoD selector */}
       <div>
         <label className="text-sm font-medium text-gray-600 block mb-1">
-          Select HOD Department
+          Select HoD Department
         </label>
         <select
           value={hodId}
@@ -78,7 +78,7 @@ export default function DofaComments() {
         {comments.map(c => (
           <div key={c.id}
             className={`p-3 rounded ${
-              c.fromRole === "DOFA" || c.fromRole === "DOFA_OFFICE"
+              c.fromRole === "DoFA" || c.fromRole === "DoFA_OFFICE"
                 ? "bg-red-50 text-red-800"
                 : "bg-blue-50 text-blue-800"
             }`}
@@ -97,7 +97,7 @@ export default function DofaComments() {
           value={message}
           onChange={e => setMessage(e.target.value)}
           onKeyDown={e => e.key === "Enter" && handleSend()}
-          placeholder={hodId ? "Send comment to HOD..." : "Select a HOD first"}
+          placeholder={hodId ? "Send comment to HoD..." : "Select a HoD first"}
           disabled={!hodId}
           className="flex-1 border p-2 rounded text-sm disabled:bg-gray-50 disabled:text-gray-400"
         />

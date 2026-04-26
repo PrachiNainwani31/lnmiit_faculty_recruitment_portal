@@ -38,7 +38,7 @@
   };
   
   /* =========================================================
-    GET EXPERTS (HOD)
+    GET EXPERTS (HoD)
   ========================================================= */
   exports.getExperts = async (req, res) => {
     const hodCycle = await getCurrentCycle(req.user.id);
@@ -84,7 +84,7 @@
   };
   
   /* =========================================================
-    HOD COUNTS
+    HoD COUNTS
   ========================================================= */
   exports.getHodCounts = async (req, res) => {
     const hodCycle = await getCurrentCycle(req.user.id);
@@ -98,13 +98,13 @@
   };
   
   /* =========================================================
-    GET ALL EXPERTS (DOFA / DOFA_OFFICE)
+    GET ALL EXPERTS (DoFA / DoFA_OFFICE)
     
     Rules:
     - Only experts from currently active (non-closed) cycles
-    - Deduplicate by (email + uploadedById): same HOD cannot list
+    - Deduplicate by (email + uploadedById): same HoD cannot list
       the same expert twice across C1/C2 of the same year
-    - Different HODs CAN list the same expert — they appear as
+    - Different HoDs CAN list the same expert — they appear as
       separate rows with their own department/cycle column
   ========================================================= */
   exports.getAllExperts = async (req, res) => {
@@ -119,7 +119,7 @@
   
       const activeHodIds = [...new Set(activeCycles.map(c => c.hodId).filter(Boolean))];
       const dofaUsers = await User.findAll({
-        where: { role: { [Op.in]: ["DOFA", "ADOFA", "DOFA_OFFICE"] } },
+        where: { role: { [Op.in]: ["DoFA", "ADoFA", "DoFA_OFFICE"] } },
         attributes: ["id"],
       });
       const dofaUserIds = dofaUsers.map(u => u.id);
@@ -135,8 +135,8 @@
       });
   
       // Deduplicate by (email + uploadedById):
-      //   - Same HOD uploading same expert across multiple cycles → keep once
-      //   - CSE HOD and CCE HOD both uploading same expert → keep both (different uploadedById)
+      //   - Same HoD uploading same expert across multiple cycles → keep once
+      //   - CSE HoD and CCE HoD both uploading same expert → keep both (different uploadedById)
       const seen = new Set();
       const unique = experts.filter(e => {
         if (!e.email) return true;
@@ -154,7 +154,7 @@
   };
   
   /* =========================================================
-    UPLOAD EXPERTS CSV (HOD)
+    UPLOAD EXPERTS CSV (HoD)
   ========================================================= */
   exports.uploadExpertsCSV = async (req, res) => {
     try {
@@ -170,7 +170,7 @@
       const hodCycle = await getCurrentCycle(hodId);
       if (!hodCycle) return res.status(200).json({ candidates: 0, experts: 0 });
       const hod = await User.findByPk(hodId);
-      if (!hod) return res.status(404).json({ message: "HOD not found" });
+      if (!hod) return res.status(404).json({ message: "HoD not found" });
 
       const formattedExperts = experts.map(row => ({
         cycle:          hodCycle.cycle,
@@ -203,11 +203,11 @@
   };
   
   /* =========================================================
-    UPLOAD EXPERTS CSV FOR A SPECIFIC HOD (DOFA / ADOFA)
+    UPLOAD EXPERTS CSV FOR A SPECIFIC HoD (DoFA / ADoFA)
     
-    Body: { hodId }  — which HOD's active cycle to upload into
-    The uploading user (DOFA) becomes the uploadedById so these
-    rows are identifiable as DOFA-uploaded in the UI.
+    Body: { hodId }  — which HoD's active cycle to upload into
+    The uploading user (DoFA) becomes the uploadedById so these
+    rows are identifiable as DoFA-uploaded in the UI.
   ========================================================= */
   exports.uploadExpertsCSVForHod = async (req, res) => {
     try {
@@ -219,7 +219,7 @@
       const experts = await parseCSV(req.file.path);
       if (!experts.length) return res.status(400).json({ message: "CSV is empty" });
   
-      // Find the latest active cycle for the target HOD
+      // Find the latest active cycle for the target HoD
       const hodCycle = await RecruitmentCycle.findOne({
         where: {
           hodId,
@@ -227,7 +227,7 @@
         },
         order: [["createdAt", "DESC"]],
       });
-      if (!hodCycle) return res.status(404).json({ message: "No active cycle found for this HOD" });
+      if (!hodCycle) return res.status(404).json({ message: "No active cycle found for this HoD" });
   
       const targetHod = await User.findByPk(hodId, { attributes: ["id", "department"] });
 
@@ -246,7 +246,7 @@
 
       await Expert.bulkCreate(formatted);
   
-      res.json({ message: "Experts uploaded for HOD cycle", count: formatted.length, cycle: hodCycle.cycle });
+      res.json({ message: "Experts uploaded for HoD cycle", count: formatted.length, cycle: hodCycle.cycle });
     } catch (err) {
       console.error("uploadExpertsCSVForHod error:", err.message);
       res.status(500).json({ message: err.message });
@@ -254,9 +254,9 @@
   };
   
   /* =========================================================
-    GET EXPERTS BY HOD (DOFA viewing a specific dept)
+    GET EXPERTS BY HoD (DoFA viewing a specific dept)
     
-    Deduplicates by email within the same HOD — one HOD should
+    Deduplicates by email within the same HoD — one HoD should
     not show the same expert twice across multiple cycles.
   ========================================================= */
   exports.getExpertsByHod = async (req, res) => {
@@ -280,7 +280,7 @@
         order: [["createdAt", "ASC"]],
       });
   
-      // Within the same HOD: deduplicate by email
+      // Within the same HoD: deduplicate by email
       const seen = new Set();
       const unique = experts.filter(e => {
         if (!e.email || seen.has(e.email.toLowerCase())) return false;

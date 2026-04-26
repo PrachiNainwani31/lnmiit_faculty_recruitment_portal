@@ -7,8 +7,8 @@ export const approveCycle            = (hodId)    => API.post("/cycle/approve", 
 export const raiseQuery              = (comment, hodId) => API.post("/cycle/query", { comment, hodId });
 export const getDofaDashboard        = ()         => API.get("/cycle/dofa-dashboard");
 
-// ── NEW: DOFA sets teaching-interaction + interview dates ──────────────
-// After calling this, HOD's "Mark Appeared" toggle becomes active
+// ── NEW: DoFA sets teaching-interaction + interview dates ──────────────
+// After calling this, HoD's "Mark Appeared" toggle becomes active
 export const setInterviewDates = ({ hodId, teachingInteractionDate, interviewDate }) =>
   API.post("/cycle/set-dates", { hodId, teachingInteractionDate, interviewDate });
 

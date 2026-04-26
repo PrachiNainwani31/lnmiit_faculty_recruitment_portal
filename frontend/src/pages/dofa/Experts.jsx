@@ -144,11 +144,11 @@ function EmailModal({ expert, allExperts, onClose }) {
 /* ── Add Expert Manually ── */
 function AddExpertPanel({ onAdded }) {
   const [open,    setOpen]    = useState(false);
-  const [hods,    setHods]    = useState([]);   // list of active HOD cycles
+  const [hods,    setHods]    = useState([]);   // list of active HoD cycles
   const [form,    setForm]    = useState({
     fullName:"", designation:"", department:"",
     institute:"", email:"", phone:"", specialization:"",
-    hodId: "",   // ← NEW: which HOD's cycle to assign
+    hodId: "",   // ← NEW: which HoD's cycle to assign
   });
   const [saving,  setSaving]  = useState(false);
   const [formErrors, setFormErrors] = useState({});
@@ -169,7 +169,7 @@ function AddExpertPanel({ onAdded }) {
     return Object.keys(errs).length === 0;
   };
  
-  // Load active HOD cycles when panel opens
+  // Load active HoD cycles when panel opens
   useEffect(() => {
     if (!open) return;
     API.get("/cycle/dofa-dashboard")
@@ -200,7 +200,7 @@ function AddExpertPanel({ onAdded }) {
     }
   };
  
-  // When a HOD is selected, auto-fill department field hint
+  // When a HoD is selected, auto-fill department field hint
   const selectedHod = hods.find(h => String(h.hodId) === String(form.hodId));
  
   return (
@@ -355,7 +355,7 @@ function AddExpertPanel({ onAdded }) {
 }
 
 
-/* ── Upload Experts CSV for a HOD's Cycle (DOFA) ── */
+/* ── Upload Experts CSV for a HoD's Cycle (DoFA) ── */
 function UploadCSVForHodPanel({ onUploaded }) {
   const [open,    setOpen]    = useState(false);
   const [hods,    setHods]    = useState([]);
@@ -363,7 +363,7 @@ function UploadCSVForHodPanel({ onUploaded }) {
   const [file,    setFile]    = useState(null);
   const [saving,  setSaving]  = useState(false);
 
-  // Load active HODs from DOFA dashboard on open
+  // Load active HoDs from DoFA dashboard on open
   useEffect(() => {
     if (!open) return;
     API.get("/cycle/dofa-dashboard")
@@ -373,7 +373,7 @@ function UploadCSVForHodPanel({ onUploaded }) {
 
   const handleUpload = async () => {
     if (!file)  return alert("Please select a CSV file");
-    if (!hodId) return alert("Please select a department / HOD");
+    if (!hodId) return alert("Please select a department / HoD");
     try {
       setSaving(true);
       const fd = new FormData();
@@ -503,7 +503,7 @@ export default function DofaExperts() {
             )}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
-            Same expert invited by multiple departments appears as separate rows. Same HOD cannot list the same expert twice.
+            Same expert invited by multiple departments appears as separate rows. Same HoD cannot list the same expert twice.
           </p>
         </div>
         {allExperts.length > 0 && (
@@ -598,7 +598,7 @@ export default function DofaExperts() {
 
       {allExperts.length === 0 && (
         <div className="bg-white rounded-xl border p-14 text-center text-gray-400">
-          <p>{hodFilter ? "No experts for this HOD yet" : "No experts uploaded yet"}</p>
+          <p>{hodFilter ? "No experts for this HoD yet" : "No experts uploaded yet"}</p>
         </div>
       )}
 

@@ -506,12 +506,12 @@ export default function ExpertConfirmation() {
       .then(res => {
         const map = {};
         res.data.forEach(({ expert, travel }) => {
-          const groupKey = expert.uploadedBy?.role === "HOD"
+          const groupKey = expert.uploadedBy?.role === "HoD"
             ? expert.uploadedByDepts?.length > 1
               ? `${expert.uploadedByDepts.join(" + ")} Departments`
-              : `${expert.uploadedBy.department || "HOD"} Department`
+              : `${expert.uploadedBy.department || "HoD"} Department`
             : expert.department || "Manual Entry";
-          if (!map[groupKey]) map[groupKey] = { isHod: expert.uploadedBy?.role === "HOD", items: [] };
+          if (!map[groupKey]) map[groupKey] = { isHod: expert.uploadedBy?.role === "HoD", items: [] };
           map[groupKey].items.push({ expert, travel });
         });
         setGrouped(map);
@@ -555,7 +555,7 @@ export default function ExpertConfirmation() {
           <div className={`px-5 py-3 flex items-center justify-between ${isHod ? "bg-[#6b0f1a]" : "bg-indigo-600"}`}>
             <div>
               <p className="text-white font-medium text-sm">{groupKey}</p>
-              <p className="text-white/50 text-xs mt-0.5">{isHod ? "HOD uploaded" : "Added by DOFA"}</p>
+              <p className="text-white/50 text-xs mt-0.5">{isHod ? "HoD uploaded" : "Added by DoFA"}</p>
             </div>
             <span className="text-white/60 text-xs">
               {items.filter(i => i.travel?.confirmed).length}/{items.length} confirmed

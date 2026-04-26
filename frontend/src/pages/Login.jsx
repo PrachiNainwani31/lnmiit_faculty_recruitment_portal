@@ -57,12 +57,12 @@ export default function Login() {
       localStorage.setItem("user",  JSON.stringify(user));
 
       const routes = {
-        HOD:          "/hod",
-        DOFA:         "/dofa",
-        ADOFA:        "/dofa",
+        HoD:          "/hod",
+        DoFA:         "/dofa",
+        ADoFA:        "/dofa",
         CANDIDATE:    "/candidate",
         REFEREE:      "/referee-portal",
-        DOFA_OFFICE:  "/dofa-office",
+        DoFA_OFFICE:  "/dofa-office",
         REGISTRAR_OFFICE:"/travel",
         DIRECTOR:     "/director",
         ESTATE:       "/estate",

@@ -34,7 +34,7 @@ exports.getMyApplication = async (req, res) => {
       });
     }
 
-    // ── Auto-fill department from HOD's Candidate upload if not set ──
+    // ── Auto-fill department from HoD's Candidate upload if not set ──
     if (!app.department) {
       const { Candidate, User } = require("../models");
       const candidate = await Candidate.findOne({
@@ -269,8 +269,8 @@ exports.submitApplication = async (req, res) => {
           .catch(err => console.error(`Referee email failed for ${referee.email}:`, err.message));
       }
 
-      // Notify DOFA Office
-      const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
+      // Notify DoFA Office
+      const dofaOfficeUsers = await User.findAll({ where: { role: "DoFA_OFFICE" } });
       const tmpl = templates.candidateResubmitted({
         candidateName: app.name, department: app.department,
       });
@@ -282,7 +282,7 @@ exports.submitApplication = async (req, res) => {
       const latestCycle = await RecruitmentCycle.findOne({ order: [["createdAt", "DESC"]] });
       const cycleStr = latestCycle?.cycle || "SYSTEM";
       await createNotification({
-        cycle: cycleStr, role: "DOFA_OFFICE",
+        cycle: cycleStr, role: "DoFA_OFFICE",
         title: "Candidate Resubmitted Application",
         message: `${app.name} has resubmitted after document corrections.`,
         type: "STATUS",
@@ -296,8 +296,8 @@ exports.submitApplication = async (req, res) => {
       return res.json({ message: "Application resubmitted successfully." });
     }
 
-    // Email #5 — notify DOFA Office
-    const dofaOfficeUsers = await User.findAll({ where: { role: "DOFA_OFFICE" } });
+    // Email #5 — notify DoFA Office
+    const dofaOfficeUsers = await User.findAll({ where: { role: "DoFA_OFFICE" } });
     const tmpl5 = templates.candidateApplicationSubmitted({
       candidateName: app.name, department: app.department, email: app.email,
     });

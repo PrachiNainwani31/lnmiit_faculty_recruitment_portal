@@ -15,20 +15,20 @@ const sendMail = async (to, subject, html) => {
 };
 
 /* ============================
-   HOD uploaded notification
+   HoD uploaded notification
 ============================ */
 exports.notifyDofaUpload = async ({ department, hodName }) => {
   try {
     const dofa = await User.findOne({
-      where: { role: "DOFA" }
+      where: { role: "DoFA" }
     });
 
     if (!dofa) return;
 
     await sendMail(
       dofa.email,
-      "HOD Uploaded Experts",
-      `<p>HOD <b>${hodName}</b> from <b>${department}</b> uploaded experts.</p>`
+      "HoD Uploaded Experts",
+      `<p>HoD <b>${hodName}</b> from <b>${department}</b> uploaded experts.</p>`
     );
 
   } catch (err) {
@@ -37,13 +37,13 @@ exports.notifyDofaUpload = async ({ department, hodName }) => {
 };
 
 /* ============================
-   DOFA comment mail
+   DoFA comment mail
 ============================ */
 exports.notifyHodComment = async (hodEmail) => {
   await sendMail(
     hodEmail,
-    "New Comment from DOFA",
-    `<p>DOFA raised a comment. Check portal.</p>`
+    "New Comment from DoFA",
+    `<p>DoFA raised a comment. Check portal.</p>`
   );
 };
 
@@ -83,8 +83,8 @@ exports.emailCandidate = async (req, res) => {
 exports.emailAllCandidates = async (req, res) => {
   try {
     const department = req.params.dept;
-    const hod = await User.findOne({ where: { role: "HOD", department } });
-    if (!hod) return res.status(404).json({ message: "HOD not found" });
+    const hod = await User.findOne({ where: { role: "HoD", department } });
+    if (!hod) return res.status(404).json({ message: "HoD not found" });
 
     // Get hod's current cycle
     const cycle = await getCurrentCycle(hod.id);

@@ -19,13 +19,13 @@ const {
 } = require("../controllers/establishment.controller");
 
 router.get("/records",
-  auth(["ESTABLISHMENT","DOFA","ADOFA","DOFA_OFFICE","HOD","ESTATE","LUCS"]),
+  auth(["ESTABLISHMENT","DoFA","ADoFA","DoFA_OFFICE","HoD","ESTATE","LUCS"]),
   getOnboardingRecords);
 
 router.post("/offer-letter",    auth(["ESTABLISHMENT"]), upload.single("pdf"), uploadOfferLetter);
 router.post("/joining-date",    auth(["ESTABLISHMENT"]), setJoiningDate);
 router.post("/joining-letter",  auth(["ESTABLISHMENT"]), upload.single("pdf"), uploadJoiningLetter);
-router.post("/allot-room",      auth(["DOFA_OFFICE"]),   allotRoom);
+router.post("/allot-room",      auth(["DoFA_OFFICE"]),   allotRoom);
 
 router.post("/mis-library",     auth(["ESTABLISHMENT"]), saveMisLibrary);
 router.post("/rfid-card",       auth(["ESTABLISHMENT"]), upload.single("pdf"), uploadRfidCard);

@@ -38,7 +38,7 @@ User.hasMany(Candidate,   { as: "candidatesAsHod",  foreignKey: "hodId"  });
 CandidateApplication.belongsTo(User, { as: "candidateUser", foreignKey: "candidateUserId" });
 User.hasMany(CandidateApplication,   { as: "applications",  foreignKey: "candidateUserId" });
 
-// CandidateStats ↔ User (HOD)
+// CandidateStats ↔ User (HoD)
 CandidateStats.belongsTo(User, { as: "hod", foreignKey: "hodId" });
 User.hasMany(CandidateStats,   { as: "stats", foreignKey: "hodId" });
 
@@ -61,7 +61,7 @@ OnboardingRecord.belongsTo(User,      { as: "roomAllottedBy", foreignKey: "roomA
 OnboardingRecord.belongsTo(User,      { as: "lucsConfirmedBy", foreignKey: "lucsConfirmedById" });
 Candidate.hasOne(OnboardingRecord,    { as: "onboarding",   foreignKey: "candidateId" });
 
-// RecruitmentCycle ↔ User (HOD)
+// RecruitmentCycle ↔ User (HoD)
 RecruitmentCycle.belongsTo(User, { as: "hod", foreignKey: "hodId" });
 User.hasMany(RecruitmentCycle,   { as: "recruitmentCycles", foreignKey: "hodId" });
 

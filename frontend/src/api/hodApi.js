@@ -41,7 +41,7 @@ export const getCurrentCycle = () =>
 
 // ── NEW ──────────────────────────────────────────────────────────
 /**
- * HOD marks a candidate as appeared / not appeared in interview.
+ * HoD marks a candidate as appeared / not appeared in interview.
  * @param {number|string} id   - Candidate ID
  * @param {boolean}       appeared
  */

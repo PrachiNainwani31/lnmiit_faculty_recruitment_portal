@@ -13,22 +13,22 @@ const {
   getClosedCycleDocs,
 } = require("../controllers/dofaDocument.controller");
 
-const DOFA_ROLES = ["DOFA", "ADOFA", "DOFA_OFFICE"];   // ← shared shorthand
+const DoFA_ROLES = ["DoFA", "ADoFA", "DoFA_OFFICE"];   // ← shared shorthand
 
-router.get("/resumes/:department", auth(["DOFA","ADOFA"]), downloadDepartmentResumes);
+router.get("/resumes/:department", auth(["DoFA","ADoFA"]), downloadDepartmentResumes);
 
-router.get("/documents", auth(DOFA_ROLES), async (req, res) => {
+router.get("/documents", auth(DoFA_ROLES), async (req, res) => {
   const apps = await CandidateApplication
     .find()
     .populate("candidate", "name email department");
   res.json(apps);
 });
 
-router.get("/document-tracking",      auth(DOFA_ROLES), getDocumentTracking);
-router.post("/document-verdict",       auth(DOFA_ROLES), updateDocumentVerdict);
-router.post("/document-reminder",      auth(DOFA_ROLES), sendReminder);
-router.get("/candidate-docs/:appId/download",                    auth(DOFA_ROLES), downloadCandidateDocs);
-router.get("/candidate-docs/:candidateId/download-by-candidate", auth(DOFA_ROLES), downloadByCandidate);
-router.get("/closed-cycle-docs",       auth(DOFA_ROLES), getClosedCycleDocs);   // ← ADD THIS
+router.get("/document-tracking",      auth(DoFA_ROLES), getDocumentTracking);
+router.post("/document-verdict",       auth(DoFA_ROLES), updateDocumentVerdict);
+router.post("/document-reminder",      auth(DoFA_ROLES), sendReminder);
+router.get("/candidate-docs/:appId/download",                    auth(DoFA_ROLES), downloadCandidateDocs);
+router.get("/candidate-docs/:candidateId/download-by-candidate", auth(DoFA_ROLES), downloadByCandidate);
+router.get("/closed-cycle-docs",       auth(DoFA_ROLES), getClosedCycleDocs);   // ← ADD THIS
 
 module.exports = router;

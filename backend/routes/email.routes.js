@@ -5,8 +5,8 @@ const Candidate     = require("../models/Candidate");
 
 const router = express.Router();
 
-/* ── Interview invitation (editable body, sent from DOFA portal) ── */
-router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req, res) => {
+/* ── Interview invitation (editable body, sent from DoFA portal) ── */
+router.post("/send-interview-invite", auth(["DoFA", "DoFA_OFFICE"]), async (req, res) => {
   try {
     const { candidateId, subject, body,deadlineAt } = req.body;
     if (!subject?.trim() || !body?.trim())
@@ -117,7 +117,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
         <!-- Header -->
         <div style="background:#8b0000;padding:24px 30px;text-align:center">
           <h2 style="margin:0;color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:0.5px">
-            LNMIIT Faculty Recruitment and Onboarding Portal
+            LNMIIT Faculty Recruitment & Onboarding Portal
           </h2>
           <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px">
             The LNM Institute of Information Technology, Jaipur
@@ -153,7 +153,7 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
         <!-- Footer -->
         <div style="background:#f9f9f9;border-top:1px solid #eeeeee;padding:16px 30px;text-align:center">
           <p style="margin:0;font-size:11px;color:#999999">
-            This is an automated message from the LNMIIT Faculty Recruitment and Onboarding Portal.<br>
+            This is an automated message from the LNMIIT Faculty Recruitment & Onboarding Portal.<br>
             Please do not reply directly to this email.
           </p>
         </div>
@@ -186,8 +186,8 @@ router.post("/send-interview-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req,
   }
 });
 
-/* ── Expert invitation (editable body, sent from DOFA portal) ── */
-router.post("/send-expert-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req, res) => {
+/* ── Expert invitation (editable body, sent from DoFA portal) ── */
+router.post("/send-expert-invite", auth(["DoFA", "DoFA_OFFICE"]), async (req, res) => {
   try {
     const Expert = require("../models/Expert");
     const { expertId, subject, body } = req.body;
@@ -203,7 +203,7 @@ router.post("/send-expert-invite", auth(["DOFA", "DOFA_OFFICE"]), async (req, re
       subject,
       `<div style="font-family:Arial,sans-serif;max-width:650px;margin:auto;padding:30px">
         <div style="background:#8b0000;color:#fff;padding:15px;text-align:center;border-radius:6px 6px 0 0">
-          <h2 style="margin:0">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
+          <h2 style="margin:0">LNMIIT Faculty Recruitment & Onboarding Portal</h2>
         </div>
         <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;
              white-space:pre-wrap;font-size:14px;line-height:1.7;color:#333">

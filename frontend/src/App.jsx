@@ -74,8 +74,8 @@ export default function App() {
       {/* Referee portal — PUBLIC */}
       <Route path="/referee/:refereeId" element={<RefereePage />} />
 
-      {/* HOD */}
-      <Route path="/hod" element={<ProtectedRoute role="HOD"><HodLayout /></ProtectedRoute>}>
+      {/* HoD */}
+      <Route path="/hod" element={<ProtectedRoute role="HoD"><HodLayout /></ProtectedRoute>}>
         <Route index element={<HodDashboard />} />
         <Route path="candidates" element={<Candidates />} />
         <Route path="experts"    element={<Experts />} />
@@ -83,8 +83,8 @@ export default function App() {
         <Route path="logs" element={<HodLogs />} />
       </Route>
 
-      {/* DOFA */}
-      <Route path="/dofa" element={<ProtectedRoute role="DOFA"><DofaLayout /></ProtectedRoute>}>
+      {/* DoFA */}
+      <Route path="/dofa" element={<ProtectedRoute role="DoFA"><DofaLayout /></ProtectedRoute>}>
         <Route index                    element={<DofaDashboard />} />
         <Route path="candidates"        element={<DofaCandidates />} />
         <Route path="experts"           element={<DofaExperts />} />
@@ -100,9 +100,9 @@ export default function App() {
         element={<ProtectedRoute role="CANDIDATE"><CandidateDashboard /></ProtectedRoute>}
       />
 
-      {/* DOFA Office */}
+      {/* DoFA Office */}
       <Route path="/dofa-office" element={
-        <ProtectedRoute role="DOFA_OFFICE"><DofaOfficeLayout /></ProtectedRoute>
+        <ProtectedRoute role="DoFA_OFFICE"><DofaOfficeLayout /></ProtectedRoute>
       }>
         <Route index                     element={<DofaOfficeDashboard />} />
         <Route path="candidates"         element={<DofaOfficeCandidates />} />
@@ -126,7 +126,7 @@ export default function App() {
         <Route path="tickets"  element={<TravelTickets />} />
         <Route path="invoices" element={<TravelInvoices />} />
         <Route path="pickup"   element={<TravelPickup />} />
-        <Route path= "/travel/logs" element={ <TravelLogs /> }/>
+        <Route path= "logs" element={ <TravelLogs /> }/>
       </Route>
 
       {/* Establishment */}

@@ -14,7 +14,7 @@ export default function Candidatehome({ application = {}, onOpenForm }) {
         <h1 className="text-2xl font-bold text-gray-800">
           Welcome{firstName ? `, ${firstName}` : ""}!
         </h1>
-        <p className="text-sm text-gray-500 mt-1">LNMIIT Faculty Recruitment and Onboarding Portal</p>
+        <p className="text-sm text-gray-500 mt-1">LNMIIT Faculty Recruitment & Onboarding Portal</p>
       </div>
 
       <div className="grid grid-cols-2 gap-5">

@@ -6,7 +6,7 @@ const getCurrentCycle = require("../utils/getCurrentCycle");
 const storage = multer.diskStorage({
   destination: async function (req, file, cb) {
     try {
-      // ✅ Get cycle dynamically from HOD's current cycle
+      // ✅ Get cycle dynamically from HoD's current cycle
       const cycleDoc   = await getCurrentCycle(req.user.id);
       const cycleStr   = cycleDoc?.cycle || "unknown-cycle";
       const department = req.user.department || "unknown-dept";

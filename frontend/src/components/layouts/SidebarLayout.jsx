@@ -8,7 +8,7 @@ export default function SidebarLayout({ children }) {
       <aside className="w-64 bg-white border-r">
         <div className="p-4 border-b">
           <h1 className="text-lg font-bold">Institute Portal</h1>
-          <p className="text-sm text-gray-500">HOD Management</p>
+          <p className="text-sm text-gray-500">HoD Management</p>
         </div>
 
         <nav className="mt-4">

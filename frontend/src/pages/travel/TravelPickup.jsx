@@ -38,7 +38,7 @@ export default function TravelPickup() {
     try {
       setSaving(expertId);
       await API.post(`/expert-travel/driver/${expertId}`, form);
-      alert("Driver info saved and DOFA notified");
+      alert("Driver info saved and DoFA notified");
       load();
     } catch {
       alert("Failed to save");
@@ -52,8 +52,8 @@ export default function TravelPickup() {
   if (items.length === 0) return (
     <div className="bg-white rounded-xl shadow p-10 text-center text-gray-400">
       
-      <p>No pickup/drop-off details from DOFA Office yet.</p>
-      <p className="text-xs mt-2">Details will appear here once DOFA Office enters them.</p>
+      <p>No pickup/drop-off details from DoFA Office yet.</p>
+      <p className="text-xs mt-2">Details will appear here once DoFA Office enters them.</p>
     </div>
   );
 
@@ -83,7 +83,7 @@ export default function TravelPickup() {
               )}
             </div>
 
-            {/* DOFA's pickup/drop details */}
+            {/* DoFA's pickup/drop details */}
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-blue-400 uppercase tracking-wide mb-1">Pickup</p>
@@ -133,7 +133,7 @@ export default function TravelPickup() {
                 disabled={saving === expert.id}
                 className="mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2 rounded-lg disabled:opacity-60"
               >
-                {saving === expert.id ? "Saving..." : "Save & Notify DOFA"}
+                {saving === expert.id ? "Saving..." : "Save & Notify DoFA"}
               </button>
             </div>
           </div>

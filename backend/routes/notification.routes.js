@@ -6,7 +6,7 @@ const {
 
 const router = express.Router();
 
-router.get("/", getNotifications);             // ?role=HOD&cycle=2026-27
+router.get("/", getNotifications);             // ?role=HoD&cycle=2026-27
 router.post("/:id/read", markAsRead);
 
 module.exports = router;

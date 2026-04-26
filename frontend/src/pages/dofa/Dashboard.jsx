@@ -96,7 +96,7 @@ function DateInputRow({ dept, onSaved }) {
               </span>
             ) : (
               <span className="text-xs text-red-400 italic font-medium">
-                Not set — HOD cannot mark appeared yet
+                Not set — HoD cannot mark appeared yet
               </span>
             )}
           </div>
@@ -208,7 +208,7 @@ export default function Dashboard() {
 
       {/* ── Page title ── */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">DOFA Dashboard</h2>
+        <h2 className="text-2xl font-bold text-gray-800">DoFA Dashboard</h2>
         <p className="text-sm text-gray-500 mt-1">
           Review department submissions and manage recruitment schedule
         </p>
@@ -237,7 +237,7 @@ export default function Dashboard() {
               <div className="flex justify-between items-start flex-wrap gap-4">
                 <div>
                   <h3 className="text-lg font-bold text-gray-800">{d.department}</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">HOD: {d.hodEmail}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">HoD: {d.hodEmail}</p>
                 </div>
 
                 {/* ── 6-stage stepper ── */}
@@ -348,7 +348,7 @@ export default function Dashboard() {
 
                 {d.status === "QUERY" && (
                   <span className="px-4 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-medium">
-                    ⏳ Awaiting HOD response
+                    ⏳ Awaiting HoD response
                   </span>
                 )}
 
@@ -360,13 +360,13 @@ export default function Dashboard() {
 
                 {d.status === "INTERVIEW_SET" && (
                   <span className="px-4 py-2 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-medium">
-                    📅 Interview scheduled — HOD marking appeared
+                    📅 Interview scheduled — HoD marking appeared
                   </span>
                 )}
 
                 {d.status === "APPEARED_SUBMITTED" && (
                   <span className="px-4 py-2 text-xs bg-violet-50 text-violet-700 border border-violet-200 rounded-lg font-medium">
-                    ✓ Appeared data submitted by HOD
+                    ✓ Appeared data submitted by HoD
                   </span>
                 )}
               </div>
@@ -379,7 +379,7 @@ export default function Dashboard() {
           );
         })}
       </div>
-      <SelectionStatusPanel role="DOFA" />
+      <SelectionStatusPanel role="DoFA" />
 
       {/* Comment modal */}
       <CommentModal
@@ -388,7 +388,7 @@ export default function Dashboard() {
         onSend={async (text) => {
           await raiseQuery(text, selectedHodId);
           setShowComment(false);
-          alert("Query sent to HOD");
+          alert("Query sent to HoD");
         }}
       />
     </div>

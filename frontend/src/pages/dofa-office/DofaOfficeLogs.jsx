@@ -71,7 +71,7 @@ const downloadByDeptCycle = () => {
       "Employment Type": c.employmentType || "—",
       "Status":          c.selectionStatus || "—",
       "Waitlist #":      c.selectionStatus === "WAITLISTED" ? (c.waitlistPriority || "—") : "—",
-      "HOD Dept":        c.hod?.department || "—",
+      "HoD Dept":        c.hod?.department || "—",
     }));
     const ws = XLSX.utils.json_to_sheet(sheetRows);
     // Auto column widths
@@ -99,7 +99,7 @@ const downloadFiltered = () => {
     "Employment Type": c.employmentType || "—",
     "Status":          c.selectionStatus || "—",
     "Waitlist #":      c.selectionStatus === "WAITLISTED" ? (c.waitlistPriority || "—") : "—",
-    "HOD Dept":        c.hod?.department || "—",
+    "HoD Dept":        c.hod?.department || "—",
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   ws["!cols"] = Object.keys(rows[0]).map(k => ({
@@ -197,7 +197,7 @@ const downloadFiltered = () => {
           <table className="min-w-full text-xs">
             <thead>
               <tr className="bg-gray-50 border-b text-gray-500 uppercase tracking-wide font-semibold">
-                {["#","Name","Email","Department","Designation","Employment Type","Status","Waitlist#","Cycle","HOD"].map(h => (
+                {["#","Name","Email","Department","Designation","Employment Type","Status","Waitlist#","Cycle","HoD"].map(h => (
                   <th key={h} className="px-4 py-3 text-left whitespace-nowrap">{h}</th>
                 ))}
               </tr>

@@ -8,7 +8,7 @@ const { toCode } = require("../utils/deptMap");
 const FRONTEND_URL         = process.env.FRONTEND_URL;
 
 const VALID_ROLES = [
-  "DOFA", "DOFA_OFFICE", "HOD", "ESTABLISHMENT",
+  "DoFA", "ADoFA", "DoFA_OFFICE", "HoD", "ESTABLISHMENT",
   "LUCS", "ESTATE", "REGISTRAR_OFFICE", "CANDIDATE", "OTHER",
 ];
 
@@ -25,7 +25,7 @@ const DEPARTMENTS = [
 
 /* ══════════════════════════════════════
    REGISTER USER
-   DOFA Office registers any portal user.
+   DoFA Office registers any portal user.
    System generates password, emails it.
 ══════════════════════════════════════ */
 exports.registerUser = async (req, res) => {
@@ -68,7 +68,7 @@ exports.registerUser = async (req, res) => {
     const loginUrl = `${FRONTEND_URL}/login`;
     await sendEmail(
       email,
-      "Welcome to LNMIIT Faculty Recruitment and Onboarding Portal — Your Login Credentials",
+      "Welcome to LNMIIT Faculty Recruitment & Onboarding Portal — Your Login Credentials",
       _credentialsEmail({ name, email, password: plainPassword, role: finalRole, loginUrl })
     ).catch(console.error);
 
@@ -96,8 +96,8 @@ exports.registerUser = async (req, res) => {
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: ["id", "name", "email", "role", "department", "createdAt"],
-      order:      [["createdAt", "DESC"]],
+      attributes: ["id", "name", "email", "role", "department", "active", "createdAt"], // ← add "active"
+      order: [["createdAt", "DESC"]],
     });
     res.json(users);
   } catch (err) {
@@ -148,8 +148,8 @@ exports.forgotPassword = async (req, res) => {
       { passwordResetToken: token, passwordResetExpiry: expiry },
       { where: { id: user.id } }
     );
-
-    const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    const base = (process.env.FRONTEND_URL || "").replace(/\/$/, "");
+    const resetUrl = `${base}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
     await sendEmail(
       email,
       "Password Reset Request — LNMIIT Faculty Recruitment Portal",
@@ -221,20 +221,20 @@ exports.resetPassword = async (req, res) => {
 const wrap = (body) => `
 <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:30px">
   <div style="background:#8b0000;color:#fff;padding:15px 20px;border-radius:6px 6px 0 0">
-    <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment and Onboarding Portal</h2>
+    <h2 style="margin:0;font-size:18px">LNMIIT Faculty Recruitment & Onboarding Portal</h2>
   </div>
   <div style="border:1px solid #ddd;border-top:none;padding:25px;border-radius:0 0 6px 6px;line-height:1.7;color:#333">
     ${body}
   </div>
   <p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">
-    Do not share your credentials with anyone. Contact DOFA Office for issues.
+    Do not share your credentials with anyone. Contact DoFA Office for issues.
   </p>
 </div>`;
 
 function _credentialsEmail({ name, email, password, role, loginUrl }) {
   return wrap(`
     <p>Dear <strong>${name}</strong>,</p>
-    <p>You have been registered on the <strong>LNMIIT Faculty Recruitment and Onboarding Portal</strong> 
+    <p>You have been registered on the <strong>LNMIIT Faculty Recruitment & Onboarding Portal</strong> 
     with the role of <strong>${role}</strong>.</p>
     <p>Your login credentials are:</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
@@ -251,7 +251,7 @@ function _credentialsEmail({ name, email, password, role, loginUrl }) {
     </table>
     <div style="background:#fff3cd;border:1px solid #ffc107;padding:12px 16px;border-radius:6px;margin:15px 0">
       <p style="margin:0;font-size:13px">
-        ⚠ <strong>Important:</strong> Please log in and use "Forgot Password" to change your password immediately.
+        <strong>Important:</strong> Before log in, use "Forgot Password" to change your password immediately.
         Your temporary password will remain active until you change it.
       </p>
     </div>
@@ -260,14 +260,14 @@ function _credentialsEmail({ name, email, password, role, loginUrl }) {
         Login to Portal
       </a>
     </div>
-    <p>Regards,<br><strong>DOFA Office, LNMIIT</strong></p>
+    <p>Regards,<br><strong>DoFA Office, LNMIIT</strong></p>
   `);
 }
 
 function _resetEmail({ name, resetUrl }) {
   return wrap(`
     <p>Dear <strong>${name}</strong>,</p>
-    <p>We received a request to reset your password for the LNMIIT Faculty Recruitment and Onboarding Portal.</p>
+    <p>We received a request to reset your password for the LNMIIT Faculty Recruitment & Onboarding Portal.</p>
     <p>Click the button below to reset your password. This link is valid for <strong>1 hour</strong>.</p>
     <div style="margin:20px 0">
       <a href="${resetUrl}" style="background:#8b0000;color:#fff;padding:10px 24px;border-radius:5px;text-decoration:none;font-weight:bold">
@@ -277,6 +277,64 @@ function _resetEmail({ name, resetUrl }) {
     <p style="color:#888;font-size:13px">
       If you did not request this, please ignore this email. Your password will not change.
     </p>
-    <p>Regards,<br><strong>LNMIIT Faculty Recruitment Portal</strong></p>
+    <p>Regards,<br><strong>LNMIIT Faculty Recruitment & Onboarding Portal</strong></p>
   `);
 }
+
+// DEACTIVATE instead of delete
+exports.deactivateUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    await user.update({ active: false });
+    await log({
+      user: req.user, action: "USER_DEACTIVATED",
+      entity: "USER", entityId: user.id,
+      description: `User deactivated: ${user.id}`, req,
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to deactivate user" });
+  }
+};
+
+// EDIT user details
+exports.editUser = async (req, res) => {
+  try {
+    const { name, email, role, department } = req.body;
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ where: { email } });
+      if (existing) return res.status(409).json({ message: "Email already in use" });
+    }
+
+    await user.update({ name, email, role, department: department || null });
+    await log({
+      user: req.user, action: "USER_EDITED",
+      entity: "USER", entityId: user.id,
+      description: `User edited: ${user.id}`, req,
+    });
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update user" });
+  }
+};
+
+exports.activateUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    await user.update({ active: true });
+    await log({
+      user: req.user, action: "USER_ACTIVATED",
+      entity: "USER", entityId: user.id,
+      description: `User activated: ${user.id}`, req,
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to activate user" });
+  }
+};

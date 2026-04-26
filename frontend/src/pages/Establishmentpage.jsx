@@ -192,7 +192,7 @@ function CandidateRecord({ record, onRefresh }) {
               <p className="text-sm font-medium text-gray-700">Offer letter</p>
               {!record.selectionStatus || record.selectionStatus === "NOT_SELECTED" ? (
                 <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
-                  Locked — DOFA Office must publish selection first
+                  Locked — DoFA Office must publish selection first
                 </div>
               ) : step1Done ? (
                 <a href={`${BASE}/${record.offerLetterPath}`} target="_blank" rel="noreferrer"
@@ -370,7 +370,7 @@ function CandidateRecord({ record, onRefresh }) {
           <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Downstream status (read-only)</p>
             {[
-              { label: "Office allotment (DOFA Office)", done: !!record.roomNumber,
+              { label: "Office allotment (DoFA Office)", done: !!record.roomNumber,
                 detail: record.roomNumber ? `${record.roomBuilding} — Room ${record.roomNumber}` : "Pending" },
               { label: "Office handover (Estate)",        done: !!record.roomHandedOver,
                 detail: record.roomHandedOver ? `Confirmed ${new Date(record.roomHandoverDate).toLocaleDateString("en-GB")}` : "Pending" },
@@ -394,7 +394,7 @@ function CandidateRecord({ record, onRefresh }) {
               <div>
                 <p className="text-sm font-semibold text-green-800">All steps completed</p>
                 <p className="text-xs text-green-600 mt-0.5">
-                  Mark joining as complete to freeze this record and notify HOD, DOFA, and DOFA Office.
+                  Mark joining as complete to freeze this record and notify HoD, DoFA, and DoFA Office.
                 </p>
               </div>
               <button
@@ -525,7 +525,7 @@ export default function EstablishmentPage() {
               </p>
             </>
           ) : (
-            <p>No selected candidates yet. DOFA Office needs to publish the selection first.</p>
+            <p>No selected candidates yet. DoFA Office needs to publish the selection first.</p>
           )}
         </div>
       )}

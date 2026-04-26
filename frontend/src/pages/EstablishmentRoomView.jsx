@@ -33,7 +33,7 @@ export default function EstablishmentRoomView() {
       <div>
         <h1 className="text-xl font-semibold text-gray-800">Office Allotment</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Office allotments are managed by DOFA Office. This is a read-only view.
+          Office allotments are managed by DoFA Office. This is a read-only view.
         </p>
       </div>
 

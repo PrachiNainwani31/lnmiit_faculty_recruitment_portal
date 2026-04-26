@@ -43,15 +43,15 @@ const { unfreezeCycle } = require("../controllers/cycle.controller");
    CANDIDATES
 ========================= */
 
-router.get("/candidates/template/:cycle", auth(["HOD"]), downloadTemplate);
+router.get("/candidates/template/:cycle", auth(["HoD"]), downloadTemplate);
 
-router.post("/candidates/stats",  auth(["HOD"]), saveCandidateStats);
-router.get("/candidates/stats/",  auth(["HOD"]), getCandidateStats);
-router.get("/candidates/status/", auth(["HOD"]), getCandidateStatus);
+router.post("/candidates/stats",  auth(["HoD"]), saveCandidateStats);
+router.get("/candidates/stats/",  auth(["HoD"]), getCandidateStats);
+router.get("/candidates/status/", auth(["HoD"]), getCandidateStatus);
 
 router.post(
   "/candidates/upload",
-  auth(["HOD"]),
+  auth(["HoD"]),
   freezeGuard,
   upload.single("file"),
   uploadCandidates
@@ -59,17 +59,17 @@ router.post(
 
 router.post(
   "/candidates/resumes",
-  auth(["HOD"]),
+  auth(["HoD"]),
   freezeGuard,
   resumeUpload.single("zip"),
   uploadResumes
 );
 
-router.get("/candidates/resumes", auth(["HOD"]), getUploadedResumes);
+router.get("/candidates/resumes", auth(["HoD"]), getUploadedResumes);
 
 router.delete(
   "/candidates/resumes/:filename",
-  auth(["HOD"]),
+  auth(["HoD"]),
   freezeGuard,
   async (req, res) => {
     try {
@@ -94,66 +94,66 @@ router.delete(
 
 router.patch(
   "/candidates/appeared/:id",
-  auth(["HOD"]),
+  auth(["HoD"]),
   markAppeared
 );
 
 router.get(
   "/candidates/department/:department",
-  auth(["DOFA"]),
+  auth(["DoFA"]),
   getCandidatesByDepartment
 );
 
-router.delete("/candidates/clear/:cycle", auth(["HOD"]), freezeGuard, clearCandidateStats);
-router.delete("/candidates/:id",          auth(["HOD"]), freezeGuard, deleteCandidate);
+router.delete("/candidates/clear/:cycle", auth(["HoD"]), freezeGuard, clearCandidateStats);
+router.delete("/candidates/:id",          auth(["HoD"]), freezeGuard, deleteCandidate);
 
 router.get(
   "/candidates",
-  auth(["DOFA", "DOFA_OFFICE"]),
+  auth(["DoFA", "DoFA_OFFICE"]),
   getCandidatesByCycle
 );
 
-router.get("/candidates/:cycle", auth(["HOD", "DOFA", "DOFA_OFFICE"]), getCandidatesByCycle);
+router.get("/candidates/:cycle", auth(["HoD", "DoFA", "DoFA_OFFICE"]), getCandidatesByCycle);
 
 /* =========================
    EXPERTS
 ========================= */
-router.get("/experts/all",      auth(["DOFA", "ADOFA", "DOFA_OFFICE"]), getAllExperts);
-router.get("/experts",          auth(["HOD", "DOFA", "ADOFA", "DOFA_OFFICE"]), getExperts);
-router.delete("/experts/clear", auth(["HOD"]), freezeGuard, clearExperts);
+router.get("/experts/all",      auth(["DoFA", "ADoFA", "DoFA_OFFICE"]), getAllExperts);
+router.get("/experts",          auth(["HoD", "DoFA", "ADoFA", "DoFA_OFFICE"]), getExperts);
+router.delete("/experts/clear", auth(["HoD"]), freezeGuard, clearExperts);
 
 /* =========================
    DASHBOARD / SUBMIT
 ========================= */
-router.get("/counts",  auth(["HOD"]), getHodCounts);
-router.post("/submit", auth(["HOD"]), freezeGuard, submitToDofa);
+router.get("/counts",  auth(["HoD"]), getHodCounts);
+router.post("/submit", auth(["HoD"]), freezeGuard, submitToDofa);
 
 // DEV ONLY
 router.post("/unfreeze", unfreezeCycle);
 
 /* =========================
-   EXPERTS CSV UPLOAD — HOD
+   EXPERTS CSV UPLOAD — HoD
 ========================= */
 router.post(
   "/upload-experts",
-  auth(["HOD"]),
+  auth(["HoD"]),
   freezeGuard,
   upload.single("file"),
   uploadExpertsCSV
 );
 
 /* =========================
-   EXPERTS CSV UPLOAD — DOFA (uploads for a specific HOD's cycle)
+   EXPERTS CSV UPLOAD — DoFA (uploads for a specific HoD's cycle)
    Body must include hodId to identify which cycle to upload into.
 ========================= */
 router.post(
   "/upload-experts-for-hod",
-  auth(["DOFA", "ADOFA"]),
+  auth(["DoFA", "ADoFA"]),
   upload.single("file"),
   uploadExpertsCSVForHod
 );
 
-router.get("/logs", auth(["HOD"]), getHodLogs);
-router.get("/experts/by-hod/:hodId", auth(["DOFA", "ADOFA", "DOFA_OFFICE"]), getExpertsByHod);
+router.get("/logs", auth(["HoD"]), getHodLogs);
+router.get("/experts/by-hod/:hodId", auth(["DoFA", "ADoFA", "DoFA_OFFICE"]), getExpertsByHod);
 
 module.exports = router;
