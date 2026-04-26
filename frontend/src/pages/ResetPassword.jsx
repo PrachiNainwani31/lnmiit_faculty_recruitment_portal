@@ -123,7 +123,7 @@ export default function ResetPassword() {
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError(""); }}
                 />
-              <button type="button" tabIndex={-1} onClick={() => setShowConfirm(s => !s)}
+              <button type="button" tabIndex={-1} onClick={() => setShowPwd(s => !s)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {showConfirm ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
