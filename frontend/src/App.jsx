@@ -30,7 +30,7 @@ import DofaOfficeCandidates from "./pages/dofa-office/Dofaofficecandidates";
 import ExpertConfirmation   from "./pages/dofa-office/Expertconfirmation";
 import PickupDropManager    from "./pages/dofa-office/Pickupdropmanager";
 import SelectCandidates     from "./pages/dofa-office/SelectedCandidates";
-import RoomAllotmentPage    from "./pages/dofa-office/RoomAllotmentPage";
+import Roomallotmentpage    from "./pages/dofa-office/Roomallotmentpage";
 import InterviewLogs from "./pages/dofa-office/InterviewLogs";
 import Registration  from "./pages/dofa-office/Registration";
 import DofaOfficeLogs from "./pages/dofa-office/DofaOfficeLogs";
@@ -110,7 +110,7 @@ export default function App() {
         <Route path="experts"            element={<ExpertConfirmation />} />
         <Route path="pickup"             element={<PickupDropManager />} />
         <Route path="select-candidates"  element={<SelectCandidates />} />
-        <Route path="room-allotment"     element={<RoomAllotmentPage />} />
+        <Route path="room-allotment"     element={<Roomallotmentpage />} />
         <Route path="comments"           element={<DofaComments />} />
         <Route path="logs"       element={<InterviewLogs/>}/>
         <Route path="registration" element={<Registration />} />
