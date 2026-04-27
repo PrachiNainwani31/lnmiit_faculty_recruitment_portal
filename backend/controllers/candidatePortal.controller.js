@@ -5,6 +5,7 @@ const getCurrentCycle = require("../utils/getCurrentCycle");
 const { log } = require("../utils/activityLogger");
 const templates = require("../utils/emailTemplates");
 const crypto = require("crypto");
+const { Op } = require("sequelize");
 const getOrCreateApp = async (userId, email) => {
   let app = await CandidateApplication.findOne({ where: { candidateUserId: userId } });
   if (!app) app = await CandidateApplication.create({ candidateUserId: userId, email });
@@ -79,7 +80,6 @@ exports.saveDraft = async (req, res) => {
   try {
     const app = await getOrCreateApp(req.user.id, req.user.email);
 
-    // Only allow editing if DRAFT or QUERY (not SUBMITTED)
     if (app.status === "SUBMITTED") {
       return res.status(400).json({ message: "Application already submitted and cannot be edited." });
     }
@@ -87,12 +87,12 @@ exports.saveDraft = async (req, res) => {
     const updateData = {};
     if (req.body.name          !== undefined) updateData.name          = req.body.name;
     if (req.body.email         !== undefined) updateData.email         = req.body.email;
-    if (req.body.countryCode !== undefined)   updateData.countryCode = req.body.countryCode || "+91";
+    if (req.body.countryCode   !== undefined) updateData.countryCode   = req.body.countryCode || "+91";
     if (req.body.contact       !== undefined) updateData.phone         = req.body.contact;
     if (req.body.acceptance    !== undefined) updateData.acceptance    = req.body.acceptance;
     if (req.body.accommodation !== undefined) updateData.accommodation = req.body.accommodation;
     if (req.body.department    !== undefined) updateData.department    = req.body.department;
-    if (req.body.phdStatus !== undefined) updateData.phdStatus = req.body.phdStatus;
+    if (req.body.phdStatus     !== undefined) updateData.phdStatus     = req.body.phdStatus;
     if (req.body.publications  !== undefined) updateData.publications  = req.body.publications;
     if (req.body.documents?.docDateOfDefense !== undefined)
       updateData.docDateOfDefense = req.body.documents.docDateOfDefense;
@@ -105,49 +105,46 @@ exports.saveDraft = async (req, res) => {
     if (req.body.expTeaching   !== undefined) updateData.expTeaching   = req.body.expTeaching;
     if (req.body.expIndustrial !== undefined) updateData.expIndustrial = req.body.expIndustrial;
 
-
     if (Object.keys(updateData).length) {
       await CandidateApplication.update(updateData, { where: { id: app.id } });
     }
 
+    // ── REFEREES ──────────────────────────────────────────────────────────
     if (Array.isArray(req.body.referees)) {
       const incoming = req.body.referees.filter(r => r.name || r.email);
-      
+
       for (const r of incoming) {
         if (r.id) {
-        // Check if email changed — if so, clear captcha so they get re-invited on next submit
-        const existing = await CandidateReferee.findByPk(r.id);
-        const emailChanged = existing && r.email && 
-          existing.email?.toLowerCase() !== r.email.trim().toLowerCase();
+          // Check if email changed — reset captcha so they get re-invited
+          const existing = await CandidateReferee.findByPk(r.id);
+          const emailChanged = existing && r.email &&
+            existing.email?.toLowerCase() !== r.email.trim().toLowerCase();
 
-        const updateFields = {
-          salutation:  r.salutation  || null,
-          name:        r.name        || null,
-          designation: r.designation || null,
-          department:  r.department  || null,
-          institute:   r.institute   || null,
-          email:       r.email       || null,
-        };
+          const updateFields = {
+            salutation:  r.salutation  || null,
+            name:        r.name        || null,
+            designation: r.designation || null,
+            department:  r.department  || null,
+            institute:   r.institute   || null,
+            email:       r.email       || null,
+          };
 
-        // If email changed, reset captcha + status so they get fresh invite
-        if (emailChanged) {
-          updateFields.captchaCode = null;
-          updateFields.status      = "PENDING";
-          updateFields.letter      = null;
-          updateFields.signedName  = null;
-          updateFields.submittedAt = null;
-        }
+          if (emailChanged) {
+            updateFields.captchaCode = null;
+            updateFields.status      = "PENDING";
+            updateFields.letter      = null;
+            updateFields.signedName  = null;
+            updateFields.submittedAt = null;
+          }
 
-        await CandidateReferee.update(updateFields, { 
-          where: { id: r.id, applicationId: app.id } 
-        });
-      }
- else {
-          // ── INSERT only truly new referees (no id yet) ──
-          // Deduplicate by email before inserting
+          await CandidateReferee.update(updateFields, {
+            where: { id: r.id, applicationId: app.id },
+          });
+        } else {
+          // INSERT only truly new referees (no id yet) — deduplicate by email
           if (r.email) {
             const exists = await CandidateReferee.findOne({
-              where: { applicationId: app.id, email: r.email.trim().toLowerCase() }
+              where: { applicationId: app.id, email: r.email.trim().toLowerCase() },
             });
             if (exists) continue; // skip duplicate
           }
@@ -164,8 +161,7 @@ exports.saveDraft = async (req, res) => {
         }
       }
 
-      // ── DELETE only referees the user explicitly removed ──
-      // (those with an id that no longer appear in the incoming list)
+      // DELETE only referees the user explicitly removed
       const incomingIds    = incoming.filter(r => r.id).map(r => r.id);
       const incomingEmails = incoming
         .map(r => r.email?.trim().toLowerCase())
@@ -178,35 +174,48 @@ exports.saveDraft = async (req, res) => {
         if (existing.status === "SUBMITTED") continue;
         const matchedById    = existing.id    && incomingIds.includes(existing.id);
         const matchedByEmail = existing.email && incomingEmails.includes(existing.email.toLowerCase());
-        // ── Only delete if this referee isn't in the incoming list at all ──
         if (!matchedById && !matchedByEmail) {
           await CandidateReferee.destroy({ where: { id: existing.id } });
         }
       }
     }
 
+    // ── EXPERIENCES (upsert — IDs are preserved) ──────────────────────────
     if (Array.isArray(req.body.experiences)) {
-  // Delete all existing, re-insert fresh — prevents duplicate accumulation
-  await CandidateExperience.destroy({ where: { applicationId: app.id } });
+      const incoming = req.body.experiences.filter(e => e.type || e.organization);
 
-  const expRows = req.body.experiences
-    .filter(e => e.type || e.organization)  // skip completely empty rows
-    .map(e => ({
-      applicationId: app.id,
-      type:          e.type         || null,
-      organization:  e.organization || null,
-      designation:   e.designation  || null,
-      department:    e.department   || null,
-      fromDate:      e.fromDate     ? new Date(e.fromDate) : null,
-      toDate:        e.ongoing      ? null : (e.toDate ? new Date(e.toDate) : null),
-      natureOfWork:  e.natureOfWork || null,
-      certificate:   e.certificate  || null,
-    }));
+      for (const e of incoming) {
+        const row = {
+          type:         e.type         || null,
+          organization: e.organization || null,
+          designation:  e.designation  || null,
+          department:   e.department   || null,
+          fromDate:     e.fromDate     ? new Date(e.fromDate) : null,
+          toDate:       e.ongoing      ? null : (e.toDate ? new Date(e.toDate) : null),
+          natureOfWork: e.natureOfWork || null,
+          certificate:  e.certificate  || null,
+        };
 
-  if (expRows.length > 0) {
-    await CandidateExperience.bulkCreate(expRows);
-  }
-}
+        if (e.id) {
+          // ✅ Update existing — ID stays the same
+          await CandidateExperience.update(row, {
+            where: { id: e.id, applicationId: app.id },
+          });
+        } else {
+          // ✅ Insert new — frontend gets new ID back
+          await CandidateExperience.create({ applicationId: app.id, ...row });
+        }
+      }
+
+      // Delete only rows removed by user
+      const incomingIds = incoming.filter(e => e.id).map(e => e.id);
+      await CandidateExperience.destroy({
+        where: {
+          applicationId: app.id,
+          id: { [Op.notIn]: incomingIds.length ? incomingIds : [0] },
+        },
+      });
+    }
 
     const updatedApp = await CandidateApplication.findByPk(app.id, {
       include: [
@@ -382,7 +391,7 @@ exports.uploadDocument = async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "File required" });
 
     const type     = req.body.type;
-    const filePath = req.file.path;
+    const filePath = `uploads/${req.file.path.replace(/\\/g, "/").split("uploads/")[1]}`;
     const app      = await getOrCreateApp(req.user.id, req.user.email);
 
     const ALLOWED_DOC_COLUMNS = [
@@ -407,7 +416,7 @@ exports.uploadMultiDocument = async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "File required" });
 
     const type     = req.body.type;
-    const filePath = req.file.path;
+    const filePath = `uploads/${req.file.path.replace(/\\/g, "/").split("uploads/")[1]}`;
 
     const ALLOWED_MULTI_COLUMNS = [
       "docResearchExpCerts","docTeachingExpCerts","docIndustryExpCerts",
@@ -434,14 +443,22 @@ exports.uploadExperienceCertificate = async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "File required" });
 
     const { id } = req.params;
+
+    // ✅ Store relative path, not absolute
+    const filePath = req.file.path.replace(/\\/g, "/").split("uploads/")[1];
+    const relativePath = `uploads/${filePath}`;
+
     const app = await CandidateApplication.findOne({ where: { candidateUserId: req.user.id } });
     if (!app) return res.status(404).json({ message: "Application not found" });
 
     const exp = await CandidateExperience.findOne({ where: { id, applicationId: app.id } });
     if (!exp) return res.status(404).json({ message: "Experience not found" });
 
-    await CandidateExperience.update({ certificate: req.file.path }, { where: { id: exp.id, applicationId: app.id } });
-    res.json({ success: true, path: req.file.path });
+    await CandidateExperience.update(
+      { certificate: relativePath },
+      { where: { id: exp.id, applicationId: app.id } }
+    );
+    res.json({ success: true, path: relativePath });
   } catch (err) {
     console.error("uploadExperienceCertificate error:", err.message);
     res.status(500).json({ message: "Upload failed" });

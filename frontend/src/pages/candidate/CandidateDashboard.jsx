@@ -90,10 +90,17 @@ const [application, setApplication] = useState({
     const res = await API.post("/candidate/save", buildPayload(overrides));
 
     if (res.data?.experiences?.length > 0) {
-      setExperiences(prev => prev.map((e, i) => ({
-        ...e,
-        id: res.data.experiences[i]?.id || e.id,
-      })));
+      setExperiences(prev => prev.map((e) => {
+        // ✅ If already has ID, keep it
+        if (e.id) return e;
+        // ✅ Match by type + organization to find the newly created DB row
+        const match = res.data.experiences.find(s =>
+          s.type         === e.type &&
+          s.organization === e.organization &&
+          s.designation  === e.designation
+        );
+        return match ? { ...e, id: match.id } : e;
+      }));
     }
 
     if (res.data?.referees?.length > 0) {
@@ -109,7 +116,6 @@ const [application, setApplication] = useState({
 
     return res.data;
   } catch (err) {
-    // 400 = already submitted — silent, don't log to console
     if (err?.response?.status === 400) return null;
     console.error("saveNow error:", err);
     return null;
