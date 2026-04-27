@@ -197,12 +197,15 @@ exports.saveDraft = async (req, res) => {
         };
 
         if (e.id) {
-          // ✅ Update existing — ID stays the same
-          await CandidateExperience.update(row, {
+          const [updated] = await CandidateExperience.update(row, {
             where: { id: e.id, applicationId: app.id },
           });
+
+          if (updated === 0) {
+            // ✅ Row was deleted — recreate it fresh
+            await CandidateExperience.create({ applicationId: app.id, ...row });
+          }
         } else {
-          // ✅ Insert new — frontend gets new ID back
           await CandidateExperience.create({ applicationId: app.id, ...row });
         }
       }
