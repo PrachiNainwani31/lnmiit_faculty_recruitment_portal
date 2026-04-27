@@ -332,7 +332,7 @@ function EditModal({ user, onClose, onSave }) {
 /* ══════════════════════════
    User List Tab
 ══════════════════════════ */
-function UserList({ users, onEdit, onDeactivate, onActivate }) {
+function UserList({ users, onEdit, onDeactivate, onActivate,onDelete }) {
   const [filter, setFilter] = useState("");
 
   const filtered = users.filter(u =>
@@ -436,6 +436,17 @@ function UserList({ users, onEdit, onDeactivate, onActivate }) {
                     </button>
                   )}
                 </td>
+                <td>
+                  <button
+                    onClick={() => {
+                      if (!window.confirm(`Permanently delete ${u.name}? This cannot be undone and will remove all their data.`)) return;
+                      onDelete(u.id);
+                    }}
+                    className="text-xs text-gray-400 hover:text-red-600 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -480,6 +491,15 @@ export default function Registration() {
     loadUsers();
   } catch {
     alert("Failed to activate user");
+  }
+};
+
+const handleDelete = async (id) => {
+  try {
+    await API.delete(`/registration/users/${id}`);
+    loadUsers();
+  } catch {
+    alert("Failed to delete user");
   }
 };
 
@@ -532,6 +552,7 @@ export default function Registration() {
                 onEdit={setEditingUser}
                 onDeactivate={handleDeactivate}
                 onActivate={handleActivate}
+                onDelete={handleDelete}
               />
         )}
       </div>
