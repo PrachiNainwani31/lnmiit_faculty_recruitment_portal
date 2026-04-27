@@ -90,17 +90,17 @@ const [application, setApplication] = useState({
     const res = await API.post("/candidate/save", buildPayload(overrides));
 
     if (res.data?.experiences?.length > 0) {
-      setExperiences(prev => prev.map((e) => {
-        // ✅ If already has ID, keep it
-        if (e.id) return e;
-        // ✅ Match by type + organization to find the newly created DB row
-        const match = res.data.experiences.find(s =>
-          s.type         === e.type &&
-          s.organization === e.organization &&
-          s.designation  === e.designation
-        );
-        return match ? { ...e, id: match.id } : e;
-      }));
+      setExperiences(prev => {
+        return res.data.experiences.map((dbExp, i) => {
+          // Match local exp by position or by type+org
+          const local = prev.find(e =>
+            e.type         === dbExp.type &&
+            e.organization === dbExp.organization &&
+            e.designation  === dbExp.designation
+          ) || prev[i] || {};
+          return { ...local, id: dbExp.id }; // ✅ Always use fresh ID from DB
+        });
+      });
     }
 
     if (res.data?.referees?.length > 0) {
