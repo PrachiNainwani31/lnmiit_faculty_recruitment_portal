@@ -27,12 +27,13 @@ export default function DofaLayout() {
         {/* Brand */}
         <div className="px-5 pt-6 pb-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white font-bold text-sm shadow">
-              DF
-            </div>
             <div>
-              <p className="text-white font-semibold text-sm leading-tight">Welcome DoFA</p>
-              <p className="text-white/40 text-xs mt-0.5">Dean of Faculty Affairs</p>
+            <p className="text-white font-semibold text-sm leading-tight">
+              Welcome {user.role === "ADoFA" ? "ADoFA" : "DoFA"}
+            </p>
+            <p className="text-white/40 text-xs mt-0.5">
+              {user.role === "ADoFA" ? "Assistant Dean of Faculty Affairs" : "Dean of Faculty Affairs"}
+            </p>
             </div>
           </div>
         </div>
@@ -83,7 +84,7 @@ export default function DofaLayout() {
         <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 shadow-sm">
           <h2 className="font-semibold text-gray-800 text-sm">Faculty Recruitment · {cycleYear}</h2>
           <span className="text-xs bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full font-medium">
-            DoFA
+            {user.role === "ADoFA" ? "ADoFA" : "DoFA"}
           </span>
         </header>
 

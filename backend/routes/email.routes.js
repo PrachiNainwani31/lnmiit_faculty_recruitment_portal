@@ -140,7 +140,7 @@ router.post("/send-interview-invite", auth(["DoFA","ADoFA", "DoFA_OFFICE"]), asy
 
           ${portalCreated
             ? `<div style="text-align:center;margin-top:28px">
-                href="${(process.env.FRONTEND_URL || '').replace(/\/$/, '')}/login"
+                <a href="${(process.env.FRONTEND_URL || '').replace(/\/$/, '')}/login"
                   style="display:inline-block;background:#8b0000;color:#ffffff;padding:12px 32px;
                           border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;
                           letter-spacing:0.3px">
