@@ -181,44 +181,48 @@ exports.saveDraft = async (req, res) => {
     }
 
     // ── EXPERIENCES (upsert — IDs are preserved) ──────────────────────────
-    if (Array.isArray(req.body.experiences)) {
-      const incoming = req.body.experiences.filter(e => e.type || e.organization);
+    // ── EXPERIENCES ──
+if (Array.isArray(req.body.experiences)) {
+  const incoming = req.body.experiences.filter(e => e.type || e.organization);
+  const survivingIds = []; // ✅ track ALL ids including newly created
 
-      for (const e of incoming) {
-        const row = {
-          type:         e.type         || null,
-          organization: e.organization || null,
-          designation:  e.designation  || null,
-          department:   e.department   || null,
-          fromDate:     e.fromDate     ? new Date(e.fromDate) : null,
-          toDate:       e.ongoing      ? null : (e.toDate ? new Date(e.toDate) : null),
-          natureOfWork: e.natureOfWork || null,
-          certificate:  e.certificate  || null,
-        };
+  for (const e of incoming) {
+    const row = {
+      type:         e.type         || null,
+      organization: e.organization || null,
+      designation:  e.designation  || null,
+      department:   e.department   || null,
+      fromDate:     e.fromDate     ? new Date(e.fromDate) : null,
+      toDate:       e.ongoing      ? null : (e.toDate ? new Date(e.toDate) : null),
+      natureOfWork: e.natureOfWork || null,
+      certificate:  e.certificate  || null,
+    };
 
-        if (e.id) {
-          const [updated] = await CandidateExperience.update(row, {
-            where: { id: e.id, applicationId: app.id },
-          });
-
-          if (updated === 0) {
-            // ✅ Row was deleted — recreate it fresh
-            await CandidateExperience.create({ applicationId: app.id, ...row });
-          }
-        } else {
-          await CandidateExperience.create({ applicationId: app.id, ...row });
-        }
-      }
-
-      // Delete only rows removed by user
-      const incomingIds = incoming.filter(e => e.id).map(e => e.id);
-      await CandidateExperience.destroy({
-        where: {
-          applicationId: app.id,
-          id: { [Op.notIn]: incomingIds.length ? incomingIds : [0] },
-        },
+    if (e.id) {
+      const [updated] = await CandidateExperience.update(row, {
+        where: { id: e.id, applicationId: app.id },
       });
+      if (updated === 0) {
+        // Row deleted externally — recreate
+        const created = await CandidateExperience.create({ applicationId: app.id, ...row });
+        survivingIds.push(created.id); // ✅ new id
+      } else {
+        survivingIds.push(e.id); // ✅ existing id
+      }
+    } else {
+      const created = await CandidateExperience.create({ applicationId: app.id, ...row });
+      survivingIds.push(created.id); // ✅ capture new id
     }
+  }
+
+  // Only delete rows NOT in survivingIds
+  await CandidateExperience.destroy({
+    where: {
+      applicationId: app.id,
+      id: { [Op.notIn]: survivingIds.length ? survivingIds : [0] },
+    },
+  });
+}
 
     const updatedApp = await CandidateApplication.findByPk(app.id, {
       include: [

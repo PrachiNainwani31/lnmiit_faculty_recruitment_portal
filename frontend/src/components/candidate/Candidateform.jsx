@@ -106,7 +106,11 @@ export default function Candidateform({
   const handleExpChange = (i, field, value) => {
     setExperiences(prev => prev.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
   };
-  const handleExpBlur  = () => saveNow();
+  const expBlurTimer = useRef(null);
+  const handleExpBlur = () => {
+    clearTimeout(expBlurTimer.current);
+    expBlurTimer.current = setTimeout(() => saveNow(), 1500); // wait 1.5s after blur
+  };
   const addExperience  = () => setExperiences(prev => [...prev, { ...EMPTY_EXP }]);
   const removeExperience = (i) => {
     if (experiences.length <= 1) { alert("At least 1 experience entry is required."); return; }
