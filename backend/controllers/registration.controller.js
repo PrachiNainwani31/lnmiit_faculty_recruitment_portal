@@ -356,13 +356,14 @@ exports.activateUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
-
-    // Generate a fresh password on reactivation
     const newPassword = generatePassword();
-    await user.update({ active: true, password: newPassword });
+    // Generate a fresh password on reactivation
+    user.active   = true;
+    user.password = newPassword;
+    await user.save();
 
     // Email the user their new credentials
-    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+    const loginUrl = `${(process.env.FRONTEND_URL || "").replace(/\/$/, "")}/login`;
     await sendEmail(
       user.email,
       "Your LNMIIT Portal Account Has Been Reactivated",
@@ -376,6 +377,7 @@ exports.activateUser = async (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
+    console.error("activateUser error:", err.message, err.stack);
     res.status(500).json({ message: "Failed to activate user" });
   }
 };

@@ -84,7 +84,7 @@ export default function App() {
       </Route>
 
       {/* DoFA */}
-      <Route path="/dofa" element={<ProtectedRoute role="DoFA"><DofaLayout /></ProtectedRoute>}>
+      <Route path="/dofa" element={<ProtectedRoute role={["DoFA", "ADoFA"]}><DofaLayout /></ProtectedRoute>}>
         <Route index                    element={<DofaDashboard />} />
         <Route path="candidates"        element={<DofaCandidates />} />
         <Route path="experts"           element={<DofaExperts />} />
