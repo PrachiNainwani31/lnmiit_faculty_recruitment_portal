@@ -8,6 +8,7 @@ uploads/
 .env.test.local
 .env.production.local
 
+vercel.json
 # Logs
 logs
 *.log

@@ -323,11 +323,52 @@ exports.editUser = async (req, res) => {
   }
 };
 
+function _reactivationEmail({ name, email, password, role, loginUrl }) {
+  return wrap(`
+    <p>Dear <strong>${name}</strong>,</p>
+    <p>Your account has been <strong style="color:green">reactivated</strong>.</p>
+    <p>Your new temporary password:</p>
+    <table style="border-collapse:collapse;width:100%;margin:15px 0">
+      <tr>
+        <td style="padding:10px;border:1px solid #ddd;background:#f9f9f9;font-weight:bold;width:40%">Email</td>
+        <td style="padding:10px;border:1px solid #ddd">${email}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px;border:1px solid #ddd;background:#f9f9f9;font-weight:bold">New Temporary Password</td>
+        <td style="padding:10px;border:1px solid #ddd;font-family:monospace;font-size:16px;letter-spacing:2px">
+          <strong>${password}</strong>
+        </td>
+      </tr>
+    </table>
+    <div style="background:#fff3cd;border:1px solid #ffc107;padding:12px 16px;border-radius:6px;margin:15px 0">
+      <p style="margin:0;font-size:13px">
+        <strong>Important:</strong> Use "Forgot Password" to set a new password after logging in.
+      </p>
+    </div>
+    <a href="${loginUrl}" style="background:#8b0000;color:#fff;padding:10px 24px;border-radius:5px;text-decoration:none;font-weight:bold;display:inline-block;margin:10px 0">
+      Login to Portal
+    </a>
+    <p>Regards,<br><strong>DoFA Office, LNMIIT</strong></p>
+  `);
+}
+
 exports.activateUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
-    await user.update({ active: true });
+
+    // Generate a fresh password on reactivation
+    const newPassword = generatePassword();
+    await user.update({ active: true, password: newPassword });
+
+    // Email the user their new credentials
+    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+    await sendEmail(
+      user.email,
+      "Your LNMIIT Portal Account Has Been Reactivated",
+      _reactivationEmail({ name: user.name, email: user.email, password: newPassword, role: user.role, loginUrl })
+    ).catch(console.error);
+
     await log({
       user: req.user, action: "USER_ACTIVATED",
       entity: "USER", entityId: user.id,
