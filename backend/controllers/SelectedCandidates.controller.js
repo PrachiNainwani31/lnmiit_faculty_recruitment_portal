@@ -16,7 +16,7 @@ exports.getSelectedCandidates = async (req, res) => {
         if (!activeCycle) return res.json([]);
         where.hodId = req.user.id;
         where.cycle = activeCycle.cycle;
-    }else if(req.user.role === "DoFA" || req.user.role === "DoFA_OFFICE"){
+    }else if(req.user.role === "DoFA" || req.user.role === "DoFA_OFFICE" || req.user.role === "ADoFA"){
       const { Op } = require("sequelize");
       const hods = await User.findAll({ where: { role: "HoD" }, attributes: ["id"] });
       const cyclePerHod = await Promise.all(
@@ -156,7 +156,7 @@ exports.markInterviewComplete = async (req, res) => {
       where: { cycle: cycle, status: "SELECTED" },
     });
 
-    const notifyRoles = ["HoD", "DoFA", "LUCS", "ESTABLISHMENT"];
+    const notifyRoles = ["HoD", "DoFA","ADoFA", "LUCS", "ESTABLISHMENT"];
     const message = selectedCount > 0
       ? `Interview process complete. ${selectedCount} candidate(s) selected.`
       : `Interview process complete. No candidates were selected in this cycle.`;

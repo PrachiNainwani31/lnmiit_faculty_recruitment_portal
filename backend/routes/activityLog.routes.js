@@ -5,7 +5,7 @@ const { ActivityLog } = require("../models");
 const { Op } = require("sequelize");
 
 // View logs — DoFA Office and DoFA only
-router.get("/", auth(["DoFA", "DoFA_OFFICE"]), async (req, res) => {
+router.get("/", auth(["DoFA","ADoFA", "DoFA_OFFICE"]), async (req, res) => {
   try {
     const { role, action, from, to, limit = 200 } = req.query;
     const where = {};

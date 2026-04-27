@@ -379,7 +379,7 @@ export default function Dashboard() {
           );
         })}
       </div>
-      <SelectionStatusPanel role="DoFA" />
+      <SelectionStatusPanel role={localStorage.getItem("role")} />
 
       {/* Comment modal */}
       <CommentModal

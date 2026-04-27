@@ -4,7 +4,7 @@ const auth    = require("../middlewares/auth");
 const { getPendingHandovers, confirmHandover, getLucsRecords, updateLucs,getEstateLogs,getLucsLogs } = require("../controllers/estate_lucs.controller");
 
 // ESTATE
-router.get("/estate",          auth(["ESTATE","DoFA_OFFICE","DoFA"]), getPendingHandovers);
+router.get("/estate",          auth(["ESTATE","DoFA_OFFICE","DoFA","ADoFA"]), getPendingHandovers);
 router.post("/estate/confirm", auth(["ESTATE"]),                      confirmHandover);
 
 // LUCS

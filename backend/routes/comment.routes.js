@@ -7,7 +7,7 @@ const {
   addComment,
 } = require("../controllers/comment.controller");
 
-router.get("/", auth(["HoD", "DoFA","DoFA_OFFICE"]), getComments);
-router.post("/", auth(["HoD", "DoFA","DoFA_OFFICE"]), addComment);
+router.get("/", auth(["HoD", "DoFA","ADoFA","DoFA_OFFICE"]), getComments);
+router.post("/", auth(["HoD", "DoFA","ADoFA","DoFA_OFFICE"]), addComment);
 
 module.exports = router;

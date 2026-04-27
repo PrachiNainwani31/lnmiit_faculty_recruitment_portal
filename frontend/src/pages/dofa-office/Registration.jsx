@@ -27,7 +27,7 @@ const ROLES = [
 
 const roleLabel = {
   DoFA:             "DoFA",
-  DOFA:             "DoFA",
+  ADoFA:             "DoFA",
   DoFA_OFFICE:      "DoFA OFFICE",
   DOFA_OFFICE:      "DoFA OFFICE",
   HOD:              "HoD",

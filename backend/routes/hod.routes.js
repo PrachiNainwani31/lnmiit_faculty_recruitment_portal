@@ -100,7 +100,7 @@ router.patch(
 
 router.get(
   "/candidates/department/:department",
-  auth(["DoFA"]),
+  auth(["DoFA","ADoFA"]),
   getCandidatesByDepartment
 );
 
@@ -109,17 +109,17 @@ router.delete("/candidates/:id",          auth(["HoD"]), freezeGuard, deleteCand
 
 router.get(
   "/candidates",
-  auth(["DoFA", "DoFA_OFFICE"]),
+  auth(["DoFA","ADoFA", "DoFA_OFFICE"]),
   getCandidatesByCycle
 );
 
-router.get("/candidates/:cycle", auth(["HoD", "DoFA", "DoFA_OFFICE"]), getCandidatesByCycle);
+router.get("/candidates/:cycle", auth(["HoD", "DoFA","ADoFA", "DoFA_OFFICE"]), getCandidatesByCycle);
 
 /* =========================
    EXPERTS
 ========================= */
-router.get("/experts/all",      auth(["DoFA", "ADoFA", "DoFA_OFFICE"]), getAllExperts);
-router.get("/experts",          auth(["HoD", "DoFA", "ADoFA", "DoFA_OFFICE"]), getExperts);
+router.get("/experts/all",      auth(["DoFA","ADoFA", "ADoFA", "DoFA_OFFICE"]), getAllExperts);
+router.get("/experts",          auth(["HoD", "DoFA","ADoFA", "ADoFA", "DoFA_OFFICE"]), getExperts);
 router.delete("/experts/clear", auth(["HoD"]), freezeGuard, clearExperts);
 
 /* =========================

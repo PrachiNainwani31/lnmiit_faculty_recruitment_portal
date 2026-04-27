@@ -143,7 +143,7 @@ exports.setJoiningDate = async (req, res) => {
 
     // Email DoFA + DoFA_OFFICE + this department's HoD
     const recipients = await User.findAll({
-      where: { role: ["DoFA", "DoFA_OFFICE"] },
+      where: { role: ["DoFA","ADoFA", "DoFA_OFFICE"] },
     });
     if (record?.hodId) {
       const hod = await User.findByPk(record.hodId);
@@ -352,7 +352,7 @@ exports.markJoiningComplete = async (req, res) => {
       : null;
 
     const recipients = await User.findAll({
-      where: { role: ["DoFA", "DoFA_OFFICE"] },
+      where: { role: ["DoFA","ADoFA", "DoFA_OFFICE"] },
     });
     if (record?.hodId) {
       const hod = await User.findByPk(record.hodId);
@@ -428,7 +428,7 @@ exports.markNotJoined = async (req, res) => {
     const candidate = await Candidate.findByPk(candidateId);
 
     // Notify all relevant roles
-    const notifyRoles = ["HoD", "DoFA", "DoFA_OFFICE", "LUCS", "ESTATE", "ESTABLISHMENT"];
+    const notifyRoles = ["HoD", "DoFA","ADoFA", "DoFA_OFFICE", "LUCS", "ESTATE", "ESTABLISHMENT"];
     const recipients  = await User.findAll({ where: { role: notifyRoles } });
     if (record?.hodId) {
       const hod = await User.findByPk(record.hodId);

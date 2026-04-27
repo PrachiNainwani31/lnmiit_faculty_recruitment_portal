@@ -78,7 +78,7 @@ export default function DofaComments() {
         {comments.map(c => (
           <div key={c.id}
             className={`p-3 rounded ${
-              c.fromRole === "DoFA" || c.fromRole === "DoFA_OFFICE"
+              c.fromRole === "DoFA" ||c.fromRole === "ADoFA" || c.fromRole === "DoFA_OFFICE"
                 ? "bg-red-50 text-red-800"
                 : "bg-blue-50 text-blue-800"
             }`}

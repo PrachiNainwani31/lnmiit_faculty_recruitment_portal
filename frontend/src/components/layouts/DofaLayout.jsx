@@ -65,7 +65,7 @@ export default function DofaLayout() {
               {user.name?.slice(0,2)?.toUpperCase() || "DA"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white/80 truncate">{user.name || "DoFA"}</p>
+              <p className="text-xs font-semibold text-white/80 truncate">{user.role === "ADoFA" ? "ADoFA" : "DoFA"}</p>
               <p className="text-xs text-white/40 truncate">{user.email || ""}</p>
             </div>
           </div>

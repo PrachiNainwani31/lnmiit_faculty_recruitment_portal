@@ -50,7 +50,7 @@ exports.submitToDofa = async (req, res) => {
       where: { cycle: cycle.cycle, uploadedById: req.user.id },
     });
 
-    const dofaUsers = await User.findAll({ where: { role: "DoFA" } });
+    const dofaUsers = await User.findAll({ where: { role: { [Op.in]: ["DoFA", "ADoFA"] } } });
 
     // ── Send emails ONCE (not twice) ───────────────────────────────
     if (isResubmit) {
@@ -64,6 +64,13 @@ exports.submitToDofa = async (req, res) => {
       await createNotification({
         cycle: cycle.cycle,
         role: "DoFA",
+        title: "HoD Resubmitted After Query",
+        message: `${hod?.department} HoD has addressed the query and resubmitted.`,
+        type: "STATUS",
+      });
+      await createNotification({
+        cycle: cycle.cycle,
+        role: "ADoFA",
         title: "HoD Resubmitted After Query",
         message: `${hod?.department} HoD has addressed the query and resubmitted.`,
         type: "STATUS",
@@ -83,6 +90,13 @@ exports.submitToDofa = async (req, res) => {
       await createNotification({
         cycle: cycle.cycle,
         role: "DoFA",
+        title: "Cycle Submitted",
+        message: `${hod?.department} HoD submitted candidate and expert lists.`,
+        type: "STATUS",
+      });
+      await createNotification({
+        cycle: cycle.cycle,
+        role: "ADoFA",
         title: "Cycle Submitted",
         message: `${hod?.department} HoD submitted candidate and expert lists.`,
         type: "STATUS",
@@ -130,6 +144,13 @@ exports.submitAppearedToDofa = async (req, res) => {
       message: `HoD (${hod?.department}) has submitted appeared candidate data.`,
       type:    "STATUS",
     });
+    await createNotification({
+      cycle:   cycle.cycle,
+      role:    "ADoFA",
+      title:   "Appeared Candidates Submitted",
+      message: `HoD (${hod?.department}) has submitted appeared candidate data.`,
+      type:    "STATUS",
+    });
 
     const allCycles = await RecruitmentCycle.findAll({
       where: { academicYear: cycle.academicYear },
@@ -141,6 +162,13 @@ exports.submitAppearedToDofa = async (req, res) => {
       await createNotification({
         cycle:   cycle.cycle,
         role:    "DoFA",
+        title:   "All Departments Submitted Appeared Data",
+        message: `All ${submittedCount} departments submitted appeared data.`,
+        type:    "STATUS",
+      });
+      await createNotification({
+        cycle:   cycle.cycle,
+        role:    "ADoFA",
         title:   "All Departments Submitted Appeared Data",
         message: `All ${submittedCount} departments submitted appeared data.`,
         type:    "STATUS",

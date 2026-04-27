@@ -143,7 +143,7 @@ exports.getAllExpertTravel = async (req, res) => {
           expertIds: [],  // all expert IDs for this email (for travel lookup)
         };
       }
-      const dept = e.uploadedBy?.department || e.uploadedByDept || "DoFA";
+      const dept = e.uploadedBy?.department || e.uploadedByDept || "DoFA" || "ADoFA";
       if (!emailMap[key].departments.includes(dept)) {
         emailMap[key].departments.push(dept);
       }

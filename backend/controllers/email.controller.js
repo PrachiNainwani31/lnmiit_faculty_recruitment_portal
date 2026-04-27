@@ -19,17 +19,15 @@ const sendMail = async (to, subject, html) => {
 ============================ */
 exports.notifyDofaUpload = async ({ department, hodName }) => {
   try {
-    const dofa = await User.findOne({
-      where: { role: "DoFA" }
+    const dofaUsers = await User.findAll({
+      where: { role: { [Op.in]: ["DoFA", "ADoFA"] } }
     });
-
-    if (!dofa) return;
-
+    for (const u of dofaUsers) {
     await sendMail(
       dofa.email,
       "HoD Uploaded Experts",
       `<p>HoD <b>${hodName}</b> from <b>${department}</b> uploaded experts.</p>`
-    );
+    );}
 
   } catch (err) {
     console.error(err);

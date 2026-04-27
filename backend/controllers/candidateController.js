@@ -329,7 +329,7 @@ exports.downloadTemplate = async (req, res) => {
 
 exports.getCandidatesByDepartment = async (req, res) => {
   try {
-    if (req.user.role !== "DoFA")
+    if (req.user.role !== "DoFA" && req.user.role !== "ADoFA")
       return res.status(403).json({ message: "Access denied" });
 
     const hod = await User.findOne({

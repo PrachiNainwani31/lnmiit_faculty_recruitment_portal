@@ -6,7 +6,7 @@ const Candidate     = require("../models/Candidate");
 const router = express.Router();
 
 /* ── Interview invitation (editable body, sent from DoFA portal) ── */
-router.post("/send-interview-invite", auth(["DoFA", "DoFA_OFFICE"]), async (req, res) => {
+router.post("/send-interview-invite", auth(["DoFA","ADoFA", "DoFA_OFFICE"]), async (req, res) => {
   try {
     const { candidateId, subject, body,deadlineAt } = req.body;
     if (!subject?.trim() || !body?.trim())
@@ -187,7 +187,7 @@ router.post("/send-interview-invite", auth(["DoFA", "DoFA_OFFICE"]), async (req,
 });
 
 /* ── Expert invitation (editable body, sent from DoFA portal) ── */
-router.post("/send-expert-invite", auth(["DoFA", "DoFA_OFFICE"]), async (req, res) => {
+router.post("/send-expert-invite", auth(["DoFA","ADoFA", "DoFA_OFFICE"]), async (req, res) => {
   try {
     const Expert = require("../models/Expert");
     const { expertId, subject, body } = req.body;
