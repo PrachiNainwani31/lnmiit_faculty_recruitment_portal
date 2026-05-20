@@ -34,11 +34,11 @@ async function startServer() {
     console.log(" MySQL Connected");
 
     //  Sync DB (DEV ONLY)
-    // await db.sequelize.sync({ alter: true });
+    await db.sequelize.sync({ alter: true });
     await db.sequelize.sync();
     console.log("Tables Synced");
 
-    const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT;
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

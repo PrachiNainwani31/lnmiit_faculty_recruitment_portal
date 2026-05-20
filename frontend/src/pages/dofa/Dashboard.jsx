@@ -175,7 +175,8 @@ export default function Dashboard() {
   const [showComment,   setShowComment]   = useState(false);
   const [selectedHodId, setSelectedHodId] = useState(null);
   const navigate = useNavigate();
-
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const roleLabel = user.role === "ADoFA" ? "ADoFA" : "DoFA";
   const load = () =>
     getDofaDashboard().then(res => setData(res.data)).catch(console.error);
 
@@ -208,7 +209,7 @@ export default function Dashboard() {
 
       {/* ── Page title ── */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">DoFA Dashboard</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{roleLabel} Dashboard</h2>
         <p className="text-sm text-gray-500 mt-1">
           Review department submissions and manage recruitment schedule
         </p>
