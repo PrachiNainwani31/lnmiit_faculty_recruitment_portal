@@ -87,7 +87,7 @@ const CandidateReferee = sequelize.define(
     email:        { type: DataTypes.STRING(255) },
     status:       { type: DataTypes.STRING(30), defaultValue: "PENDING" },
     letter:       { type: DataTypes.STRING(500) },
-    signedName:   { type: DataTypes.TEXT(200) },
+    signedName:   { type: DataTypes.STRING(200) },
     submittedAt:  { type: DataTypes.DATE },
     captchaCode: { type: DataTypes.STRING(10), allowNull: true },
   },
