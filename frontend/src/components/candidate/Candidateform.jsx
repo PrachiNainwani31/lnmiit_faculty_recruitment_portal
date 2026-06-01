@@ -6,7 +6,6 @@ import RefereeStatus   from "../RefereeStatus";
 import ExperienceEntry from "./Experienceentry";
 import API             from "../../api/api";
 
-const BASE_URL = import.meta.env.VITE_API_URL;
 /* ── Validators ── */
 const validateEmail = (v) => v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
   ? "Please enter a valid email address" : null;
@@ -121,30 +120,34 @@ export default function Candidateform({
 
   const handleCertUpload = async (index, file) => {
     if (!file) return;
-    const saved = await saveNow();
-    const freshExps = saved?.experiences || experiences;
     const localExp = experiences[index];
-    const exp = freshExps.find(e =>
-      e.type         === localExp.type &&
-      e.organization === localExp.organization &&
-      e.designation  === localExp.designation
-    ) || freshExps[index];
 
-    if (!exp?.id) {
-      alert("Could not save experience. Please try again.");
+    if (!localExp?.id) {
+      const saved = await saveNow();
+      const freshExps = saved?.experiences || [];
+      const matched = freshExps.find(e =>
+        e.type === localExp.type &&
+        e.organization === localExp.organization &&
+        e.designation === localExp.designation
+      );
+      if (!matched?.id) { alert("Could not save experience. Please try again."); return; }
+      setExperiences(prev => prev.map((e, i) => i === index ? { ...e, id: matched.id } : e));
+      // proceed with matched.id
+      const fd = new FormData();
+      fd.append("file", file);
+      try {
+        const res = await API.post(`/candidate/experience/${matched.id}/certificate`, fd);
+        setExperiences(prev => prev.map((e, i) => i === index ? { ...e, certificate: res.data.path } : e));
+      } catch { alert("Certificate upload failed"); }
       return;
     }
 
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await API.post(`/candidate/experience/${exp.id}/certificate`, fd);
-      setExperiences(prev => prev.map((e, i) =>
-        i === index ? { ...e, id: exp.id, certificate: res.data.path } : e
-      ));
-    } catch {
-      alert("Certificate upload failed");
-    }
+      const res = await API.post(`/candidate/experience/${localExp.id}/certificate`, fd);
+      setExperiences(prev => prev.map((e, i) => i === index ? { ...e, certificate: res.data.path } : e));
+    } catch { alert("Certificate upload failed"); }
   };
 
   /* ── Referee ── */

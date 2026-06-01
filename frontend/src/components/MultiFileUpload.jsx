@@ -2,7 +2,7 @@ import { useState } from "react";
 
 export default function MultiFileUpload({ label, maxFiles = 5, maxMB = 10, onUpload, existingFiles = [] }) {
   const [files, setFiles] = useState([]);
-
+  const safeExisting = Array.isArray(existingFiles) ? existingFiles : [];
   const handleChange = (e) => {
     const selected = Array.from(e.target.files).slice(0, maxFiles);
     setFiles(selected);
@@ -23,7 +23,7 @@ export default function MultiFileUpload({ label, maxFiles = 5, maxMB = 10, onUpl
       </div>
 
       {/* Existing server files */}
-      {existingFiles.filter(Boolean).map((f, i) => (
+      {safeExisting.filter(Boolean).map((f, i) => (
         <div key={i} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-3 py-2">
           <span className="text-xs text-green-700 truncate flex-1">{typeof f === "string" ? f.split(/[/\\]/).pop() : f.name}</span>
           <span className="text-xs text-green-500">Saved</span>
@@ -38,7 +38,7 @@ export default function MultiFileUpload({ label, maxFiles = 5, maxMB = 10, onUpl
         </div>
       ))}
 
-      {files.length < maxFiles && (
+      {files.length < maxFiles && safeExisting.length + files.length < maxFiles && (
         <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition">
           <input
             type="file"

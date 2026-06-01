@@ -143,6 +143,16 @@ const [application, setApplication] = useState({
       const docKeys = Object.keys(files);
       const docData = {};
       docKeys.forEach(k => { if (app[k] != null) docData[k] = app[k]; });
+      const ARRAY_FIELDS = [
+        "docBestPapers","docPostDocDocs","docSalarySlips",
+        "docOtherDocs","docResearchExpCerts","docTeachingExpCerts","docIndustryExpCerts"
+      ];
+      ARRAY_FIELDS.forEach(k => {
+        if (docData[k] !== undefined && !Array.isArray(docData[k])) {
+          docData[k] = [];
+        }
+      });
+
       if (Object.keys(docData).length) setFiles(f => ({ ...f, ...docData }));
       if (app.experienceTypes) setExpTypes(app.experienceTypes);
       if (app.publications?.length > 0) {
@@ -159,21 +169,21 @@ const [application, setApplication] = useState({
   }, []);
 
   const autoSaveRef = useRef(null);
+  const saveNowRef  = useRef(saveNow);
+  useEffect(() => { saveNowRef.current = saveNow; }, [saveNow]);
+
   useEffect(() => {
-  // Clear any existing interval first
-  if (autoSaveRef.current) clearInterval(autoSaveRef.current);
+    if (autoSaveRef.current) clearInterval(autoSaveRef.current);
+    if (!appLoaded || isSubmitted || view !== "form") return;
+    if (application.status !== "DRAFT" && application.status !== "QUERY") return;
+    autoSaveRef.current = setInterval(() => saveNowRef.current(), 15000);
+    return () => {
+      clearInterval(autoSaveRef.current);
+      autoSaveRef.current = null;
+    };
+  }, [appLoaded, application.status, view]); 
 
-  if (!appLoaded || isSubmitted || view !== "form") return;
-  if (application.status !== "DRAFT" && application.status !== "QUERY") return;
-
-  autoSaveRef.current = setInterval(() => saveNow(), 15000);
-  return () => {
-    clearInterval(autoSaveRef.current);
-    autoSaveRef.current = null;
-  };
-}, [appLoaded, application.status, view, saveNow]);
-
-  const saveDraft = async () => { await saveNow(); alert("Draft saved"); };
+  const saveDraft = async () => { await saveNow(); showToast("Draft saved"); };
 
   const submitApplication = async () => {
     if (autoSaveRef.current) {

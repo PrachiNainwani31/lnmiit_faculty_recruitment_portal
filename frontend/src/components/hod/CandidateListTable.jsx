@@ -115,7 +115,7 @@ export default function CandidateListTable({ cycle, isFrozen, onChange }) {
             </p>
           )}
         </div>
-        {!isFrozen && (
+        {!isFrozen && !interviewDate && (
           <button onClick={handleClearAll}
             className="text-xs text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
             Clear All

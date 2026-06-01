@@ -6,6 +6,7 @@ import { useOutletContext } from "react-router-dom";
 import SelectionStatusPanel from "../../components/Selectionstatuspanel";
 import API from "../../api/api";
 import { showToast, showConfirm } from "../../components/ui/Toast";
+import { getCurrentAcademicYear } from "../../utils/academicYear";
 
 function Field({ label, children }) {
   return (
@@ -84,11 +85,14 @@ function SubmitAppearedCard({ cycleData, onSubmitted }) {
   );
 }
 
-const currentYear = new Date().getFullYear();
+const currentAcademicYear = getCurrentAcademicYear(); // "2025-26" today
+
 const ACADEMIC_YEARS = Array.from({ length: 20 }, (_, i) => {
-  const start = currentYear - 2 + i;  // show 2 past + 18 future
-  const end   = String(start + 1).slice(-2);
-  return `${start}-${end}`;
+  // build list starting 2 academic years back
+  const now = new Date();
+  const month = now.getMonth();
+  const baseStart = (month >= 7 ? now.getFullYear() : now.getFullYear() - 1) - 2 + i;
+  return `${baseStart}-${String(baseStart + 1).slice(-2)}`;
 });
 
 function AppearedSubmittedBadge() {
@@ -117,7 +121,7 @@ export default function Dashboard() {
   const [cycleData, setCycleData] = useState(null);
   const { isFrozen } = useOutletContext();
   const [yearForm, setYearForm] = useState({
-  academicYear: `${currentYear}-${String(currentYear + 1).slice(-2)}`,cycleNumber: "",});
+  academicYear: currentAcademicYear,cycleNumber: "",});
   const [yearError, setYearError] = useState("");
   const [initiating, setInitiating] = useState(false);
   const [cycleLoaded, setCycleLoaded] = useState(false);
@@ -234,7 +238,7 @@ const handleInitiate = async () => {
     setYearError("");
     setShowNewCycleForm(false);                         
     setYearForm({
-      academicYear: `${currentYear}-${String(currentYear + 1).slice(-2)}`,
+      academicYear: currentAcademicYear,
       cycleNumber: "",
     });
     await refresh();

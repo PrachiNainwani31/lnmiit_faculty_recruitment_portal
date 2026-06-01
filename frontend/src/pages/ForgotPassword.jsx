@@ -27,7 +27,6 @@ export default function ForgotPassword() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-8">
         <div className="text-center mb-6">
-          <div className="text-4xl mb-3">🔑</div>
           <h1 className="text-xl font-bold text-gray-800">Forgot Password</h1>
           <p className="text-sm text-gray-500 mt-1">
             Enter your registered email to receive a reset link

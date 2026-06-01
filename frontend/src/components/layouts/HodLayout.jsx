@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getCurrentCycle } from "../../api/hodApi";
 import NotificationBell from "../../components/notifications/NotificationBell";
+import { getCurrentAcademicYear } from "../../utils/academicYear";
 
 const NAV_ITEMS = [
   { to: "/hod",            label: "Dashboard", end: true },
@@ -79,7 +80,7 @@ export default function HodLayout() {
           <div className="mx-4 mt-4">
             <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium ${status.badge}`}>
               <span className={`w-2 h-2 rounded-full ${status.dot} shrink-0`} />
-              Session 2025–26 · {status.label}
+              {getCurrentAcademicYear()} · {status.label}
             </div>
           </div>
         )}
