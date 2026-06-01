@@ -109,22 +109,37 @@ export default function CandidateUploadCard({
         </button>
 
         {showCols && (
-          <div className="mt-2 bg-gray-50 border rounded p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {CSV_COLUMNS.map(col => (
-              <div key={col.name} className="flex items-center gap-1 text-xs">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  col.required ? "bg-red-400" : "bg-gray-300"
-                }`} />
-                <span className="font-mono text-gray-700">{col.name}</span>
-                {!col.required && (
-                  <span className="text-gray-400 italic">(optional)</span>
-                )}
+          <div className="mt-2 space-y-2">
+            <div className="bg-gray-50 border rounded p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {CSV_COLUMNS.map(col => (
+                <div key={col.name} className="flex items-center gap-1 text-xs">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    col.required ? "bg-red-400" : "bg-gray-300"
+                  }`} />
+                  <span className="font-mono text-gray-700">{col.name}</span>
+                  {!col.required && (
+                    <span className="text-gray-400 italic">(optional)</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-800 space-y-1">
+              <p className="font-semibold">Recommended values for DLSC / ILSC Recommendation columns:</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 mt-1">
+                <span>• <strong>Strongly Recommended (SR)</strong></span>
+                <span>• <strong>Recommended (R)</strong></span>
+                <span>• <strong>Weak Recommended (WR)</strong></span>
+                <span>• <strong>Not Recommended (NR)</strong></span>
               </div>
-            ))}
+              <p className="text-red-700 mt-1 font-bold">
+                Provide comma-separated values in DLSC / ILSC Remarks columns.
+              </p>
+            </div>
           </div>
         )}
       </div>
-
+        
       {/* ── Step 1: Download template ── */}
       <div className="bg-blue-50 border rounded p-4 flex justify-between items-center mb-4">
         <div>
