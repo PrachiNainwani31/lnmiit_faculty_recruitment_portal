@@ -260,7 +260,7 @@ exports.submitApplication = async (req, res) => {
         where: { applicationId: app.id, status: "PENDING" }
       });
 
-      const frontendUrl = process.env.FRINTEND_URL || 
+      const frontendUrl = process.env.FRONTEND_URL || 
         (req.headers.origin ? req.headers.origin : `${req.protocol}://${req.get("host")}`);
 
       for (const referee of currentReferees) {
@@ -323,7 +323,7 @@ exports.submitApplication = async (req, res) => {
 
     // Email #8a — referee invitation emails
     const referees = await CandidateReferee.findAll({ where: { applicationId: app.id } });
-    const frontendUrl = process.env.FRINTEND_URL || (req.headers.origin ? req.headers.origin : `${req.protocol}://${req.get("host")}`);
+    const frontendUrl = process.env.FRONTEND_URL || (req.headers.origin ? req.headers.origin : `${req.protocol}://${req.get("host")}`);
     for (const referee of referees) {
       if (!referee.email) continue;
       const captcha = crypto.randomBytes(3).toString("hex").toUpperCase();
