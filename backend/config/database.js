@@ -11,12 +11,8 @@ const sequelize = new Sequelize(
     dialect: "mysql",
     // logging: process.env.NODE_ENV === "development" ? console.log : false,
     dialectOptions: {
-    ssl: {
-      require:            true,
-      rejectUnauthorized: false,   // Aiven uses self-signed cert
-    },
     connectTimeout: 60000,
-  },
+    },
     pool: {
       max: 10,
       min: 0,
