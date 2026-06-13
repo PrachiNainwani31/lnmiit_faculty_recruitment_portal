@@ -26,6 +26,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.13",
     "prisma": "^7.5.0",
+    "resend": "^6.12.4",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
