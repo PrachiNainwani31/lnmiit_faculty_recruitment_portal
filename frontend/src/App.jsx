@@ -61,10 +61,21 @@ import ProtectedRoute     from "./components/ProtectedRoute";
 export default function App() {
 
   useEffect(() => {
-    // fetch base URL without /api since health is at root
-    fetch(`${import.meta.env.VITE_API_URL.replace(/\/api$/, "")}/health`)
-      .catch(() => {});
-  }, []);
+  const wakeUp = async () => {
+    let attempts = 0;
+    while (attempts < 10) {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL.replace(/\/api$/, "")}/health`
+        );
+        if (res.ok) break;  // server is ready
+      } catch {}
+      await new Promise(r => setTimeout(r, 3000)); // wait 3s between attempts
+      attempts++;
+    }
+  };
+  wakeUp();
+}, []);
   //remove2
   return (
     <><ToastProvider />
