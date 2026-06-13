@@ -1,18 +1,11 @@
-const transporter = require("../config/mailer");
+const {sendEmail} = require("../utils/emailSender");
 const { User, Candidate, Expert, CandidateApplication } = require("../models");
 const getCurrentCycle = require("../utils/getCurrentCycle");
 
 /* ============================
    Send mail helper
 ============================ */
-const sendMail = async (to, subject, html) => {
-  transporter.sendMail({
-    from: `"LNMIIT Recruitment" <${process.env.EMAIL_USER}>`,
-    to,
-    subject,
-    html,
-  }).catch(err => console.error("Email error:", err));
-};
+const sendMail = sendEmail;
 
 /* ============================
    HoD uploaded notification
@@ -24,7 +17,7 @@ exports.notifyDofaUpload = async ({ department, hodName }) => {
     });
     for (const u of dofaUsers) {
     await sendMail(
-      dofa.email,
+      u.email,
       "HoD Uploaded Experts",
       `<p>HoD <b>${hodName}</b> from <b>${department}</b> uploaded experts.</p>`
     );}
