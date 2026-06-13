@@ -26,8 +26,8 @@ const Expert = sequelize.define(
     indexes: [
       {
         unique: true,
-        fields: ["email", "cycle", "uploadedById"],
-        name:   "uq_expert_email_cycle_uploader",
+        fields: ["email", "cycle", "uploadedById","uploadedByDept"],
+        name:   "uq_expert_email_cycle_uploader_dept",
       },
     ],
   }

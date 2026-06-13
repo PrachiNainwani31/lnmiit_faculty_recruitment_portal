@@ -148,7 +148,7 @@ function AddExpertPanel({ onAdded }) {
   const [form,    setForm]    = useState({
     fullName:"", designation:"", department:"",
     institute:"", email:"", phone:"", specialization:"",
-    hodId: "",   // ← NEW: which HoD's cycle to assign
+    hodIds : [],   // ← NEW: which HoD's cycle to assign
   });
   const [saving,  setSaving]  = useState(false);
   const [formErrors, setFormErrors] = useState({});
@@ -159,7 +159,7 @@ function AddExpertPanel({ onAdded }) {
     if (!form.email.trim())       errs.email       = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
                                   errs.email       = "Enter a valid email address";
-    if (!form.hodId)              errs.hodId       = "Please select a target department / cycle";
+    if (!form.hodIds.length)      errs.hodId       = "Please select at least one department / cycle"; // ← only this
     if (!form.designation.trim()) errs.designation = "Designation is required";
     if (!form.institute.trim())   errs.institute   = "Institute is required";
     if (!form.department.trim())  errs.department  = "Expert's department is required";
@@ -181,27 +181,34 @@ function AddExpertPanel({ onAdded }) {
   const lbl      = "text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1";
  
    const handleAdd = async () => {
-    if (!validateForm()) return;
-    try {
-      setSaving(true);
-      await API.post("/selected-candidates/manual-expert", form);
-      alert(`Expert ${form.fullName} added`);
-      setForm({
-        fullName:"", designation:"", department:"",
-        institute:"", email:"", phone:"", specialization:"", hodId:"",
-      });
-      setFormErrors({});
-      setOpen(false);
-      onAdded();
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to add expert");
-    } finally {
-      setSaving(false);
+  if (!validateForm()) return;
+  try {
+    setSaving(true);
+    const errors = [];
+    for (const hodId of form.hodIds) {
+      try {
+        await API.post("/selected-candidates/manual-expert", { ...form, hodId });
+      } catch (err) {
+        const msg = err.response?.data?.message || `Failed for hodId ${hodId}`;
+        errors.push(msg);
+      }
     }
-  };
- 
-  // When a HoD is selected, auto-fill department field hint
-  const selectedHod = hods.find(h => String(h.hodId) === String(form.hodId));
+    if (errors.length) {
+      alert(`Some failed:\n${errors.join("\n")}`);
+    } else {
+      alert(`Expert ${form.fullName} added to ${form.hodIds.length} department(s)`);
+    }
+    setForm({
+      fullName:"", designation:"", department:"",
+      institute:"", email:"", phone:"", specialization:"", hodIds:[],
+    });
+    setFormErrors({});
+    setOpen(false);
+    onAdded();
+  } finally {
+    setSaving(false);
+  }
+};
  
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -227,23 +234,44 @@ function AddExpertPanel({ onAdded }) {
  
             {/* ── NEW: Cycle / Department picker ── */}
             <div className="col-span-2">
-              <label className={lbl}>Target Department / Cycle <span className="text-red-500">*</span></label>
-              <select
-                className={formErrors.hodId ? `${inputCls} border-red-300 bg-red-50` : inputCls}
-                value={form.hodId}
-                onChange={e => { setForm(f => ({ ...f, hodId: e.target.value })); setFormErrors(er => ({ ...er, hodId: null })); }}
-              >
-                <option value="">-- Select department & cycle --</option>
-                {hods.map(d => (
-                  <option key={d.hodId} value={d.hodId}>
-                    {d.department} — {d.academicYear} · Cycle {d.cycleNumber}
-                  </option>
-                ))}
-              </select>
+              <label className={lbl}>
+                Target Department(s) / Cycle <span className="text-red-500">*</span>
+              </label>
+              <div className={`border rounded-lg divide-y text-sm ${formErrors.hodId ? "border-red-300 bg-red-50" : "border-gray-200 bg-white"}`}>
+                {hods.map(d => {
+                  const checked = form.hodIds.includes(String(d.hodId));
+                  return (
+                    <label key={d.hodId}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const id = String(d.hodId);
+                          setForm(f => ({
+                            ...f,
+                            hodIds: checked
+                              ? f.hodIds.filter(x => x !== id)
+                              : [...f.hodIds, id],
+                          }));
+                          setFormErrors(er => ({ ...er, hodId: null }));
+                        }}
+                        className="rounded border-gray-300 text-red-600"
+                      />
+                      <span>
+                        <span className="font-semibold text-gray-700">{d.department}</span>
+                        <span className="text-gray-400 ml-2 font-mono text-xs">
+                          {d.academicYear} · Cycle {d.cycleNumber}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
               {formErrors.hodId && <p className="text-xs text-red-500 mt-0.5">{formErrors.hodId}</p>}
-              {selectedHod && !formErrors.hodId && (
+              {form.hodIds.length > 1 && (
                 <p className="text-xs text-indigo-600 mt-1">
-                  Cycle: <span className="font-mono font-semibold">{selectedHod.academicYear}-C{selectedHod.cycleNumber}</span>
+                  Expert will be added to {form.hodIds.length} departments as separate rows.
                 </p>
               )}
             </div>
@@ -463,6 +491,80 @@ function UploadCSVForHodPanel({ onUploaded }) {
   );
 }
 
+function DeleteModal({ expert, onClose, onDeleted }) {
+  const [selectedCycle, setSelectedCycle] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const cycles = expert.cycleRawList?.length
+    ? expert.cycleRawList
+    : [expert.cycle];
+
+  const handleDelete = async () => {
+    if (!selectedCycle) return alert("Please select a cycle");
+    const idsToDelete = expert.cycleIdMap?.[selectedCycle] || [expert.id];
+    if (!window.confirm(`Remove ${expert.fullName} from cycle ${selectedCycle}?`)) return;
+    try {
+      setDeleting(true);
+      await API.delete(`/hod/experts/${expert.id}`, {
+        data: { allIds: idsToDelete },
+      });
+      onDeleted();
+      onClose();
+    } catch {
+      alert("Failed to delete expert");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <h3 className="font-semibold text-gray-800 text-sm">Delete Expert from Cycle</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <p className="text-sm font-medium text-gray-700">{expert.fullName}</p>
+            <p className="text-xs text-gray-400">{expert.email}</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
+              Remove from which cycle?
+            </label>
+            <select
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-300"
+              value={selectedCycle}
+              onChange={e => setSelectedCycle(e.target.value)}
+            >
+              <option value="">— Select cycle —</option>
+              {cycles.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          {cycles.length > 1 && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              This expert is listed in {cycles.length} cycles. Deleting from one cycle won't affect the others.
+            </p>
+          )}
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t">
+          <button onClick={onClose}
+            className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button onClick={handleDelete} disabled={deleting || !selectedCycle}
+            className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50">
+            {deleting ? "Deleting…" : "Delete from Cycle"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main Page ── */
 export default function DofaExperts() {
   const [searchParams] = useSearchParams();
@@ -471,6 +573,7 @@ export default function DofaExperts() {
   const [allExperts, setAllExperts] = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [modal,      setModal]      = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -547,7 +650,7 @@ export default function DofaExperts() {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {["Sr", "Name", "Email", "Designation", "Department", "Institute", "Specialization","Phone", "Cycle", "Uploaded by", "Action"].map(h => (
+                  {["Sr", "Name", "Email", "Designation", "Department", "Institute", "Specialization","Phone", "Cycle", "Uploaded by", "Action",""].map(h => (
                     <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -565,20 +668,36 @@ export default function DofaExperts() {
                     <td className="px-3 py-2.5 text-gray-500 text-xs">{e.phone}</td>
                     <td className="px-3 py-2.5 text-xs">
                       <div className="flex flex-col gap-1">
-                        <span className="bg-gray-100 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full font-mono text-xs whitespace-nowrap">
-                          {e.cycle || "—"}
-                        </span>
-                        <span className="bg-purple-50 text-purple-600 border border-purple-100 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
-                          {e.uploadedByDept||e.uploadedBy?.department || "—"}
-                        </span>
+                        {(e.cycleList?.length ? e.cycleList : [`— · ${e.cycle}`]).map(c => {
+                          const dotIdx = c.indexOf(" · ");
+                          const dept  = dotIdx !== -1 ? c.slice(0, dotIdx) : "—";
+                          const cycle = dotIdx !== -1 ? c.slice(dotIdx + 3) : c;
+                          return (
+                            <span key={c} className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">
+                              <span className="font-semibold text-indigo-600">{dept}</span>
+                              <span className="text-gray-300">·</span>
+                              <span className="font-mono text-gray-500">{cycle}</span>
+                            </span>
+                          );
+                        })}
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-xs">
-                      {(e.uploadedByDepts || [e.uploadedBy?.department || "Manual"]).map(d => (
-                        <span key={d} className="bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded-full text-xs mr-1">
-                          {d}
-                        </span>
-                      ))}
+                      <div className="flex flex-col gap-1">
+                        {(e.uploadedByDepts?.length ? e.uploadedByDepts : ["—"]).map(d => {
+                          const isManual = d.startsWith("Manual");
+                          return (
+                            <span key={d} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${
+                              isManual
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-indigo-50 text-indigo-600 border-indigo-100"
+                            }`}>
+                              <span>{isManual ? "✎" : "👤"}</span>
+                              <span>{d}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <button
@@ -586,6 +705,14 @@ export default function DofaExperts() {
                         className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition"
                       >
                         Send Email
+                      </button>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        onClick={() => setDeleteTarget(e)}
+                        className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -607,6 +734,13 @@ export default function DofaExperts() {
           expert={modal.expert || null}
           allExperts={modal.allExperts || null}
           onClose={() => setModal(null)}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteModal
+          expert={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={load}
         />
       )}
     </div>

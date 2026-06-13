@@ -108,7 +108,12 @@ export default function Candidateform({
   const expBlurTimer = useRef(null);
   const handleExpBlur = () => {
     clearTimeout(expBlurTimer.current);
-    expBlurTimer.current = setTimeout(() => saveNow(), 1500); // wait 1.5s after blur
+    expBlurTimer.current = setTimeout(() => {
+      // Only save if focus moved outside the experience section entirely
+      if (!currentTarget.contains(document.activeElement)) {
+        saveNow();
+      }
+    }, 200); // short delay is enough — just needs to let new focus settle
   };
   const addExperience  = () => setExperiences(prev => [...prev, { ...EMPTY_EXP }]);
   const removeExperience = (i) => {

@@ -1,4 +1,4 @@
-const PORTAL_URL = process.env.FRONTEND_URL;
+const PORTAL_URL = (process.env.FRONTEND_URL || "").replace(/\/$/, "");
 const FROM_NAME  = process.env.EMAIL_FROM_NAME || "LNMIIT Recruitment Portal";
 
 const wrap = (body) => `
@@ -10,7 +10,7 @@ const wrap = (body) => `
     ${body}
   </div>
   <p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">
-    This is an automated message from the LNMII FacultyT Recruitment and Onboarding Portal. Do not reply directly to this email.
+    This is an automated message from the LNMII Faculty Recruitment and Onboarding Portal. Do not reply directly to this email.
   </p>
 </div>`;
 
@@ -30,10 +30,10 @@ const btn = (label, url) =>
 /* ══════════════════════════════════════════════
    1. HoD submits candidates + experts to DoFA
 ══════════════════════════════════════════════ */
-exports.hodSubmittedToDofa = ({ department, candidateCount, expertCount }) => ({
+exports.hodSubmittedToDofa = ({ department, candidateCount, expertCount, recipientName }) => ({
   subject: `Request to Schedule Interview — ${department} Department`,
   html: wrap(`
-    <p>Dear Dean of Faculty Affairs,</p>
+    <p>Dear ${recipientName || "Dean of Faculty Affairs"},</p>
     <p>The HoD of <strong>${department}</strong> department has submitted the candidates shortlisted in ILSC for the next cycle of interviews.</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
       <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidates submitted</td>
@@ -68,10 +68,10 @@ exports.dofaQueryToHod = ({ hodName, department, comment }) => ({
 /* ══════════════════════════════════════════════
    3. HoD resubmits after query
 ══════════════════════════════════════════════ */
-exports.hodResubmittedToDofa = ({ department }) => ({
+exports.hodResubmittedToDofa = ({ department, recipientName }) => ({
   subject: `Notification for Changes Requested — ${department} Department`,
   html: wrap(`
-    <p>Dear Dean of Faculty Affairs,</p>
+    <p>Dear ${recipientName || "Dean of Faculty Affairs"},</p>
     <p>The HoD of <strong>${department}</strong> department has addressed your query 
     and resubmitted the data for review.</p>
     ${btn("Review Updated Submission", `${PORTAL_URL}/dofa/dashboard`)}
@@ -87,7 +87,7 @@ exports.expertInvitationToDofa = ({ expertName, department, expertEmail }) => ({
   subject: `Expert Added for Interview — ${department}`,
   html: wrap(`
     <p>Dear Dean of Faculty Affairs,</p>
-    <p>The HoD of<strong>${department}</strong> department has added the external expert details for the upcoming interview panel.</p>
+    <p>The HoD of <strong>${department}</strong> department has added the external expert details for the upcoming interview panel.</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
       <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Expert Name</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${expertName}</td></tr>
@@ -413,11 +413,11 @@ exports.roomAllotmentToEstate = ({ candidateName, roomNumber, building }) => ({
   subject: `Office Allotment — ${candidateName}`,
   html: wrap(`
     <p>Dear Estate Section,</p>
-    <p>A office has been allotted to the following new faculty member. Please proceed with the handover process and update the same on the portal.</p>
+    <p>An office has been allotted to the following new faculty member. Please proceed with the handover process and update the same on the portal.</p>
     <table style="border-collapse:collapse;width:100%;margin:15px 0">
       <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Candidate Name</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${candidateName}</td></tr>
-      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">office Number</td>
+      <tr><td style="padding:8px;border:1px solid #ddd;color:#666">Office Number</td>
           <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${roomNumber}</td></tr>
       ${building ? `<tr><td style="padding:8px;border:1px solid #ddd;color:#666">Building</td>
           <td style="padding:8px;border:1px solid #ddd">${building}</td></tr>` : ""}

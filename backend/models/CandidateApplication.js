@@ -2,6 +2,21 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
+// ── helper — place this BEFORE the sequelize.define call ──
+const parseJsonArray = (fieldName) => ({
+  type: DataTypes.JSON,
+  defaultValue: [],
+  get() {
+    const raw = this.getDataValue(fieldName);
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return []; }
+    }
+    return [];
+  },
+});
+
 // ─── Main Application ─────────────────────────────────────────────────────────
 const CandidateApplication = sequelize.define(
   "CandidateApplication",
@@ -40,14 +55,13 @@ const CandidateApplication = sequelize.define(
     phdStatus: { type: DataTypes.STRING(30), defaultValue: "" },
 
     // ── Documents (multi-file — stored as JSON arrays) ─────────────────────
-    docResearchExpCerts:  { type: DataTypes.JSON, defaultValue: [] },
-    docTeachingExpCerts:  { type: DataTypes.JSON, defaultValue: [] },
-    docIndustryExpCerts:  { type: DataTypes.JSON, defaultValue: [] },
-    docBestPapers:        { type: DataTypes.JSON, defaultValue: [] },
-    docPostDocDocs:       { type: DataTypes.JSON, defaultValue: [] },
-    docSalarySlips:       { type: DataTypes.JSON, defaultValue: [] },
-    // [{ name, file }] array
-    docOtherDocs:         { type: DataTypes.JSON, defaultValue: [] },
+    docResearchExpCerts:  parseJsonArray("docResearchExpCerts"),
+    docTeachingExpCerts:  parseJsonArray("docTeachingExpCerts"),
+    docIndustryExpCerts:  parseJsonArray("docIndustryExpCerts"),
+    docBestPapers:        parseJsonArray("docBestPapers"),
+    docPostDocDocs:       parseJsonArray("docPostDocDocs"),
+    docSalarySlips:       parseJsonArray("docSalarySlips"),
+    docOtherDocs:         parseJsonArray("docOtherDocs"),
 
     // ── Experience type flags ───────────────────────────────────────────────
     expResearch:   { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -55,7 +69,7 @@ const CandidateApplication = sequelize.define(
     expIndustrial: { type: DataTypes.BOOLEAN, defaultValue: false },
 
     // ── Publications (array of strings → JSON) ──────────────────────────────
-    publications: { type: DataTypes.JSON, defaultValue: [] },
+    publications:         parseJsonArray("publications"),
 
     status:   { type: DataTypes.STRING(30), defaultValue: "DRAFT" },
     verdicts: { type: DataTypes.JSON },    // Mixed → JSON

@@ -506,12 +506,26 @@ export default function ExpertConfirmation() {
       .then(res => {
         const map = {};
         res.data.forEach(({ expert, travel }) => {
-          const groupKey = expert.uploadedBy?.role === "HoD"
-            ? expert.uploadedByDepts?.length > 1
-              ? `${expert.uploadedByDepts.join(" + ")} Departments`
-              : `${expert.uploadedBy.department || "HoD"} Department`
-            : expert.department || "Manual Entry";
-          if (!map[groupKey]) map[groupKey] = { isHod: expert.uploadedBy?.role === "HoD", items: [] };
+          const hodDepts = (expert.uploadedByDepts || [])
+            .filter(tag => tag.endsWith(" HoD"))
+            .map(tag => tag.replace(" HoD", ""));
+
+          const manualDepts = (expert.uploadedByDepts || [])
+            .filter(tag => tag.includes(" Manual ("))
+            .map(tag => tag.split(" Manual (")[0]);   // extract "CSE", "CCE"
+
+          const isManualOnly = hodDepts.length === 0;
+
+          const groupKey = isManualOnly
+            ? manualDepts.length === 1
+              ? `${manualDepts[0]} (Manual)`
+              : manualDepts.length > 1
+                ? `${manualDepts.join(" + ")} (Manual)`
+                : expert.uploadedByDept || expert.department || "Manual Entry"
+            : hodDepts.length === 1
+              ? `${hodDepts[0]} Department`
+              : `${hodDepts.join(" + ")} Departments`;
+          if (!map[groupKey]) map[groupKey] = { isHod: expert.hasHodEntry === true, items: [] };
           map[groupKey].items.push({ expert, travel });
         });
         setGrouped(map);

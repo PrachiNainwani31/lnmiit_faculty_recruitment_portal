@@ -204,52 +204,55 @@ exports.markInterviewComplete = async (req, res) => {
 exports.addManualExpert = async (req, res) => {
   try {
     const { Expert } = require("../models");
-    const {
-      fullName, designation, department, institute,
-      email, phone, specialization,
-      hodId,   // ← NEW: DoFA picks which HoD's active cycle
-    } = req.body;
- 
-    if (!fullName || !email)
-      return res.status(400).json({ message: "Full name and email are required" });
- 
-    let activeCycle;
-    if (hodId) {
-      // Use the specific HoD's active cycle
-      activeCycle = await RecruitmentCycle.findOne({
-        where: {
-          hodId,
-          [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }],
-        },
-        order: [["createdAt", "DESC"]],
+    const { fullName, designation, department, institute,
+            email, phone, specialization, hodId } = req.body;
+
+    if (!fullName || !email || !hodId)
+      return res.status(400).json({ message: "Full name, email and department are required" });
+
+    const activeCycle = await RecruitmentCycle.findOne({
+      where: {
+        hodId,
+        [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }],
+      },
+      order: [["createdAt", "DESC"]],
+    });
+    if (!activeCycle)
+      return res.status(404).json({ message: "No active cycle for selected department" });
+
+    // Duplicate check: same email + same cycle + same target HoD
+    const targetHod = await User.findByPk(hodId, { attributes: ["department"] }); // ← move up
+
+    const existing = await Expert.findOne({
+      where: {
+        email: email.toLowerCase().trim(),
+        cycle: activeCycle.cycle,
+        uploadedById: req.user.id,
+        uploadedByDept: targetHod?.department || null,  // ← now safe
+      },
+    });
+    if (existing)
+      return res.status(409).json({
+        message: `${email} is already listed for cycle ${activeCycle.cycle} by you. To add for another department, it will appear as a merged row.`,
       });
-    } else {
-      // Fallback: latest active cycle across all
-      activeCycle = await RecruitmentCycle.findOne({
-        where: {
-          [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }],
-        },
-        order: [["createdAt", "DESC"]],
-      });
-    }
- 
-    if (!activeCycle) return res.status(404).json({ message: "No active cycle found" });
-    const targetHod = await User.findByPk(hodId, { attributes: ["department"] });
+
     const expert = await Expert.create({
       fullName,
       designation:    designation    || "",
       department:     (department    || "GENERAL").toUpperCase(),
       institute:      institute      || "",
-      email,
+      email:          email.toLowerCase().trim(),
       phone:          phone          || null,
       specialization: specialization || null,
       cycle:          activeCycle.cycle,
-      uploadedById:   req.user.id,
+      uploadedById:  req.user.id,
       uploadedByDept: targetHod?.department || null,
     });
- 
+
     res.json({ success: true, expert });
   } catch (err) {
+    if (err.name === "SequelizeUniqueConstraintError")
+      return res.status(409).json({ message: "Expert already exists for this cycle." });
     console.error("addManualExpert error:", err);
     res.status(500).json({ message: err.message || "Failed to add expert" });
   }

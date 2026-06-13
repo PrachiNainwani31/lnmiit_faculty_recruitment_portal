@@ -1,5 +1,5 @@
 // pages/dofa/Dashboard.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   raiseQuery,
   getDofaDashboard,
@@ -12,6 +12,21 @@ import SummaryCard from "../../components/ui/SummaryCard";
 import CommentModal from "../../components/dofa/CommentModal";
 import SelectionStatusPanel from "../../components/Selectionstatuspanel";
 import { showToast, showConfirm } from "../../components/ui/Toast";
+
+// YYYY-MM-DD → DD/MM/YYYY for display
+const toDisplay = (iso) => {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+};
+
+// DD/MM/YYYY → YYYY-MM-DD for storage
+const toISO = (display) => {
+  if (!display) return "";
+  const [d, m, y] = display.split("/");
+  if (!d || !m || !y || y.length !== 4) return "";
+  return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`;
+};
 
 /* ── All possible stages in order ── */
 const STAGES = [
@@ -28,11 +43,157 @@ const STATUS_ORDER = STAGES.map(s => s.key);
 /* ── Format a DATEONLY string nicely ── */
 const fmtDate = (d) =>
   d
-    ? new Date(d).toLocaleDateString("en-GB", {
+    ? new Date(d + "T00:00").toLocaleDateString("en-GB", {
         day: "numeric", month: "short", year: "numeric",
       })
     : null;
 
+
+function DatePicker({ value, onChange, placeholder = "DD/MM/YYYY" }) {
+  const [open, setOpen] = useState(false);
+  const [viewYear, setViewYear] = useState(null);
+  const [viewMonth, setViewMonth] = useState(null);
+  const ref = useRef(null);
+
+  // value is YYYY-MM-DD or ""
+  const parsed = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(value + "T00:00") : null;
+
+  useEffect(() => {
+    const now = parsed || new Date();
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+  }, [open]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const displayVal = parsed
+    ? `${String(parsed.getDate()).padStart(2,"0")}/${String(parsed.getMonth()+1).padStart(2,"0")}/${parsed.getFullYear()}`
+    : "";
+
+  const MONTHS = ["January","February","March","April","May","June",
+                  "July","August","September","October","November","December"];
+  const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+  const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+  const getFirstDay    = (y, m) => new Date(y, m, 1).getDay();
+
+  const handleDayClick = (day) => {
+    const iso = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    onChange(iso);
+    setOpen(false);
+  };
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const daysInMonth = viewYear !== null ? getDaysInMonth(viewYear, viewMonth) : 0;
+  const firstDay    = viewYear !== null ? getFirstDay(viewYear, viewMonth)    : 0;
+
+  return (
+    <div className="relative" ref={ref}>
+      <div
+        onClick={() => setOpen(v => !v)}
+        className="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm bg-white cursor-pointer flex items-center justify-between focus-within:ring-2 focus-within:ring-indigo-300"
+      >
+        <span className={displayVal ? "text-gray-800" : "text-gray-400"}>
+          {displayVal || placeholder}
+        </span>
+        <span className="text-gray-400 text-base">📅</span>
+      </div>
+
+      {open && viewYear !== null && (
+        <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-3 w-64">
+          {/* Month/year nav */}
+          <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={prevMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600 font-bold"
+            >
+              ‹
+            </button>
+            <span className="text-sm font-semibold text-gray-800">
+              {MONTHS[viewMonth]} {viewYear}
+            </span>
+            <button
+              onClick={nextMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600 font-bold"
+            >
+              ›
+            </button>
+          </div>
+
+          {/* Day headers */}
+          <div className="grid grid-cols-7 mb-1">
+            {DAYS.map(d => (
+              <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div className="grid grid-cols-7">
+            {Array.from({ length: firstDay }).map((_, i) => (
+              <div key={`empty-${i}`} />
+            ))}
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+              const isSelected =
+                parsed &&
+                parsed.getFullYear() === viewYear &&
+                parsed.getMonth()    === viewMonth &&
+                parsed.getDate()     === day;
+              const today = new Date();
+              const isToday =
+                today.getFullYear() === viewYear &&
+                today.getMonth()    === viewMonth &&
+                today.getDate()     === day;
+              return (
+                <button
+                  key={day}
+                  onClick={() => handleDayClick(day)}
+                  className={`
+                    h-8 w-8 mx-auto flex items-center justify-center rounded-full text-xs font-medium transition
+                    ${isSelected
+                      ? "bg-indigo-600 text-white"
+                      : isToday
+                      ? "border border-indigo-400 text-indigo-600"
+                      : "text-gray-700 hover:bg-indigo-50"}
+                  `}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Clear button */}
+          {value && (
+            <div className="mt-2 pt-2 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={() => { onChange(""); setOpen(false); }}
+                className="text-xs text-red-500 hover:text-red-700 font-medium"
+              >
+                Clear date
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+} 
+    
 /* ── Date input row — collapsible, shown for APPROVED and beyond ── */
 function DateInputRow({ dept, onSaved }) {
   const [open,   setOpen]   = useState(false);
@@ -68,14 +229,11 @@ function DateInputRow({ dept, onSaved }) {
   return (
     <div className="mt-4 border-t border-gray-100 pt-4">
 
-      {/* ── Date summary row — always visible ── */}
+      {/* ── Date summary row ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex flex-wrap items-center gap-5 text-sm">
-          {/* Teaching interaction */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-              Teaching:
-            </span>
+            <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Teaching:</span>
             {fmtDate(dept.teachingInteractionDate) ? (
               <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
                 📅 {fmtDate(dept.teachingInteractionDate)}
@@ -84,12 +242,8 @@ function DateInputRow({ dept, onSaved }) {
               <span className="text-xs text-gray-400 italic">Not set</span>
             )}
           </div>
-
-          {/* Interview date */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-              Interview:
-            </span>
+            <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Interview:</span>
             {fmtDate(dept.interviewDate) ? (
               <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
                 🗓 {fmtDate(dept.interviewDate)}
@@ -102,7 +256,6 @@ function DateInputRow({ dept, onSaved }) {
           </div>
         </div>
 
-        {/* Edit toggle */}
         <button
           onClick={() => setOpen(v => !v)}
           className={`text-xs px-4 py-1.5 rounded-lg font-medium transition border ${
@@ -126,11 +279,9 @@ function DateInputRow({ dept, onSaved }) {
               <label className="block text-xs text-gray-500 mb-1">
                 Teaching Interaction Date
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={form.teachingInteractionDate}
-                onChange={e => setForm(f => ({ ...f, teachingInteractionDate: e.target.value }))}
-                className="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+                onChange={val => setForm(f => ({ ...f, teachingInteractionDate: val }))}
               />
             </div>
             <div>
@@ -140,11 +291,9 @@ function DateInputRow({ dept, onSaved }) {
                   (unlocks HoD's Mark Appeared feature)
                 </span>
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={form.interviewDate}
-                onChange={e => setForm(f => ({ ...f, interviewDate: e.target.value }))}
-                className="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+                onChange={val => setForm(f => ({ ...f, interviewDate: val }))}
               />
             </div>
           </div>

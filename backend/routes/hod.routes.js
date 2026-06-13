@@ -156,4 +156,28 @@ router.post(
 router.get("/logs", auth(["HoD"]), getHodLogs);
 router.get("/experts/by-hod/:hodId", auth(["DoFA", "ADoFA", "DoFA_OFFICE"]), getExpertsByHod);
 
+// Add this route — DoFA/ADoFA deleting an expert by id
+router.delete(
+  "/experts/:id",
+  auth(["DoFA", "ADoFA"]),
+  async (req, res) => {
+    try {
+      const { Expert } = require("../models");
+      const { Op } = require("sequelize");
+      const id = req.params.id;
+
+      // If _allIds passed in body, delete all rows for this email+cycle group
+      if (req.body?.allIds?.length) {
+        await Expert.destroy({ where: { id: { [Op.in]: req.body.allIds } } });
+      } else {
+        await Expert.destroy({ where: { id } });
+      }
+      res.json({ success: true });
+    } catch (err) {
+      console.error("deleteExpert error:", err.message);
+      res.status(500).json({ message: "Failed to delete" });
+    }
+  }
+);
+
 module.exports = router;

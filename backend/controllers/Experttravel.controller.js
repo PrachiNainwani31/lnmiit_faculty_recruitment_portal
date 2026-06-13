@@ -114,10 +114,10 @@ exports.getAllExpertTravel = async (req, res) => {
       attributes: ["id"],
     });
     const dofaUserIds = dofaUsers.map(u => u.id);
-
+    const dofaUserIdSet = new Set(dofaUserIds.map(String));
     const dofaExperts = dofaUserIds.length ? await Expert.findAll({
       where: {
-        cycle: activeCycleStrings,
+        cycle: { [Op.in]: activeCycleStrings },   // ← add Op.in
         uploadedById: { [Op.in]: dofaUserIds },
       },
       include: [{ model: User, as: "uploadedBy", attributes: ["id", "name", "department", "role"] }],
@@ -143,9 +143,14 @@ exports.getAllExpertTravel = async (req, res) => {
           expertIds: [],  // all expert IDs for this email (for travel lookup)
         };
       }
-      const dept = e.uploadedBy?.department || e.uploadedByDept || "DoFA" || "ADoFA";
-      if (!emailMap[key].departments.includes(dept)) {
-        emailMap[key].departments.push(dept);
+      const isManualUpload = dofaUserIdSet.has(String(e.uploadedById));
+      const targetDept = e.uploadedByDept || e.uploadedBy?.department || "—";
+      const deptTag = isManualUpload
+        ? `${targetDept} Manual (${e.uploadedBy?.role || "DoFA"})`  // "CSE Manual (ADoFA)", "CCE Manual (ADoFA)"
+        : `${targetDept} HoD`;     
+
+      if (!emailMap[key].departments.includes(deptTag)) {
+        emailMap[key].departments.push(deptTag);
       }
       emailMap[key].expertIds.push(e.id);
     });

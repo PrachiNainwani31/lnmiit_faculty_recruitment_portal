@@ -56,6 +56,8 @@ exports.submitToDofa = async (req, res) => {
     if (isResubmit) {
       const tmpl = templates.hodResubmittedToDofa({ department: hod?.department });
       for (const u of dofaUsers) {
+        const recipientName = u.role === "ADoFA" ? "Associate Dean of Faculty Affairs" : "Dean of Faculty Affairs";
+        const tmpl = templates.hodResubmittedToDofa({ department: hod?.department, recipientName });
         await sendEmail(u.email, tmpl.subject, tmpl.html).catch(e =>
           console.error("Email failed for", u.email, e.message)
         );
@@ -82,11 +84,18 @@ exports.submitToDofa = async (req, res) => {
         expertCount,
       });
       for (const u of dofaUsers) {
+        const recipientName = u.role === "ADoFA" ? "Associate Dean of Faculty Affairs" : "Dean of Faculty Affairs";
+        const tmpl = templates.hodSubmittedToDofa({
+          department: hod?.department,
+          candidateCount,
+          expertCount,
+          recipientName,
+        });
         await sendEmail(u.email, tmpl.subject, tmpl.html).catch(e =>
           console.error("Email failed for", u.email, e.message)
         );
       }
-
+      
       await createNotification({
         cycle: cycle.cycle,
         role: "DoFA",

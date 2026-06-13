@@ -35,9 +35,17 @@ exports.getComments = async (req, res) => {
       const hodCycle = await getCurrentCycle(hodId);
       if (!hodCycle)
         return res.status(404).json({ message: "No active cycle for this HoD" });
-
+      const hodUser = await User.findByPk(hodId);
+      if (!hodUser)
+        return res.status(404).json({ message: "HoD not found" });
       const comments = await Comment.findAll({
-        where: { cycle: hodCycle.cycle },
+        where: {
+          cycle: hodCycle.cycle,
+          [Op.or]: [
+            { targetUserId: parseInt(hodId, 10) },                          // DoFA → this HoD
+            { fromRole: "HoD", fromDepartment: hodUser.department },        // this HoD's sent messages
+          ],
+        },
         order: [["createdAt", "ASC"]],
       });
       return res.json(comments);

@@ -108,50 +108,89 @@
       separate rows with their own department/cycle column
   ========================================================= */
   exports.getAllExperts = async (req, res) => {
-    try {
-      const activeCycles = await RecruitmentCycle.findAll({
-        where: { [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }] },
-        order: [["createdAt", "DESC"]],
-      });
-      if (!activeCycles.length) return res.json([]);
-  
-      const activeCycleStrings = [...new Set(activeCycles.map(c => c.cycle))];
-  
-      const activeHodIds = [...new Set(activeCycles.map(c => c.hodId).filter(Boolean))];
-      const dofaUsers = await User.findAll({
-        where: { role: { [Op.in]: ["DoFA", "ADoFA", "DoFA_OFFICE"] } },
-        attributes: ["id"],
-      });
-      const dofaUserIds = dofaUsers.map(u => u.id);
-      const experts = await Expert.findAll({
-        where: {
-          cycle: { [Op.in]: activeCycleStrings },
-            uploadedById: {
-          [Op.in]: [...activeHodIds, ...dofaUserIds],
-        },
+  try {
+    const activeCycles = await RecruitmentCycle.findAll({
+      where: { [Op.or]: [{ isClosed: false }, { isClosed: null }, { isClosed: 0 }] },
+      order: [["createdAt", "DESC"]],
+    });
+    if (!activeCycles.length) return res.json([]);
+
+    const activeCycleStrings = [...new Set(activeCycles.map(c => c.cycle))];
+    const activeHodIds = [...new Set(activeCycles.map(c => c.hodId).filter(Boolean))];
+
+    const dofaUsers = await User.findAll({
+      where: { role: { [Op.in]: ["DoFA", "ADoFA", "DoFA_OFFICE"] } },
+      attributes: ["id"],
+    });
+    const dofaUserIds = dofaUsers.map(u => u.id);
+    const dofaUserIdSet = new Set(dofaUserIds.map(String));
+
+    const experts = await Expert.findAll({
+      where: {
+        cycle: { [Op.in]: activeCycleStrings },
+        uploadedById: { [Op.in]: [...activeHodIds, ...dofaUserIds] },
       },
-        include: [{ model: User, as: "uploadedBy", attributes: ["id", "department", "role"] }],
-        order: [["createdAt", "ASC"]],
-      });
-  
-      // Deduplicate by (email + uploadedById):
-      //   - Same HoD uploading same expert across multiple cycles → keep once
-      //   - CSE HoD and CCE HoD both uploading same expert → keep both (different uploadedById)
-      const seen = new Set();
-      const unique = experts.filter(e => {
-        if (!e.email) return true;
-        const key = `${e.email.toLowerCase()}::${e.uploadedById}::${e.cycle}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-  
-      res.json(unique);
-    } catch (err) {
-      console.error("getAllExperts error:", err.message);
-      res.status(500).json({ message: "Server error" });
-    }
-  };
+      include: [{ model: User, as: "uploadedBy", attributes: ["id", "department", "role"] }],
+      order: [["createdAt", "ASC"]],
+    });
+
+    // ── Merge by email — one row per unique expert email ──
+    const emailMap = {};
+    const result   = [];
+
+    experts.forEach(e => {
+      const key      = e.email.toLowerCase();
+      const isManual = dofaUserIdSet.has(String(e.uploadedById));
+      // dept = target dept (uploadedByDept is always set to target HoD's dept)
+      const targetDept = e.uploadedByDept || e.uploadedBy?.department || "—";
+
+      // Cycle pill label: "CCE · 2025-26-C1" or "CSE · 2025-26-C1"
+      const cycleLabel = `${targetDept} · ${e.cycle}`;
+
+      // Uploaded-by tag: "Manual (ADoFA)" or "CCE HoD"
+      const uploaderTag = isManual
+        ? `Manual (${e.uploadedBy?.role || "DoFA"})`
+        : `${targetDept} HoD`;
+
+      if (!emailMap[key]) {
+        emailMap[key] = {
+          ...e.toJSON(),
+          cycleList:    [],  // ["CCE · 2025-26-C1", "CSE · 2025-26-C1"]
+          cycleRawList: [],  // ["2025-26-C1"] — for delete modal
+          cycleIdMap:   {},  // { "2025-26-C1": [id1, id2] }
+          uploadedByDepts: [],
+          _allIds: [],
+        };
+        result.push(emailMap[key]);
+      }
+
+      const row = emailMap[key];
+
+      // Cycle pill — unique per "dept · cycle" combo
+      if (!row.cycleList.includes(cycleLabel))
+        row.cycleList.push(cycleLabel);
+
+      // Raw cycle for delete dropdown — unique
+      if (!row.cycleRawList.includes(e.cycle))
+        row.cycleRawList.push(e.cycle);
+
+      // Map raw cycle → ids for targeted delete
+      if (!row.cycleIdMap[e.cycle]) row.cycleIdMap[e.cycle] = [];
+      row.cycleIdMap[e.cycle].push(e.id);
+
+      // Uploader tag — unique
+      if (!row.uploadedByDepts.includes(uploaderTag))
+        row.uploadedByDepts.push(uploaderTag);
+
+      row._allIds.push(e.id);
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error("getAllExperts error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
   
   /* =========================================================
     UPLOAD EXPERTS CSV (HoD)

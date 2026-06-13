@@ -27,7 +27,7 @@ const ROLES = [
 
 const roleLabel = {
   DoFA:             "DoFA",
-  ADoFA:             "DoFA",
+  ADoFA:             "ADoFA",
   DoFA_OFFICE:      "DoFA OFFICE",
   DOFA_OFFICE:      "DoFA OFFICE",
   HOD:              "HoD",
@@ -343,6 +343,7 @@ function UserList({ users, onEdit, onDeactivate, onActivate,onDelete }) {
 
   const roleColor = {
     DoFA:          "bg-red-100 text-red-700 border-red-200",
+    ADoFA:          "bg-orange-100 text-orange-700 border-orange-200",
     DoFA_OFFICE:   "bg-rose-100 text-rose-700 border-rose-200",
     HoD:           "bg-blue-100 text-blue-700 border-blue-200",
     ESTABLISHMENT: "bg-amber-100 text-amber-700 border-amber-200",
