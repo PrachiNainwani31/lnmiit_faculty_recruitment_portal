@@ -5,10 +5,20 @@ const path = require("path");
 
 const db = require("./models");
 const app = express();
+
+// app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://lnmiit-faculty-recruitment-portal.vercel.app",
+  ],
+  credentials: true,
+}));
+app.use(express.json());
+
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 //remove3
-app.use(cors());
-app.use(express.json());
+
 app.use("/uploads",express.static(path.join(__dirname, "uploads")));
 /* ROUTES */
 app.use("/api/auth", require("./routes/auth.routes"));
