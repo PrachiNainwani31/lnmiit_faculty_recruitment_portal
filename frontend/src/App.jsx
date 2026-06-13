@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+//remove1
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login          from "./pages/Login";
@@ -57,6 +59,11 @@ import RefereePage        from "./pages/Referee/RefereePage";
 import ProtectedRoute     from "./components/ProtectedRoute";
 
 export default function App() {
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/health`).catch(() => {});
+  }, []);
+  //remove2
   return (
     <><ToastProvider />
     <Routes>
