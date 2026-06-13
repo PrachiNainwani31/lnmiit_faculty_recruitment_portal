@@ -16,7 +16,9 @@ exports.sendEmail = async (to, subject, html) => {
   try {
     // await transporter.sendMail({ remove5
     await resend.emails.send({
-      from: `"LNMIIT Recruitment" <${process.env.EMAIL_USER}>`,
+      // from: `"LNMIIT Recruitment" <${process.env.EMAIL_USER}>`,
+      from: "LNMIIT Recruitment <onboarding@resend.dev>",
+      //remove 6
       to,
       subject,
       html,
